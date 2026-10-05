@@ -82,7 +82,7 @@ Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es
 - **No se borran automáticamente datos académicos** en las funciones GDPR de eliminación. Es una decisión deliberada y conservadora hasta que la Universidad defina una política de conservación/borrado.
 
 ## Compatibilidad Moodle 5 / interfaz
-- Se migraron las clases heredadas relevantes de Bootstrap 4 a Bootstrap 5 (`bg-*`, `me/ms-*`, `float-end`, flex, etc.).
+- Se migraron las clases heredadas relevantes de Bootstrap 4 a Bootstrap 5 (`bg-*`, `me/ms-*`, `float-end`, flex, `form-select`, etc.).
 - `workshop_view.php` acepta/resuelve una edición concreta y evita autoinscribir o mostrar materiales de otra edición reutilizada del mismo taller base.
 - La creación/edición manual, importación masiva y tareas interpretan fechas con zona horaria del usuario.
 
@@ -92,6 +92,7 @@ Tras las correcciones anteriores se ejecutó una comprobación automática compl
 - `php -l` sobre todos los PHP de `gestion_actividades` y `gestion_hee`: **sin errores**.
 - XML del repositorio: **bien formado**.
 - Aserciones específicas: sin DDL en ejecución fuera de upgrade, sin creación `auth=manual`, sin clases Bootstrap 4 auditadas, sin observers inválidos y sin `$_FILES` en la subida externa Tipo B.
+- Se comprobaron además soporte de cuestionario Tipo A, selección de edición concreta, privacidad, filepicker Tipo B, permisos de exportación, vínculo `seriesid` y reflexión Moodle canónica Tipo B.
 - Confirmación de savepoint `2026100513` y `seriesid` en `install.xml`.
 - Los workflows/scripts temporales usados para las comprobaciones no forman parte del árbol final.
 
@@ -116,4 +117,4 @@ No declarar compatibilidad de producción únicamente por las comprobaciones est
 
 ## Versiones actuales
 - `local_gestion_actividades`: **1.5.99-alpha** (`2026100514`). Último savepoint de esquema: **2026100513**.
-- `block_gestion_hee`: **1.0.19-alpha** (`2026100503`).
+- `block_gestion_hee`: **1.0.20-alpha** (`2026100504`).
