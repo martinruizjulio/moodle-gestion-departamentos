@@ -230,17 +230,39 @@ if ($edition) {
                 $atable->head = [get_string('lastname'), get_string('firstname'), get_string('email'), 'Asistencia', 'Cuestionario', 'Nota', 'Resultado', 'Certificado'];
                 foreach ($enrolledusers as $eu) {
                     $userid = (int)$eu->userid;
+                    // Same sources as manager::user_is_certificate_eligible():
+                    // attendance + quiz finished + at least 5/10.
+                    $attended = manager::is_user_attended_edition((int)$edition->id, $userid);
                     $submitted = $quizcmid > 0 && manager::user_submitted_required_activity($userid, $quizcmid);
                     $grade = $quizcmid > 0 ? manager::get_user_quiz_grade_out_of_10($userid, $quizcmid) : null;
-                    $eligible = manager::user_is_certificate_eligible((int)$edition->id, $userid);
+                    $passed = $submitted && $grade !== null && $grade >= (float)$quizrequirement->minimum;
                     $certificate = manager::get_user_certificate_for_edition((int)$edition->id, $userid);
-                    $result = !$submitted ? 'Pendiente' : ($eligible ? 'Apto' : 'No apto / pendiente asistencia');
+
+                    $reasons = [];
+                    if (!$attended) {
+                        $reasons[] = 'Falta asistencia';
+                    }
+                    if (!$submitted) {
+                        $reasons[] = 'Cuestionario no finalizado';
+                    } else if ($grade === null) {
+                        $reasons[] = 'Cuestionario pendiente de calificar';
+                    } else if (!$passed) {
+                        $reasons[] = 'No apto: nota inferior a 5/10';
+                    }
+                    if (!$reasons) {
+                        $resultbadge = html_writer::span('Apto', 'badge bg-success');
+                    } else if ($submitted && $grade !== null && !$passed) {
+                        $resultbadge = html_writer::span(implode(' · ', $reasons), 'badge bg-danger');
+                    } else {
+                        $resultbadge = html_writer::span(implode(' · ', $reasons), 'badge bg-warning text-dark');
+                    }
+
                     $atable->data[] = [
                         s($eu->lastname), s($eu->firstname), s($eu->email),
-                        !empty($eu->attended) ? html_writer::span('Asiste', 'badge bg-success') : html_writer::span('No asiste', 'badge bg-warning text-dark'),
+                        $attended ? html_writer::span('Asiste', 'badge bg-success') : html_writer::span('No asiste', 'badge bg-warning text-dark'),
                         $submitted ? html_writer::span('Finalizado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
                         $grade === null ? '-' : format_float($grade, 2, true) . ' / 10',
-                        $eligible ? html_writer::span($result, 'badge bg-success') : html_writer::span($result, 'badge bg-warning text-dark'),
+                        $resultbadge,
                         $certificate ? html_writer::span('Generado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-secondary'),
                     ];
                 }
