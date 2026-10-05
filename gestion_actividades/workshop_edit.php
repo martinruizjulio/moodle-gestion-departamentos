@@ -1,6 +1,7 @@
 <?php
 require_once(__DIR__ . '/../../config.php');
 
+use local_gestion_actividades\local\course_layout;
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\workshop_series;
 
@@ -43,7 +44,11 @@ if (data_submitted() && confirm_sesskey()) {
     $selectedseries = $postseriesid > 0 ? workshop_series::get($postseriesid) : null;
     $selectedcourseid = required_param('courseid', PARAM_INT);
     if ($selectedseries && (int)$selectedseries->courseid !== $selectedcourseid) {
-        throw new moodle_exception('invaliddata', 'error', '', 'La edición de talleres y el taller deben pertenecer al mismo curso.');
+        throw new moodle_exception('invaliddata', 'error', '', 'La edición de seminarios y el seminario deben pertenecer al mismo curso.');
+    }
+    $workshoptype = $record ? (string)($record->workshoptype ?? 'typea') : $type;
+    if ($postseriesid > 0) {
+        course_layout::assert_series_accepts_type($postseriesid, $workshoptype);
     }
     $data = (object)[
         'id' => optional_param('id', 0, PARAM_INT),
@@ -53,13 +58,15 @@ if (data_submitted() && confirm_sesskey()) {
         'description' => optional_param('description', '', PARAM_TEXT),
         'hours' => optional_param('hours', '', PARAM_RAW_TRIMMED),
         'sectionnum' => optional_param('sectionnum', $record->sectionnum ?? 0, PARAM_INT),
-        'workshoptype' => $record ? (string)($record->workshoptype ?? 'typea') : $type,
+        'workshoptype' => $workshoptype,
     ];
     $savedworkshopid = manager::save_workshop($data);
     if ($postseriesid > 0) {
         workshop_series::attach_workshop($postseriesid, $savedworkshopid, $postsortorder);
+        course_layout::synchronise_course($selectedcourseid);
     } else if (!empty($data->id)) {
         workshop_series::refresh_for_workshop($savedworkshopid);
+        course_layout::synchronise_course($selectedcourseid);
     }
     if (empty($data->id)) {
         redirect(new moodle_url('/local/gestion_actividades/edition_edit.php', [
@@ -71,19 +78,19 @@ if (data_submitted() && confirm_sesskey()) {
             'sortorder' => $postsortorder,
         ]), get_string('changessaved'));
     }
-    redirect(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $record ? ($record->workshoptype ?? 'typea') : $type]), get_string('changessaved'));
+    redirect(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $workshoptype]), get_string('changessaved'));
 }
 
 echo $OUTPUT->header();
 echo html_writer::div(
     html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary me-2 mb-3']) .
-    html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $record ? ($record->workshoptype ?? 'typea') : $type]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver a talleres', ['class' => 'btn btn-outline-secondary mb-3']),
+    html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $record ? ($record->workshoptype ?? 'typea') : $type]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver a seminarios', ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
 echo $OUTPUT->heading(get_string('editworkshop', 'local_gestion_actividades'));
 
 if ($series) {
-    echo html_writer::tag('div', '<strong>Edición:</strong> ' . s($series->title) . ($sortorder > 0 ? ' · Taller ' . sprintf('%02d', $sortorder) : ''), ['class' => 'alert alert-info']);
+    echo html_writer::tag('div', '<strong>Edición:</strong> ' . s($series->title) . ($sortorder > 0 ? ' · Seminario ' . sprintf('%02d', $sortorder) : ''), ['class' => 'alert alert-info']);
 }
 
 echo html_writer::start_tag('form', ['method' => 'post']);
@@ -110,9 +117,9 @@ if ($id && !empty($record->code)) {
     echo html_writer::tag('div', s($record->code), ['class' => 'alert alert-secondary']);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'code', 'value' => $record->code]);
 } else {
-    echo html_writer::label('Código del taller', 'code');
-    $defaultcode = $sortorder > 0 ? 'TALLER-' . sprintf('%02d', $sortorder) : '';
-    echo html_writer::empty_tag('input', ['type' => 'text', 'name' => 'code', 'id' => 'code', 'class' => 'form-control mb-3', 'value' => $defaultcode, 'placeholder' => 'TALLER-01']);
+    echo html_writer::label('Código del seminario', 'code');
+    $defaultcode = $sortorder > 0 ? 'SEMINARIO-' . sprintf('%02d', $sortorder) : '';
+    echo html_writer::empty_tag('input', ['type' => 'text', 'name' => 'code', 'id' => 'code', 'class' => 'form-control mb-3', 'value' => $defaultcode, 'placeholder' => 'SEMINARIO-01']);
 }
 
 echo html_writer::label(get_string('workshopname', 'local_gestion_actividades'), 'name');
