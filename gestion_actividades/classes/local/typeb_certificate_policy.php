@@ -183,7 +183,8 @@ class typeb_certificate_policy {
         if (!manager::is_typeb_workshop($workshop) || !($cm = self::reflection_cm($edition))) {
             return false;
         }
-        if (!manager::get_edition_enrolment($editionid, $userid)) {
+        $enrolment = manager::get_edition_enrolment($editionid, $userid);
+        if (!$enrolment || !in_array((string)($enrolment->status ?? ''), ['enrolled', 'attended', 'manual'], true)) {
             return false;
         }
         $assign = self::assign_instance($cm);
