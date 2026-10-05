@@ -41,21 +41,17 @@ function local_ga_dash_status_badge(string $status): string {
     return html_writer::span(s($status), $class, ['style' => 'font-size:0.82rem;padding:6px 9px;']);
 }
 
-
 $allrows = [];
 $rows = [];
 try {
     $allrows = manager::get_workshop_overview_rows();
     foreach ($allrows as $r) {
-        // La fecha del taller o el cierre de inscripción no finalizan la edición.
-        // Solo se apartan del panel activo las ediciones finalizadas o archivadas expresamente.
         if (($r->computedstatus ?? '') === 'archived') {
             continue;
         }
         if ($courseid > 0 && (int)($r->courseid ?? 0) !== $courseid) {
             continue;
         }
-        // For teachers, avoid expensive permission checks row by row by using the teacher ids already loaded in the overview.
         $teacherids = $r->teacherids ?? [];
         $coursecontext = !empty($r->courseid) ? context_course::instance((int)$r->courseid, IGNORE_MISSING) : null;
         $courseeditor = $coursecontext && has_capability('moodle/course:update', $coursecontext, (int)$USER->id);
@@ -78,14 +74,12 @@ try {
     $authorized = [];
 }
 
-
 $returncourseid = $courseid;
 if ($returncourseid <= 0 && !empty($rows)) {
     $firstrow = reset($rows);
     $returncourseid = !empty($firstrow->courseid) ? (int)$firstrow->courseid : 0;
 }
 if ($returncourseid <= 0) {
-    // Keep a small "Volver al curso" button even when the active overview is empty.
     $fw = $DB->get_record_sql("SELECT courseid FROM {local_ga_workshops} ORDER BY id DESC", [], IGNORE_MULTIPLE);
     $returncourseid = $fw ? (int)$fw->courseid : 0;
 }
@@ -96,8 +90,6 @@ if ($returncourseid > 0) {
 
 echo $OUTPUT->header();
 
-// Botón pequeño permanente para volver al curso.
-// Si no se puede resolver el curso por parámetro o por talleres, usa el historial del navegador.
 $returnurl = $returncourse
     ? (new moodle_url('/course/view.php', ['id' => $returncourse->id]))->out(false)
     : 'javascript:history.back();';
@@ -111,23 +103,24 @@ echo html_writer::div(
     'mb-2'
 );
 
-
 echo html_writer::tag('h3', 'Gestión y alumnos', ['class' => 'h4 mt-3 mb-3']);
-    echo html_writer::start_div('row');
-    echo local_ga_dash_card('1. Usuarios autorizados', 'Gestionar qué usuarios pueden acceder a la administración de Gestión HEE.', new moodle_url('/local/gestion_actividades/authorized_users.php', $courseid > 0 ? ['courseid' => $courseid] : []), 'Gestionar usuarios autorizados', 'btn btn-secondary');
-    echo local_ga_dash_card('2. Alumnos y notas de expediente', 'Importación de alumnos, notas de expediente, ranking y convocatorias antiguas.', new moodle_url('/local/gestion_actividades/index.php'), 'Abrir alumnos y ranking');
-    echo local_ga_dash_card('3. Listados y descargas', 'Descargar listados de talleres, certificados Tipo A/B, horas, portafolios y expedientes completos.', new moodle_url('/local/gestion_actividades/manager_downloads.php'), 'Abrir listados y descargas', 'btn btn-primary');
-    echo local_ga_dash_card('4. Reconocimiento institucional', 'Importar horas Tipo A y Tipo B reconocidas previamente por el Decanato desde Excel.', new moodle_url('/local/gestion_actividades/institutional_import.php'), 'Importar reconocimiento', 'btn btn-info');
-    echo local_ga_dash_card('5. Traspasos A→B', 'Consultar los traspasos de horas Tipo A a Tipo B realizados por el alumnado.', new moodle_url('/local/gestion_actividades/manager_downloads.php', ['view' => 'view_transfers']), 'Ver traspasos', 'btn btn-secondary');
-    echo local_ga_dash_card('6. Notas Asignatura HEE', 'Consultar Nota Talleres A, Portafolio, Autoevaluación y Nota Final, con descarga en Excel y PDF.', new moodle_url('/local/gestion_actividades/grades_report.php', $courseid > 0 ? ['courseid' => $courseid] : []), 'Abrir notas de alumnos', 'btn btn-primary');
-    echo html_writer::end_div();
+echo html_writer::start_div('row');
+echo local_ga_dash_card('1. Usuarios autorizados', 'Gestionar qué usuarios pueden acceder a la administración de Gestión HEE.', new moodle_url('/local/gestion_actividades/authorized_users.php', $courseid > 0 ? ['courseid' => $courseid] : []), 'Gestionar usuarios autorizados', 'btn btn-secondary');
+echo local_ga_dash_card('2. Alumnos y notas de expediente', 'Importación de alumnos, notas de expediente, ranking y convocatorias antiguas.', new moodle_url('/local/gestion_actividades/index.php'), 'Abrir alumnos y ranking');
+echo local_ga_dash_card('3. Listados y descargas', 'Descargar listados de talleres, certificados Tipo A/B, horas, portafolios y expedientes completos.', new moodle_url('/local/gestion_actividades/manager_downloads.php'), 'Abrir listados y descargas', 'btn btn-primary');
+echo local_ga_dash_card('4. Reconocimiento institucional', 'Importar horas Tipo A y Tipo B reconocidas previamente por el Decanato desde Excel.', new moodle_url('/local/gestion_actividades/institutional_import.php'), 'Importar reconocimiento', 'btn btn-info');
+echo local_ga_dash_card('5. Traspasos A→B', 'Consultar los traspasos de horas Tipo A a Tipo B realizados por el alumnado.', new moodle_url('/local/gestion_actividades/manager_downloads.php', ['view' => 'view_transfers']), 'Ver traspasos', 'btn btn-secondary');
+echo local_ga_dash_card('6. Notas Asignatura HEE', 'Consultar Nota Talleres A, Portafolio, Autoevaluación y Nota Final, con descarga en Excel y PDF.', new moodle_url('/local/gestion_actividades/grades_report.php', $courseid > 0 ? ['courseid' => $courseid] : []), 'Abrir notas de alumnos', 'btn btn-primary');
+echo local_ga_dash_card('7. Validación externa Tipo B', 'Revisar certificados de formación externa enviados por alumnos y validarlos o rechazarlos como Tipo B.', new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']), 'Revisar solicitudes Tipo B', 'btn btn-warning');
+echo local_ga_dash_card('8. Listado personalizado de talleres', 'Seleccionar uno, varios o todos los talleres y obtener nombre, horas, nota de tarea y asistencia.', new moodle_url('/local/gestion_actividades/workshop_report.php'), 'Crear listado de talleres', 'btn btn-primary');
+echo html_writer::end_div();
 
-    echo html_writer::tag('h3', 'Talleres', ['class' => 'h4 mt-4 mb-3']);
-    echo html_writer::start_div('row');
-    echo local_ga_dash_card('4. Talleres Tipo A', 'Crear talleres, ediciones, plazas, profesorado, grupos, asistencia, tareas, notas y certificados automáticos.', new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Gestionar talleres Tipo A');
-    echo local_ga_dash_card('5. Talleres Tipo B', 'Crear talleres Tipo B con inscripción, asistencia, texto obligatorio del alumno y certificado.', new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typeb']), 'Gestionar talleres Tipo B', 'btn btn-primary');
-    echo local_ga_dash_card('6. Talleres archivados', 'Consultar talleres y ediciones finalizadas o archivadas, distinguiendo entre Tipo A y Tipo B.', new moodle_url('/local/gestion_actividades/archive.php'), 'Abrir talleres archivados', 'btn btn-secondary');
-    echo html_writer::end_div();
+echo html_writer::tag('h3', 'Talleres', ['class' => 'h4 mt-4 mb-3']);
+echo html_writer::start_div('row');
+echo local_ga_dash_card('4. Talleres Tipo A', 'Crear talleres, ediciones, plazas, profesorado, grupos, asistencia, tareas, notas y certificados automáticos.', new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Gestionar talleres Tipo A');
+echo local_ga_dash_card('5. Talleres Tipo B', 'Crear talleres Tipo B con inscripción, asistencia, texto obligatorio del alumno y certificado.', new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typeb']), 'Gestionar talleres Tipo B', 'btn btn-primary');
+echo local_ga_dash_card('6. Talleres archivados', 'Consultar talleres y ediciones finalizadas o archivadas, distinguiendo entre Tipo A y Tipo B.', new moodle_url('/local/gestion_actividades/archive.php'), 'Abrir talleres archivados', 'btn btn-secondary');
+echo html_writer::end_div();
 
 echo html_writer::start_div('card mb-4');
 echo html_writer::start_div('card-body');
