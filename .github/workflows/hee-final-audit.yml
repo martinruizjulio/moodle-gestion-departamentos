@@ -20,7 +20,7 @@ jobs:
         with:
           php-version: '8.1'
           coverage: none
-      - name: Finish reviewer-oriented cleanup
+      - name: Finish Bootstrap 5 select classes
         shell: bash
         run: |
           set -euo pipefail
@@ -28,50 +28,17 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           python3 - <<'PY'
           from pathlib import Path
-          import re
-
-          # The schema is formalised in install.xml + db/upgrade.php. Remove the
-          # last unused runtime DDL helper from institutional_hours.
-          path = Path('gestion_actividades/classes/local/institutional_hours.php')
-          text = path.read_text(encoding='utf-8')
-          pattern = r"\n    private static function add_index_if_possible\(.*?\n    \}\n\n    public static function list_for_user"
-          text, count = re.subn(pattern, "\n\n    public static function list_for_user", text, count=1, flags=re.S)
-          if count != 1:
-              raise SystemExit('Residual institutional_hours runtime DDL helper was not found exactly once')
-          path.write_text(text, encoding='utf-8')
-
-          # Finish only the requested Bootstrap 4 -> 5 utility replacements.
-          replacements = [
-              ('badge badge-success', 'badge bg-success'),
-              ('badge badge-warning', 'badge bg-warning text-dark'),
-              ('badge badge-danger', 'badge bg-danger'),
-              ('badge badge-secondary', 'badge bg-secondary'),
-              ('float-right', 'float-end'),
-              (' mr-', ' me-'),
-              (' ml-', ' ms-'),
-              ("'mr-", "'me-"),
-              ('"mr-', '"me-'),
-              ("'ml-", "'ms-"),
-              ('"ml-', '"ms-'),
-              ('btn-block', 'd-block w-100'),
-              ('form-inline', 'd-flex flex-wrap align-items-center gap-2'),
-          ]
           for root in [Path('gestion_actividades'), Path('gestion_hee')]:
-              for ui in root.rglob('*'):
-                  if not ui.is_file() or ui.suffix.lower() not in {'.php', '.css', '.mustache', '.js'}:
-                      continue
-                  old = ui.read_text(encoding='utf-8')
-                  new = old
-                  for a, b in replacements:
-                      new = new.replace(a, b)
+              for path in root.rglob('*.php'):
+                  old = path.read_text(encoding='utf-8')
+                  lines = []
+                  for line in old.splitlines(True):
+                      if "start_tag('select'" in line and 'form-control' in line:
+                          line = line.replace('form-control', 'form-select')
+                      lines.append(line)
+                  new = ''.join(lines)
                   if new != old:
-                      ui.write_text(new, encoding='utf-8')
-
-          version = Path('gestion_actividades/version.php')
-          vtext = version.read_text(encoding='utf-8')
-          vtext = re.sub(r'\$plugin->version\s*=\s*\d+;', '$plugin->version = 2026100514;', vtext)
-          vtext = re.sub(r"\$plugin->release\s*=\s*'[^']+';", "$plugin->release = '1.5.99-alpha';", vtext)
-          version.write_text(vtext, encoding='utf-8')
+                      path.write_text(new, encoding='utf-8')
           PY
 
       - name: Validate all PHP and XML
@@ -119,16 +86,22 @@ jobs:
           legacy_tokens = ['badge-success', 'badge-warning', 'badge-danger', 'badge-secondary', 'float-right', 'btn-block', 'form-inline']
           margin_re = re.compile(r'(?<![A-Za-z0-9_-])(?:mr|ml)-[0-9]+(?![A-Za-z0-9_-])')
           legacy_hits = []
+          select_hits = []
           for root in roots:
               for path in root.rglob('*'):
                   if not path.is_file() or path.suffix.lower() not in {'.php', '.css', '.mustache', '.js'}:
                       continue
                   text = path.read_text(encoding='utf-8')
-                  found = [token for token in legacy_tokens if token in text]
-                  if found or margin_re.search(text):
+                  if any(token in text for token in legacy_tokens) or margin_re.search(text):
                       legacy_hits.append(str(path))
+                  if path.suffix.lower() == '.php':
+                      for line in text.splitlines():
+                          if "start_tag('select'" in line and 'form-control' in line:
+                              select_hits.append(str(path))
           if legacy_hits:
               raise SystemExit('Bootstrap 4 classes remain: ' + ', '.join(sorted(set(legacy_hits))))
+          if select_hits:
+              raise SystemExit('Selects still use form-control: ' + ', '.join(sorted(set(select_hits))))
 
           events = Path('gestion_hee/db/events.php').read_text(encoding='utf-8')
           if r'\core\event\file_created' in events or r'\core\event\file_deleted' in events:
