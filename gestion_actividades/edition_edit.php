@@ -85,11 +85,17 @@ if (data_submitted() && confirm_sesskey()) {
         course_layout::assert_series_accepts_type($seriesid, $istypebworkshop ? 'typeb' : 'typea');
     }
 
-    $existingquiz = !$istypebworkshop && $record && (
-        (($record->requiredmodname ?? '') === 'quiz') ||
-        !empty($record->requiredquizcmid)
-    );
-    $activitycreationtype = $istypebworkshop ? 'assign' : ($existingquiz ? 'quiz' : 'assign');
+    // Type A defaults to a Moodle quiz. Existing Type A editions keep their
+    // already configured activity type so editing metadata never changes it.
+    $existingtype = '';
+    if (!$istypebworkshop && $record) {
+        if (($record->requiredmodname ?? '') === 'quiz' || !empty($record->requiredquizcmid)) {
+            $existingtype = 'quiz';
+        } else if (($record->requiredmodname ?? '') === 'assign' || !empty($record->requiredassigncmid)) {
+            $existingtype = 'assign';
+        }
+    }
+    $activitycreationtype = $istypebworkshop ? 'assign' : ($existingtype !== '' ? $existingtype : 'quiz');
     $data = (object)[
         'id' => optional_param('id', 0, PARAM_INT),
         'workshopid' => $workshopid,
@@ -120,25 +126,35 @@ if (data_submitted() && confirm_sesskey()) {
         if (empty($reflection->success)) {
             throw new moodle_exception('invaliddata', 'error', '', (string)($reflection->message ?? 'No se pudo crear la tarea de reflexión Tipo B.'));
         }
-    }
-
-    // The central manager historically defaults Type A to assign. If this edition was
-    // created from a Moodle quiz template, preserve that canonical quiz relationship.
-    if ($existingquiz) {
-        $quizcmid = !empty($record->requiredquizcmid) ? (int)$record->requiredquizcmid : (int)$record->requiredcmid;
+    } else {
+        // manager::save_workshop_edition() keeps legacy compatibility defaults.
+        // Re-assert the canonical Type A policy here: new editions are quiz-first,
+        // while an existing explicitly configured assignment stays an assignment.
         $columns = $DB->get_columns('local_ga_workshop_editions');
+        $requiredcmid = 0;
+        if ($record) {
+            if ($activitycreationtype === 'quiz') {
+                $requiredcmid = !empty($record->requiredquizcmid)
+                    ? (int)$record->requiredquizcmid
+                    : (($record->requiredmodname ?? '') === 'quiz' ? (int)($record->requiredcmid ?? 0) : 0);
+            } else {
+                $requiredcmid = !empty($record->requiredassigncmid)
+                    ? (int)$record->requiredassigncmid
+                    : (($record->requiredmodname ?? '') === 'assign' ? (int)($record->requiredcmid ?? 0) : 0);
+            }
+        }
         $update = (object)[
             'id' => $savededitionid,
-            'requiredcmid' => $quizcmid,
-            'requiredmodname' => 'quiz',
-            'activitycreationtype' => 'quiz',
+            'requiredcmid' => $requiredcmid,
+            'requiredmodname' => $activitycreationtype,
+            'activitycreationtype' => $activitycreationtype,
             'timemodified' => time(),
         ];
         if (isset($columns['requiredquizcmid'])) {
-            $update->requiredquizcmid = $quizcmid;
+            $update->requiredquizcmid = $activitycreationtype === 'quiz' ? $requiredcmid : 0;
         }
         if (isset($columns['requiredassigncmid'])) {
-            $update->requiredassigncmid = 0;
+            $update->requiredassigncmid = $activitycreationtype === 'assign' ? $requiredcmid : 0;
         }
         $DB->update_record('local_ga_workshop_editions', $update);
     }
@@ -223,8 +239,14 @@ if ($istypebworkshop) {
     echo html_writer::tag('div', '<strong>Actividad asociada:</strong> Tarea Moodle de reflexión. El alumno puede escribir el párrafo en línea o adjuntar un archivo. Con asistencia confirmada + entrega de la reflexión queda Apto y puede generarse el certificado.', ['class' => 'alert alert-info']);
     $requiredcmidvalue = $record->requiredcmid ?? 0;
 } else {
-    $activitylabel = ($record && ((($record->requiredmodname ?? '') === 'quiz') || !empty($record->requiredquizcmid))) ? 'Cuestionario Moodle' : 'Tarea Moodle';
-    echo html_writer::tag('div', '<strong>Actividad asociada actual:</strong> ' . s($activitylabel) . '. En las importaciones Excel puede duplicarse un cuestionario modelo; sus preguntas se crean o importan siempre desde Moodle. Editar los datos del taller no cambia el tipo de actividad ya asociada.', ['class' => 'alert alert-info']);
+    if (!$record) {
+        $activitylabel = 'Cuestionario Moodle (predeterminado)';
+    } else if ((($record->requiredmodname ?? '') === 'quiz') || !empty($record->requiredquizcmid)) {
+        $activitylabel = 'Cuestionario Moodle';
+    } else {
+        $activitylabel = 'Tarea Moodle';
+    }
+    echo html_writer::tag('div', '<strong>Actividad asociada actual:</strong> ' . s($activitylabel) . '. Los seminarios Tipo A nuevos usan cuestionario Moodle por defecto. Puede vincularse otra actividad posteriormente desde la gestión del seminario. En las importaciones Excel puede duplicarse un cuestionario modelo; sus preguntas se crean o importan siempre desde Moodle.', ['class' => 'alert alert-info']);
     $requiredcmidvalue = $record->requiredcmid ?? 0;
 }
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'requiredcmid', 'value' => $requiredcmidvalue]);
