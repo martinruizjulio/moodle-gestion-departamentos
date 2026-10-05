@@ -147,6 +147,70 @@ class typeb_reflection_activity {
         return $cmid > 0 && manager::user_completed_required_activity($userid, $cmid);
     }
 
+    /**
+     * Return the canonical Moodle Assignment submission state for one internal
+     * Type B reflection. File-only submissions are valid even when text is empty.
+     */
+    public static function submission_summary(int $editionid, int $userid): \stdClass {
+        global $DB;
+
+        $summary = (object)[
+            'submitted' => false,
+            'text' => '',
+            'timemodified' => 0,
+            'submissionid' => 0,
+        ];
+        if ($editionid <= 0 || $userid <= 0) {
+            return $summary;
+        }
+
+        $edition = manager::get_workshop_edition($editionid);
+        $cmid = (int)($edition->requiredcmid ?? 0);
+        if ($cmid <= 0) {
+            return $summary;
+        }
+
+        // Keep the same canonical eligibility criterion used by certificate policy.
+        $summary->submitted = manager::user_submitted_required_activity($userid, $cmid)
+            || manager::user_completed_required_activity($userid, $cmid);
+
+        if (!$DB->get_manager()->table_exists(new \xmldb_table('assign_submission'))) {
+            return $summary;
+        }
+
+        $sql = "SELECT s.id, s.status, s.timemodified
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module AND m.name = 'assign'
+                  JOIN {assign} a ON a.id = cm.instance
+                  JOIN {assign_submission} s ON s.assignment = a.id
+                 WHERE cm.id = :cmid
+                   AND s.userid = :userid
+              ORDER BY s.latest DESC, s.attemptnumber DESC, s.timemodified DESC, s.id DESC";
+        $submissions = $DB->get_records_sql($sql, ['cmid' => $cmid, 'userid' => $userid], 0, 1);
+        $submission = $submissions ? reset($submissions) : null;
+        if (!$submission) {
+            return $summary;
+        }
+
+        $summary->submissionid = (int)$submission->id;
+        $summary->timemodified = (int)($submission->timemodified ?? 0);
+        if ((string)($submission->status ?? '') === 'submitted') {
+            $summary->submitted = true;
+        }
+
+        $onlinetable = new \xmldb_table('assignsubmission_onlinetext');
+        if ($DB->get_manager()->table_exists($onlinetable)) {
+            $textrow = $DB->get_record('assignsubmission_onlinetext', [
+                'submission' => (int)$submission->id,
+            ], 'onlinetext, onlineformat', IGNORE_MISSING);
+            if ($textrow && trim(strip_tags((string)$textrow->onlinetext)) !== '') {
+                $summary->text = trim((string)$textrow->onlinetext);
+            }
+        }
+
+        return $summary;
+    }
+
     private static function set_plugin_config(int $assignmentid, string $plugin, string $name, string $value): void {
         global $DB;
 
