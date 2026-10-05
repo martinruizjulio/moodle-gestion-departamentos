@@ -614,30 +614,29 @@ class manager {
         return 0;
     }
 
+    /** Minimum mark to pass a Type A quiz, on a 0-10 scale. */
+    public const QUIZ_PASS_MARK = 5.0;
+
     /**
-     * Requirement of a Type A edition whose required activity is a Moodle quiz.
-     * Minimum: the HEE minimum when configured; otherwise the quiz's own
-     * "Grade to pass" (grade_items.gradepass) when set; otherwise none.
+     * Requirement of a Type A edition whose required activity is a Moodle quiz:
+     * attendance + quiz finished with at least 5 out of 10. The quiz grade is
+     * rescaled to 10 whatever its maximum grade in Moodle.
      */
     public static function get_quiz_requirement(\stdClass $edition): \stdClass {
-        global $DB;
         $cmid = !empty($edition->requiredquizcmid) ? (int)$edition->requiredquizcmid : (int)($edition->requiredcmid ?? 0);
-        $out = (object)['cmid' => $cmid, 'minimum' => null, 'source' => ''];
-        $hee = self::parse_decimal_input($edition->tasknumericgrade ?? null);
-        $pointsmode = (string)($edition->quizgradingmode ?? 'completion') === 'points';
-        if ($pointsmode || ($hee !== null && $hee > 0)) {
-            $out->minimum = max(0.0, (float)($hee ?? 0.0));
-            $out->source = 'hee';
-            return $out;
+        return (object)['cmid' => $cmid, 'minimum' => self::QUIZ_PASS_MARK, 'scale' => 10.0];
+    }
+
+    /**
+     * Quiz grade of a user rescaled to 0-10, or null when not graded.
+     */
+    public static function get_user_quiz_grade_out_of_10(int $userid, int $cmid): ?float {
+        $item = self::get_module_grade_item($cmid);
+        $grade = self::get_user_grade_for_cmid($userid, $cmid);
+        if (!$item || $grade === null || (float)$item->grademax <= 0) {
+            return null;
         }
-        if ($cmid > 0) {
-            $item = self::get_module_grade_item($cmid);
-            if ($item && (float)($item->gradepass ?? 0) > 0) {
-                $out->minimum = (float)$item->gradepass;
-                $out->source = 'moodle';
-            }
-        }
-        return $out;
+        return round($grade / (float)$item->grademax * 10.0, 2);
     }
 
     /**
@@ -645,15 +644,12 @@ class manager {
      */
     public static function quiz_missing_requirement(\stdClass $edition, int $userid): ?string {
         $req = self::get_quiz_requirement($edition);
-        if ($req->cmid <= 0 || (!self::user_submitted_required_activity($userid, $req->cmid)
-                && !self::user_completed_required_activity($userid, $req->cmid))) {
+        if ($req->cmid <= 0 || !self::user_submitted_required_activity($userid, $req->cmid)) {
             return 'cuestionario';
         }
-        if ($req->minimum !== null) {
-            $grade = self::get_user_grade_for_cmid($userid, $req->cmid);
-            if ($grade === null || $grade < $req->minimum) {
-                return 'nota mínima del cuestionario (' . format_float($req->minimum, 2, true) . ')';
-            }
+        $grade = self::get_user_quiz_grade_out_of_10($userid, $req->cmid);
+        if ($grade === null || $grade < $req->minimum) {
+            return 'nota mínima del cuestionario (' . format_float($req->minimum, 0) . '/10)';
         }
         return null;
     }

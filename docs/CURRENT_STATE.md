@@ -21,7 +21,7 @@ Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es
 - Puede contener asistencia, apuntes y actividad obligatoria.
 - La actividad obligatoria puede ser tarea interna HEE o cuestionario Moodle.
 - Tarea interna: asistencia + entrega + nota mínima 5/10.
-- Cuestionario Moodle: asistencia + cuestionario finalizado. Nota mínima: la configurada en HEE si existe; si no, la «Calificación para aprobar» del propio cuestionario Moodle; si tampoco hay, basta con finalizarlo. Regla única en `manager::get_quiz_requirement()` / `quiz_missing_requirement()`.
+- Cuestionario Moodle: asistencia + cuestionario finalizado con **nota mínima 5 sobre 10** (la nota del cuestionario se reescala a 10 según su nota máxima). Regla única en `manager::get_quiz_requirement()` / `quiz_missing_requirement()` (`QUIZ_PASS_MARK`).
 - `teacher_view.php` muestra estado, nota, resultado y certificado del cuestionario cuando procede.
 
 ### Tipo B interno

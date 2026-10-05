@@ -230,8 +230,8 @@ if ($edition) {
                 $atable->head = [get_string('lastname'), get_string('firstname'), get_string('email'), 'Asistencia', 'Cuestionario', 'Nota', 'Resultado', 'Certificado'];
                 foreach ($enrolledusers as $eu) {
                     $userid = (int)$eu->userid;
-                    $submitted = $quizcmid > 0 && (manager::user_submitted_required_activity($userid, $quizcmid) || manager::user_completed_required_activity($userid, $quizcmid));
-                    $grade = $quizcmid > 0 ? manager::get_user_grade_for_cmid($userid, $quizcmid) : null;
+                    $submitted = $quizcmid > 0 && manager::user_submitted_required_activity($userid, $quizcmid);
+                    $grade = $quizcmid > 0 ? manager::get_user_quiz_grade_out_of_10($userid, $quizcmid) : null;
                     $eligible = manager::user_is_certificate_eligible((int)$edition->id, $userid);
                     $certificate = manager::get_user_certificate_for_edition((int)$edition->id, $userid);
                     $result = !$submitted ? 'Pendiente' : ($eligible ? 'Apto' : 'No apto / pendiente asistencia');
@@ -239,16 +239,13 @@ if ($edition) {
                         s($eu->lastname), s($eu->firstname), s($eu->email),
                         !empty($eu->attended) ? html_writer::span('Asiste', 'badge bg-success') : html_writer::span('No asiste', 'badge bg-warning text-dark'),
                         $submitted ? html_writer::span('Finalizado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
-                        $grade === null ? '-' : format_float($grade, 2, true),
+                        $grade === null ? '-' : format_float($grade, 2, true) . ' / 10',
                         $eligible ? html_writer::span($result, 'badge bg-success') : html_writer::span($result, 'badge bg-warning text-dark'),
                         $certificate ? html_writer::span('Generado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-secondary'),
                     ];
                 }
                 echo html_writer::table($atable);
-                echo html_writer::tag('p', $quizrequirement->minimum !== null
-                    ? 'Criterio: cuestionario finalizado y nota mínima ' . format_float((float)$quizrequirement->minimum, 2, true)
-                        . ($quizrequirement->source === 'moodle' ? ' (calificación para aprobar del cuestionario Moodle).' : '.')
-                    : 'Criterio: cuestionario finalizado.', ['class' => 'text-muted']);
+                echo html_writer::tag('p', 'Criterio: asistencia + cuestionario finalizado con nota mínima de 5 sobre 10 (la nota del cuestionario se reescala a 10).', ['class' => 'text-muted']);
             } else {
                 $hasinternaltask = in_array('assign', $requiredtypes, true);
             if ($hasinternaltask) {
