@@ -14,7 +14,7 @@ workshop_series::ensure_schema();
 
 $type = optional_param('type', 'typea', PARAM_ALPHA);
 $type = $type === 'typeb' ? 'typeb' : 'typea';
-$typetitle = $type === 'typeb' ? 'Talleres Tipo B' : 'Talleres Tipo A';
+$typetitle = $type === 'typeb' ? 'Seminarios Tipo B' : 'Seminarios Tipo A';
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $type]));
@@ -36,6 +36,12 @@ function local_ga_series_workshop_edition(stdClass $series, int $workshopid): ?s
     if (!$editions) {
         return null;
     }
+    foreach ($editions as $edition) {
+        if (isset($edition->seriesid) && (int)$edition->seriesid === (int)$series->id) {
+            return $edition;
+        }
+    }
+
     $matching = [];
     foreach ($editions as $edition) {
         $date = (int)($edition->sessiondate ?? 0);
@@ -56,9 +62,6 @@ function local_ga_series_workshop_edition(stdClass $series, int $workshopid): ?s
 function local_ga_series_status_label(stdClass $series): string {
     if (($series->status ?? '') === 'finished') {
         return html_writer::span('Finalizada / oculta', 'badge bg-secondary');
-    }
-    if (!empty($series->dateto) && (int)$series->dateto < time()) {
-        return html_writer::span('Fecha final superada / oculta', 'badge bg-secondary');
     }
     return html_writer::span('Activa', 'badge bg-success');
 }
