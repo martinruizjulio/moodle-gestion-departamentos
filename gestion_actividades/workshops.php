@@ -74,7 +74,7 @@ function local_ga_workshop_status_label(?stdClass $edition): string {
     if (in_array($status, ['closed', 'completed', 'finished', 'closed_finished'], true)) {
         return html_writer::span('Cerrado', 'badge bg-secondary');
     }
-    return html_writer::span($status !== '' ? s($status) : 'Configurado', 'badge badge-info');
+    return html_writer::span($status !== '' ? s($status) : 'Configurado', 'badge bg-info text-dark');
 }
 
 function local_ga_course_series_url(stdClass $series): moodle_url {

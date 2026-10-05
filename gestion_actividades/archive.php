@@ -20,7 +20,7 @@ $PAGE->set_heading(get_string('title', 'local_gestion_actividades'));
 function local_ga_archive_type_badge(?string $type): string {
     $type = manager::normalize_workshop_type((string)($type ?? 'typea'));
     $label = $type === 'typeb' ? 'Tipo B' : 'Tipo A';
-    $class = $type === 'typeb' ? 'badge badge-primary' : 'badge bg-success';
+    $class = $type === 'typeb' ? 'badge bg-primary' : 'badge bg-success';
     return html_writer::span($label, $class, ['style' => 'font-size:0.82rem;padding:6px 9px;']);
 }
 

@@ -49,7 +49,7 @@ function local_ga_dash_series_edition(stdClass $series, int $workshopid): ?stdCl
 
 function local_ga_dash_type_badge(?string $type): string {
     $type = manager::normalize_workshop_type((string)($type ?? 'typea'));
-    return html_writer::span($type === 'typeb' ? 'Tipo B' : 'Tipo A', $type === 'typeb' ? 'badge badge-primary' : 'badge bg-success');
+    return html_writer::span($type === 'typeb' ? 'Tipo B' : 'Tipo A', $type === 'typeb' ? 'badge bg-primary' : 'badge bg-success');
 }
 
 function local_ga_dash_workshop_status(?stdClass $edition): string {
@@ -57,7 +57,7 @@ function local_ga_dash_workshop_status(?stdClass $edition): string {
     $status = (string)($edition->status ?? '');
     if (in_array($status, ['open', 'active', 'published'], true)) { return html_writer::span('Abierto', 'badge bg-success'); }
     if (in_array($status, ['closed', 'completed', 'finished', 'closed_finished'], true)) { return html_writer::span('Cerrado', 'badge bg-secondary'); }
-    return html_writer::span($status !== '' ? s($status) : 'Configurado', 'badge badge-info');
+    return html_writer::span($status !== '' ? s($status) : 'Configurado', 'badge bg-info text-dark');
 }
 
 function local_ga_dash_course_series_url(stdClass $series): moodle_url {
