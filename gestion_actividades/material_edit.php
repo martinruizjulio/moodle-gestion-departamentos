@@ -28,23 +28,54 @@ $material = $id ? manager::get_material($id) : (object)[
     'fileitemid' => 0,
 ];
 
+// Never trust a material id together with a caller-supplied workshop id.
+if ($id > 0 && (int)$material->workshopid !== $workshopid) {
+    throw new invalid_parameter_exception('El material no pertenece al taller indicado.');
+}
+
+// Existing records keep their canonical edition. New records may use the requested edition.
+if ($id > 0) {
+    $editionid = (int)($material->editionid ?? 0);
+}
+if ($editionid > 0) {
+    $edition = manager::get_workshop_edition($editionid);
+    if ((int)$edition->workshopid !== $workshopid) {
+        throw new invalid_parameter_exception('La edición del material no pertenece a este taller.');
+    }
+    if (!manager::can_manage_edition($editionid, (int)$USER->id)) {
+        throw new required_capability_exception($coursecontext, 'moodle/course:update', 'nopermissions', '');
+    }
+}
+
 if ($id && $delete && confirm_sesskey()) {
     manager::delete_material($id);
-    redirect(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid]), get_string('materialdeleted', 'local_gestion_actividades'));
+    redirect(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid, 'editionid' => $editionid]), get_string('materialdeleted', 'local_gestion_actividades'));
 }
 
 if (data_submitted() && confirm_sesskey() && !$delete) {
+    $postededitionid = optional_param('editionid', $editionid, PARAM_INT);
+    if ($id > 0 && $postededitionid !== $editionid) {
+        throw new invalid_parameter_exception('No se puede cambiar la edición de un material mediante este formulario.');
+    }
+    if ($postededitionid > 0) {
+        $postededition = manager::get_workshop_edition($postededitionid);
+        if ((int)$postededition->workshopid !== $workshopid
+                || !manager::can_manage_edition($postededitionid, (int)$USER->id)) {
+            throw new required_capability_exception($coursecontext, 'moodle/course:update', 'nopermissions', '');
+        }
+    }
+
     $fileitemid = (int)($material->fileitemid ?? 0);
     try {
         $fileitemid = manager::store_material_upload($coursecontext->id, $fileitemid, 'materialfileupload');
     } catch (\Throwable $e) {
-        redirect(new moodle_url('/local/gestion_actividades/material_edit.php', ['workshopid' => $workshopid, 'id' => $id]), get_string('materialuploaderror', 'local_gestion_actividades') . ': ' . $e->getMessage(), null, \core\output\notification::NOTIFY_ERROR);
+        redirect(new moodle_url('/local/gestion_actividades/material_edit.php', ['workshopid' => $workshopid, 'editionid' => $editionid, 'id' => $id]), get_string('materialuploaderror', 'local_gestion_actividades') . ': ' . $e->getMessage(), null, \core\output\notification::NOTIFY_ERROR);
     }
 
     $data = [
-        'id' => optional_param('id', 0, PARAM_INT),
+        'id' => $id,
         'workshopid' => $workshopid,
-        'editionid' => optional_param('editionid', 0, PARAM_INT),
+        'editionid' => $postededitionid,
         'name' => required_param('name', PARAM_TEXT),
         'description' => optional_param('description', '', PARAM_TEXT),
         'url' => optional_param('url', '', PARAM_RAW_TRIMMED),
@@ -52,17 +83,17 @@ if (data_submitted() && confirm_sesskey() && !$delete) {
         'fileitemid' => $fileitemid,
     ];
     manager::save_material((object)$data);
-    redirect(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid]), get_string('changessaved'));
+    redirect(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid, 'editionid' => $postededitionid]), get_string('changessaved'));
 }
 
 $PAGE->set_context($coursecontext);
 $PAGE->set_course($course);
-$PAGE->set_url(new moodle_url('/local/gestion_actividades/material_edit.php', ['workshopid' => $workshopid, 'id' => $id]));
+$PAGE->set_url(new moodle_url('/local/gestion_actividades/material_edit.php', ['workshopid' => $workshopid, 'editionid' => $editionid, 'id' => $id]));
 $PAGE->set_title(get_string('editmaterial', 'local_gestion_actividades'));
 $PAGE->set_heading(format_string($course->fullname));
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid, 'editionid' => $editionid]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 
 echo $OUTPUT->heading(get_string('editmaterial', 'local_gestion_actividades') . ': ' . format_string($workshop->name));
 echo html_writer::tag('p', get_string('materialupload_simple_help', 'local_gestion_actividades'), ['class' => 'alert alert-info']);
@@ -100,11 +131,11 @@ echo html_writer::empty_tag('br');
 
 echo html_writer::empty_tag('input', ['type' => 'submit', 'value' => get_string('savechanges'), 'class' => 'btn btn-primary mt-3']);
 echo ' ';
-echo html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid]), 'Volver al taller', ['class' => 'btn btn-secondary mt-3']);
+echo html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid, 'editionid' => $editionid]), 'Volver al taller', ['class' => 'btn btn-secondary mt-3']);
 echo html_writer::end_tag('form');
 
 if ($id) {
-    echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/material_edit.php', ['id' => $id, 'workshopid' => $workshopid, 'delete' => 1, 'sesskey' => sesskey()]), get_string('delete'), ['class' => 'btn btn-danger mt-3']), 'mt-2');
+    echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/material_edit.php', ['id' => $id, 'workshopid' => $workshopid, 'editionid' => $editionid, 'delete' => 1, 'sesskey' => sesskey()]), get_string('delete'), ['class' => 'btn btn-danger mt-3']), 'mt-2');
 }
 
 echo $OUTPUT->footer();
