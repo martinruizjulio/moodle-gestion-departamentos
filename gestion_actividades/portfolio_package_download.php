@@ -34,7 +34,7 @@ $files[$mainname] = $mainpath;
 
 $typeacerts = method_exists(manager::class, 'list_user_certificates') ? manager::list_user_certificates((int)$userid) : [];
 usort($typeacerts, function($a, $b) {
-    return ((int)($a->timeissued ?? 0)) <=> ((int)($b->timeissued ?? 0));
+    return ((int)($b->timeissued ?? 0)) <=> ((int)($a->timeissued ?? 0));
 });
 
 $n = 1;
@@ -58,8 +58,11 @@ foreach ($typeacerts as $cert) {
     $files[$name] = $path;
 }
 
-// Solo las solicitudes externas Tipo B validadas forman parte del expediente oficial.
+// Solo las solicitudes externas Tipo B validadas y con reflexión forman parte del expediente oficial.
 $typebcerts = portfolio_pdf::get_typeb_certificates((int)$userid);
+usort($typebcerts, function($a, $b) {
+    return ((int)($b->activitydate ?? 0)) <=> ((int)($a->activitydate ?? 0));
+});
 
 $n = 1;
 $fs = get_file_storage();
