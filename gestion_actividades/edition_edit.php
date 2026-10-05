@@ -1,6 +1,7 @@
 <?php
 require_once(__DIR__ . '/../../config.php');
 
+use local_gestion_actividades\local\course_layout;
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\workshop_series;
 use local_gestion_actividades\local\typeb_reflection_activity;
@@ -45,6 +46,7 @@ if ($action === 'publish' && $id > 0 && confirm_sesskey()) {
     if (manager::is_workshop_publishable($workshop)) {
         $ok = manager::ensure_workshop_course_visuals_safely((int)$workshop->id);
         workshop_series::refresh_for_workshop((int)$workshop->id);
+        course_layout::synchronise_course((int)$course->id);
         redirect(
             new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']),
             $ok ? 'Taller publicado/actualizado en el curso.' : 'No se pudo publicar el taller en el curso.',
@@ -78,6 +80,9 @@ if (data_submitted() && confirm_sesskey()) {
     }
     if ($linkedseries && ($sessiondate < (int)$linkedseries->datefrom || $sessionenddate > (int)$linkedseries->dateto)) {
         throw new moodle_exception('invaliddata', 'error', '', 'El horario completo del taller debe quedar dentro de las fechas de la edición.');
+    }
+    if ($seriesid > 0) {
+        course_layout::assert_series_accepts_type($seriesid, $istypebworkshop ? 'typeb' : 'typea');
     }
 
     $existingquiz = !$istypebworkshop && $record && (
@@ -143,6 +148,7 @@ if (data_submitted() && confirm_sesskey()) {
     } else {
         workshop_series::refresh_for_workshop($workshopid);
     }
+    course_layout::synchronise_course((int)$course->id);
     redirect(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']), get_string('changessaved'));
 }
 
