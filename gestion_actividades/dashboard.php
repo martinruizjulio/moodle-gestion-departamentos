@@ -2,11 +2,18 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
+use local_gestion_actividades\local\workshop_series;
 
 require_login();
 $context = context_system::instance();
 $canmanageplugin = manager::can_manage_globally((int)$USER->id);
 $courseid = optional_param('courseid', 0, PARAM_INT);
+
+if (!$canmanageplugin) {
+    throw new required_capability_exception($context, 'local/gestion_actividades:manage', 'nopermissions', '');
+}
+
+workshop_series::ensure_schema();
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/dashboard.php', $courseid > 0 ? ['courseid' => $courseid] : []));
@@ -28,65 +35,67 @@ function local_ga_dash_card(string $title, string $text, moodle_url $url, string
         html_writer::end_div() . html_writer::end_div() . html_writer::end_div();
 }
 
-function local_ga_dash_status_badge(string $status): string {
-    $status = trim($status);
-    $class = 'badge badge-secondary';
+function local_ga_dash_series_edition(stdClass $series, int $workshopid): ?stdClass {
+    $editions = manager::list_workshop_editions($workshopid);
+    if (!$editions) {
+        return null;
+    }
+    $matching = [];
+    foreach ($editions as $edition) {
+        $date = (int)($edition->sessiondate ?? 0);
+        if ($date > 0 && $date >= (int)$series->datefrom && $date <= (int)$series->dateto) {
+            $matching[] = $edition;
+        }
+    }
+    if ($matching) {
+        usort($matching, static function($a, $b) {
+            $datecmp = ((int)($b->sessiondate ?? 0)) <=> ((int)($a->sessiondate ?? 0));
+            return $datecmp !== 0 ? $datecmp : ((int)$b->id <=> (int)$a->id);
+        });
+        return reset($matching);
+    }
+    return manager::get_primary_workshop_edition($workshopid);
+}
+
+function local_ga_dash_type_badge(?string $type): string {
+    $type = manager::normalize_workshop_type((string)($type ?? 'typea'));
+    return html_writer::span($type === 'typeb' ? 'Tipo B' : 'Tipo A', $type === 'typeb' ? 'badge badge-primary' : 'badge badge-success');
+}
+
+function local_ga_dash_workshop_status(?stdClass $edition): string {
+    if (!$edition) {
+        return html_writer::span('Pendiente de configurar', 'badge badge-warning');
+    }
+    $status = (string)($edition->status ?? '');
     if (in_array($status, ['open', 'active', 'published'], true)) {
-        $class = 'badge badge-success';
-    } else if (in_array($status, ['draft', 'pending', 'future'], true)) {
-        $class = 'badge badge-warning';
-    } else if (in_array($status, ['closed', 'completed'], true)) {
-        $class = 'badge badge-info';
+        return html_writer::span('Abierto', 'badge badge-success');
     }
-    return html_writer::span(s($status), $class, ['style' => 'font-size:0.82rem;padding:6px 9px;']);
+    if (in_array($status, ['closed', 'completed', 'finished', 'closed_finished'], true)) {
+        return html_writer::span('Cerrado', 'badge badge-secondary');
+    }
+    return html_writer::span($status !== '' ? s($status) : 'Configurado', 'badge badge-info');
 }
 
-$allrows = [];
-$rows = [];
-try {
-    $allrows = manager::get_workshop_overview_rows();
-    foreach ($allrows as $r) {
-        if (($r->computedstatus ?? '') === 'archived') {
-            continue;
-        }
-        if ($courseid > 0 && (int)($r->courseid ?? 0) !== $courseid) {
-            continue;
-        }
-        $teacherids = $r->teacherids ?? [];
-        $coursecontext = !empty($r->courseid) ? context_course::instance((int)$r->courseid, IGNORE_MISSING) : null;
-        $courseeditor = $coursecontext && has_capability('moodle/course:update', $coursecontext, (int)$USER->id);
-        if ($canmanageplugin || in_array((int)$USER->id, $teacherids, true) || ($courseeditor && empty($teacherids))) {
-            $rows[] = $r;
+function local_ga_dash_course_series_url(stdClass $series): moodle_url {
+    global $DB;
+    $params = ['id' => (int)$series->courseid];
+    if (!empty($series->sectionid)) {
+        $section = $DB->get_record('course_sections', ['id' => (int)$series->sectionid], 'id,section', IGNORE_MISSING);
+        if ($section) {
+            $params['section'] = (int)$section->section;
         }
     }
-} catch (Throwable $e) {
-    $rows = [];
-}
-
-if (!$canmanageplugin) {
-    throw new required_capability_exception($context, 'local/gestion_actividades:manage', 'nopermissions', '');
-}
-
-$authorized = [];
-try {
-    $authorized = manager::get_authorized_managers();
-} catch (Throwable $e) {
-    $authorized = [];
+    return new moodle_url('/course/view.php', $params);
 }
 
 $returncourseid = $courseid;
-if ($returncourseid <= 0 && !empty($rows)) {
-    $firstrow = reset($rows);
-    $returncourseid = !empty($firstrow->courseid) ? (int)$firstrow->courseid : 0;
-}
 if ($returncourseid <= 0) {
     $fw = $DB->get_record_sql("SELECT courseid FROM {local_ga_workshops} ORDER BY id DESC", [], IGNORE_MULTIPLE);
     $returncourseid = $fw ? (int)$fw->courseid : 0;
 }
-$returncourse = null;
-if ($returncourseid > 0) {
-    $returncourse = $DB->get_record('course', ['id' => $returncourseid], 'id,fullname,shortname', IGNORE_MISSING);
-}
+$returncourse = $returncourseid > 0
+    ? $DB->get_record('course', ['id' => $returncourseid], 'id,fullname,shortname', IGNORE_MISSING)
+    : null;
 
 echo $OUTPUT->header();
 
@@ -95,11 +104,7 @@ $returnurl = $returncourse
     : 'javascript:history.back();';
 
 echo html_writer::div(
-    html_writer::link(
-        $returnurl,
-        local_ga_btn_icon('t/left', 'Volver al curso'),
-        ['class' => 'btn btn-outline-secondary mb-3']
-    ),
+    html_writer::link($returnurl, local_ga_btn_icon('t/left', 'Volver al curso'), ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
 
@@ -119,57 +124,135 @@ echo html_writer::tag('h3', 'Talleres', ['class' => 'h4 mt-4 mb-3']);
 echo html_writer::start_div('row');
 echo local_ga_dash_card('4. Talleres Tipo A', 'Crear talleres, ediciones, plazas, profesorado, grupos, asistencia, tareas, notas y certificados automáticos.', new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Gestionar talleres Tipo A');
 echo local_ga_dash_card('5. Talleres Tipo B', 'Crear talleres Tipo B con inscripción, asistencia, texto obligatorio del alumno y certificado.', new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typeb']), 'Gestionar talleres Tipo B', 'btn btn-primary');
-echo local_ga_dash_card('6. Talleres archivados', 'Consultar talleres y ediciones finalizadas o archivadas, distinguiendo entre Tipo A y Tipo B.', new moodle_url('/local/gestion_actividades/archive.php'), 'Abrir talleres archivados', 'btn btn-secondary');
+echo local_ga_dash_card('6. Talleres archivados', 'Consultar ediciones finalizadas u ocultas y sus talleres, distinguiendo entre Tipo A y Tipo B.', new moodle_url('/local/gestion_actividades/archive.php'), 'Abrir talleres archivados', 'btn btn-secondary');
 echo html_writer::end_div();
 
-echo html_writer::start_div('card mb-4');
-echo html_writer::start_div('card-body');
-echo html_writer::tag('h3', 'Vista general de talleres ofertados actualmente', ['class' => 'h4']);
-echo html_writer::tag('p', 'Vista rápida de talleres y ediciones activos. Los talleres finalizados o archivados se consultan en la pestaña Talleres archivados.', ['class' => 'text-muted']);
+echo html_writer::tag('h3', 'Vista general de talleres ofertados actualmente', ['class' => 'h4 mt-4']);
+echo html_writer::tag('p', 'Las ediciones activas se muestran de la más reciente a la más antigua. Dentro de cada edición aparecen sus talleres en el orden visible Taller 01, Taller 02, etc.', ['class' => 'text-muted']);
 
-if (!$rows) {
-    echo $OUTPUT->notification('Todavía no hay talleres o ediciones visibles para este usuario.', 'info');
-} else {
+$activecount = 0;
+$linkedworkshops = [];
+foreach (workshop_series::list_for_course($courseid) as $series) {
+    $isactive = ($series->status ?? '') !== 'finished' && ((int)$series->dateto <= 0 || (int)$series->dateto >= time());
+    if (!$isactive) {
+        continue;
+    }
+    $items = workshop_series::items((int)$series->id);
+    if (!$items) {
+        continue;
+    }
+    $activecount++;
+    $course = $DB->get_record('course', ['id' => (int)$series->courseid], 'id,fullname', IGNORE_MISSING);
+
+    echo html_writer::start_div('card shadow-sm mb-4');
+    echo html_writer::start_div('card-header bg-light');
+    echo html_writer::start_div('d-flex flex-wrap justify-content-between align-items-start');
+    echo html_writer::start_div('mr-3');
+    echo html_writer::tag('h4', s($series->title), ['class' => 'h5 mb-1']);
+    echo html_writer::tag('div', ($course ? format_string($course->fullname) : 'Curso #' . (int)$series->courseid) . ' · ' . userdate((int)$series->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$series->dateto, '%d/%m/%Y'), ['class' => 'text-muted']);
+    echo html_writer::end_div();
+    echo html_writer::div(
+        html_writer::link(local_ga_dash_course_series_url($series), local_ga_btn_icon('i/course', 'Abrir en el curso'), ['class' => 'btn btn-sm btn-outline-secondary']),
+        'mb-1'
+    );
+    echo html_writer::end_div();
+    echo html_writer::end_div();
+
+    echo html_writer::start_div('card-body p-0');
     $table = new html_table();
-    $table->attributes['class'] = 'generaltable table-sm';
-    $table->head = [
-        get_string('status'),
-        get_string('workshopcode', 'local_gestion_actividades'),
-        get_string('workshopname', 'local_gestion_actividades'),
-        get_string('editioncode', 'local_gestion_actividades'),
-        get_string('workshophours', 'local_gestion_actividades'),
-        get_string('date'),
-        get_string('places', 'local_gestion_actividades'),
-        get_string('enrolledstudents', 'local_gestion_actividades'),
-        get_string('teachers', 'local_gestion_actividades'),
-        get_string('actions'),
-    ];
+    $table->attributes['class'] = 'generaltable table-sm mb-0';
+    $table->head = ['Orden', 'Tipo', 'Taller', 'Fecha', 'Horario', 'Horas', 'Plazas', 'Inscritos', 'Profesor/es', 'Estado', 'Acciones'];
 
-    foreach ($rows as $row) {
-        $workshopid = (int)($row->workshopid ?? 0);
-        $statuslabel = get_string('status_' . $row->computedstatus, 'local_gestion_actividades');
-        $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => $row->id, 'workshopid' => $workshopid]), local_ga_btn_icon('t/edit', get_string('edit')), ['class' => 'btn btn-secondary btn-sm']) . ' ' .
-                   html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $row->id]), local_ga_btn_icon('i/users', get_string('studentsmanualandstatus', 'local_gestion_actividades')), ['class' => 'btn btn-secondary btn-sm']);
-        if ($canmanageplugin) {
-            $actions .= ' ' . html_writer::link(new moodle_url('/local/gestion_actividades/edition_sync.php', ['id' => $row->id]), local_ga_btn_icon('t/reload', get_string('synceditionenrolments', 'local_gestion_actividades')), ['class' => 'btn btn-outline-secondary btn-sm']);
+    foreach ($items as $item) {
+        $linkedworkshops[(int)$item->workshopid] = true;
+        $edition = local_ga_dash_series_edition($series, (int)$item->workshopid);
+        $sessiondate = $edition ? (int)($edition->sessiondate ?? 0) : 0;
+        $sessionend = (int)($item->sessionenddate ?? 0);
+        $teachers = $edition ? manager::get_edition_teachers((int)$edition->id) : [];
+        $teachernames = [];
+        foreach ($teachers as $teacher) {
+            $teachernames[] = fullname($teacher);
+        }
+        $schedule = $sessiondate > 0 ? userdate($sessiondate, '%H:%M') : '-';
+        if ($sessiondate > 0 && $sessionend > 0) {
+            $schedule .= '–' . userdate($sessionend, '%H:%M');
+        }
+        $actions = '-';
+        if ($edition) {
+            $actions = html_writer::link(
+                new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => (int)$edition->id, 'workshopid' => (int)$item->workshopid, 'seriesid' => (int)$series->id, 'sortorder' => (int)$item->sortorder]),
+                local_ga_btn_icon('t/edit', 'Editar'),
+                ['class' => 'btn btn-secondary btn-sm mr-1 mb-1']
+            );
+            $actions .= html_writer::link(
+                new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$edition->id]),
+                local_ga_btn_icon('i/users', 'Alumnos / asistencia'),
+                ['class' => 'btn btn-secondary btn-sm mr-1 mb-1']
+            );
+            $actions .= html_writer::link(
+                new moodle_url('/local/gestion_actividades/edition_sync.php', ['id' => (int)$edition->id]),
+                local_ga_btn_icon('t/reload', 'Sincronizar'),
+                ['class' => 'btn btn-outline-secondary btn-sm mb-1']
+            );
         }
         $table->data[] = [
-            local_ga_dash_status_badge($statuslabel),
-            s($row->workshopcode),
-            format_string($row->workshopname),
-            s($row->editioncode),
-            isset($row->workshophours) && $row->workshophours !== null ? round($row->workshophours, 2) . ' h' : '-',
-            $row->sessiondate ? manager::format_date_compact((int)$row->sessiondate) : '-',
-            (int)$row->places,
-            (int)$row->enrolledcount,
+            'Taller ' . sprintf('%02d', (int)$item->sortorder),
+            local_ga_dash_type_badge($item->workshoptype ?? 'typea'),
+            format_string($item->name),
+            $sessiondate > 0 ? userdate($sessiondate, '%d/%m/%Y') : '-',
+            $schedule,
+            format_float((float)($item->hours ?? 0), 2, true) . ' h',
+            $edition && (int)($edition->places ?? 0) > 0 ? (int)$edition->places : '-',
+            $edition ? manager::get_edition_enrolment_count((int)$edition->id) : '-',
+            $teachernames ? s(implode(', ', $teachernames)) : '-',
+            local_ga_dash_workshop_status($edition),
+            $actions,
+        ];
+    }
+    echo html_writer::table($table);
+    echo html_writer::end_div();
+    echo html_writer::end_div();
+}
+
+// Legacy active workshops remain visible until they are linked to a workshop series.
+$legacyrows = [];
+foreach (manager::get_workshop_overview_rows() as $row) {
+    $workshopid = (int)($row->workshopid ?? 0);
+    if (!empty($linkedworkshops[$workshopid]) || ($row->computedstatus ?? '') === 'archived') {
+        continue;
+    }
+    if ($courseid > 0 && (int)($row->courseid ?? 0) !== $courseid) {
+        continue;
+    }
+    $legacyrows[] = $row;
+}
+if ($legacyrows) {
+    echo html_writer::tag('h4', 'Talleres anteriores sin Edición de talleres', ['class' => 'h5 mt-3']);
+    echo html_writer::tag('p', 'Se mantienen aquí temporalmente para no perder registros del modelo anterior.', ['class' => 'text-muted']);
+    $table = new html_table();
+    $table->attributes['class'] = 'generaltable table-sm';
+    $table->head = ['Tipo', 'Código', 'Taller', 'Fecha', 'Horas', 'Plazas', 'Inscritos', 'Profesor/es', 'Acciones'];
+    foreach ($legacyrows as $row) {
+        $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => (int)$row->id, 'workshopid' => (int)$row->workshopid]), local_ga_btn_icon('t/edit', 'Editar'), ['class' => 'btn btn-secondary btn-sm mr-1']);
+        $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$row->id]), local_ga_btn_icon('i/users', 'Alumnos / asistencia'), ['class' => 'btn btn-secondary btn-sm']);
+        $table->data[] = [
+            local_ga_dash_type_badge($row->workshoptype ?? 'typea'),
+            s($row->workshopcode ?? ''),
+            format_string($row->workshopname ?? ''),
+            !empty($row->sessiondate) ? manager::format_date_compact((int)$row->sessiondate) : '-',
+            isset($row->workshophours) && $row->workshophours !== null ? format_float((float)$row->workshophours, 2, true) . ' h' : '-',
+            (int)($row->places ?? 0),
+            (int)($row->enrolledcount ?? 0),
             $row->teachers ?: '-',
             $actions,
         ];
     }
     echo html_writer::table($table);
 }
-echo html_writer::end_div();
-echo html_writer::end_div();
+
+if ($activecount === 0 && !$legacyrows) {
+    echo $OUTPUT->notification('No hay actualmente Ediciones de talleres activas.', 'info');
+}
 
 if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
     local_gestion_actividades_enable_interactive_tables();
