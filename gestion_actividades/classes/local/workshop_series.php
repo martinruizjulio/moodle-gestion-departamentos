@@ -43,6 +43,7 @@ class workshop_series {
             $items->add_field('seriesid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
             $items->add_field('workshopid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
             $items->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('sessionenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
             $items->add_field('subsectioncmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
             $items->add_field('subsectionsectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
             $items->add_field('notescmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
@@ -53,6 +54,11 @@ class workshop_series {
             $items->add_index('seriesorder', XMLDB_INDEX_NOTUNIQUE, ['seriesid', 'sortorder']);
             $items->add_index('workshopid', XMLDB_INDEX_NOTUNIQUE, ['workshopid']);
             $dbman->create_table($items);
+        } else {
+            $endfield = new \xmldb_field('sessionenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'sortorder');
+            if (!$dbman->field_exists($items, $endfield)) {
+                $dbman->add_field($items, $endfield);
+            }
         }
     }
 
@@ -125,7 +131,14 @@ class workshop_series {
         return $DB->get_records_sql($sql, ['seriesid' => $seriesid]);
     }
 
-    public static function attach_workshop(int $seriesid, int $workshopid, int $sortorder = 0, int $notescmid = 0): void {
+    public static function item_for_workshop(int $workshopid): ?\stdClass {
+        global $DB;
+        self::ensure_schema();
+        $item = $DB->get_record(self::ITEMTABLE, ['workshopid' => $workshopid], '*', IGNORE_MULTIPLE);
+        return $item ?: null;
+    }
+
+    public static function attach_workshop(int $seriesid, int $workshopid, int $sortorder = 0, int $notescmid = 0, int $sessionenddate = 0): void {
         global $DB;
         self::ensure_schema();
         $series = self::get($seriesid);
@@ -136,12 +149,18 @@ class workshop_series {
         if ($sortorder <= 0) {
             $sortorder = 1 + (int)$DB->get_field_sql('SELECT COALESCE(MAX(sortorder), 0) FROM {' . self::ITEMTABLE . '} WHERE seriesid = :seriesid', ['seriesid' => $seriesid]);
         }
+        if ($sessionenddate > 0 && ($sessionenddate < (int)$series->datefrom || $sessionenddate > (int)$series->dateto)) {
+            throw new \RuntimeException('La hora de fin del taller queda fuera de las fechas de la edición.');
+        }
         $existing = $DB->get_record(self::ITEMTABLE, ['seriesid' => $seriesid, 'workshopid' => $workshopid], '*', IGNORE_MISSING);
         $now = time();
         if ($existing) {
             $existing->sortorder = $sortorder;
             if ($notescmid > 0) {
                 $existing->notescmid = $notescmid;
+            }
+            if ($sessionenddate > 0) {
+                $existing->sessionenddate = $sessionenddate;
             }
             $existing->timemodified = $now;
             $DB->update_record(self::ITEMTABLE, $existing);
@@ -150,6 +169,7 @@ class workshop_series {
                 'seriesid' => $seriesid,
                 'workshopid' => $workshopid,
                 'sortorder' => $sortorder,
+                'sessionenddate' => max(0, $sessionenddate),
                 'subsectioncmid' => 0,
                 'subsectionsectionid' => 0,
                 'notescmid' => max(0, $notescmid),
@@ -167,9 +187,7 @@ class workshop_series {
     }
 
     public static function series_for_workshop(int $workshopid): ?\stdClass {
-        global $DB;
-        self::ensure_schema();
-        $item = $DB->get_record(self::ITEMTABLE, ['workshopid' => $workshopid], '*', IGNORE_MULTIPLE);
+        $item = self::item_for_workshop($workshopid);
         return $item ? self::get((int)$item->seriesid) : null;
     }
 
@@ -242,7 +260,6 @@ class workshop_series {
                 self::move_workshop_modules((int)$item->workshopid, $sectionid, (int)$item->notescmid);
             }
         } else {
-            // Compatibility mode for Moodle versions/sites without mod_subsection.
             $DB->update_record('course_sections', (object)[
                 'id' => (int)$section->id,
                 'summary' => self::render_calendar_html($seriesid),
@@ -269,7 +286,12 @@ class workshop_series {
                 $teachernames[] = fullname($teacher);
             }
             $date = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%A %d/%m/%Y') : 'Fecha pendiente';
-            $time = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%H:%M') : '';
+            $starttime = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%H:%M') : '';
+            $endtime = !empty($item->sessionenddate) ? userdate((int)$item->sessionenddate, '%H:%M') : '';
+            $time = $starttime;
+            if ($starttime !== '' && $endtime !== '') {
+                $time .= '–' . $endtime;
+            }
             $deadline = !empty($edition->enrolenddate) ? userdate((int)$edition->enrolenddate, '%d/%m/%Y %H:%M') : '-';
             $cards[] = '<article style="border:1px solid #d7ddd2;border-radius:12px;background:#fff;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.05)">' .
                 '<div style="font-size:.78rem;font-weight:700;letter-spacing:.04em;color:#65735e;text-transform:uppercase">Taller ' . sprintf('%02d', (int)$item->sortorder) . '</div>' .
