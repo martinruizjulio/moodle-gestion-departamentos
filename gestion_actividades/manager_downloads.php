@@ -162,7 +162,7 @@ function local_ga_dl_workshop_activity_rows(): array {
     $submissionfield = $hassubmissions
         ? "CASE WHEN ts.id IS NULL THEN 0 ELSE 1 END AS tasksubmitted, ts.grade AS taskgrade"
         : "NULL AS tasksubmitted, NULL AS taskgrade";
-    $series = local_ga_dl_series_sql();
+    $series = local_ga_dl_series_sql(true);
     $order = $series->joins !== ''
         ? 'COALESCE(ws.datefrom, e.sessiondate, 0) DESC, COALESCE(ws.id,0) DESC, COALESCE(si.sortorder,999999) ASC, e.sessiondate DESC, e.id DESC, u.lastname ASC, u.firstname ASC'
         : 'e.sessiondate DESC, e.id DESC, w.code ASC, u.lastname ASC, u.firstname ASC';
@@ -240,7 +240,7 @@ function local_ga_dl_typea_rows(): array {
     if (!$DB->get_manager()->table_exists(new xmldb_table('local_ga_certificates'))) {
         return [];
     }
-    $series = local_ga_dl_series_sql();
+    $series = local_ga_dl_series_sql(true);
     $order = $series->joins !== ''
         ? 'COALESCE(ws.datefrom, cert.timeissued, 0) DESC, COALESCE(ws.id,0) DESC, COALESCE(si.sortorder,999999) ASC, cert.timeissued DESC, u.lastname ASC, u.firstname ASC'
         : 'cert.timeissued DESC, u.lastname ASC, u.firstname ASC';
@@ -280,7 +280,7 @@ function local_ga_dl_internal_typeb_rows(): array {
     $hascerts = $DB->get_manager()->table_exists(new xmldb_table('local_ga_certificates'));
     $certjoin = $hascerts ? "LEFT JOIN {local_ga_certificates} cert ON cert.editionid = e.id AND cert.userid = u.id AND cert.certificatetype = 'typeb'" : "";
     $certfields = $hascerts ? "cert.id AS certificateid, cert.status AS certificatestatus, cert.filename AS certificatefilename, cert.timeissued AS certificatetimeissued" : "NULL AS certificateid, NULL AS certificatestatus, NULL AS certificatefilename, NULL AS certificatetimeissued";
-    $series = local_ga_dl_series_sql();
+    $series = local_ga_dl_series_sql(true);
     $order = $series->joins !== ''
         ? 'COALESCE(ws.datefrom, e.sessiondate, 0) DESC, COALESCE(ws.id,0) DESC, COALESCE(si.sortorder,999999) ASC, e.sessiondate DESC, e.id DESC, u.lastname ASC, u.firstname ASC'
         : 'e.sessiondate DESC, e.id DESC, w.code ASC, u.lastname ASC, u.firstname ASC';
