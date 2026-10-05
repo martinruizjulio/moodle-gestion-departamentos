@@ -167,6 +167,15 @@ if ($istypeb) {
 } else if ($edition && in_array('assign', manager::get_required_activity_types($edition), true)) {
     echo html_writer::tag('h3', 'Tarea del taller');
     echo html_writer::link(new moodle_url('/local/gestion_actividades/internal_task.php', ['id' => $edition->id]), local_ga_btn_icon('t/edit', 'Gestionar tarea'), ['class' => 'btn btn-primary']);
+} else if ($edition && in_array('quiz', manager::get_required_activity_types($edition), true)) {
+    echo html_writer::tag('h3', 'Cuestionario del taller');
+    $quizcmid = !empty($edition->requiredquizcmid) ? (int)$edition->requiredquizcmid : (int)($edition->requiredcmid ?? 0);
+    $quizcm = local_ga_valid_activity_cm($quizcmid, (int)$course->id, ['quiz']);
+    if ($quizcm) {
+        echo html_writer::link(new moodle_url('/mod/quiz/view.php', ['id' => (int)$quizcm->id]), local_ga_btn_icon('t/preview', 'Abrir cuestionario en Moodle'), ['class' => 'btn btn-primary']);
+    } else {
+        echo $OUTPUT->notification('El cuestionario todavía no está creado o vinculado a esta edición.', 'warning');
+    }
 } else {
     echo html_writer::tag('h3', 'Actividad obligatoria');
     echo html_writer::tag('p', 'Este taller no tiene tarea interna configurada desde esta pantalla.', ['class' => 'text-muted']);
@@ -213,7 +222,35 @@ if ($edition) {
             echo html_writer::table($atable);
             echo html_writer::tag('p', 'Criterio Tipo B: asistencia + entrega de la reflexión = Apto. No existe nota numérica.', ['class' => 'text-muted']);
         } else {
-            $hasinternaltask = in_array('assign', manager::get_required_activity_types($edition), true);
+            $requiredtypes = manager::get_required_activity_types($edition);
+            $hasquiz = in_array('quiz', $requiredtypes, true);
+            if ($hasquiz) {
+                $quizcmid = !empty($edition->requiredquizcmid) ? (int)$edition->requiredquizcmid : (int)($edition->requiredcmid ?? 0);
+                $minimum = manager::parse_decimal_input($edition->tasknumericgrade ?? null);
+                $pointsmode = (string)($edition->quizgradingmode ?? 'completion') === 'points';
+                $atable->head = [get_string('lastname'), get_string('firstname'), get_string('email'), 'Asistencia', 'Cuestionario', 'Nota', 'Resultado', 'Certificado'];
+                foreach ($enrolledusers as $eu) {
+                    $userid = (int)$eu->userid;
+                    $submitted = $quizcmid > 0 && (manager::user_submitted_required_activity($userid, $quizcmid) || manager::user_completed_required_activity($userid, $quizcmid));
+                    $grade = $quizcmid > 0 ? manager::get_user_grade_for_cmid($userid, $quizcmid) : null;
+                    $eligible = manager::user_is_certificate_eligible((int)$edition->id, $userid);
+                    $certificate = manager::get_user_certificate_for_edition((int)$edition->id, $userid);
+                    $result = !$submitted ? 'Pendiente' : ($eligible ? 'Apto' : 'No apto / pendiente asistencia');
+                    $atable->data[] = [
+                        s($eu->lastname), s($eu->firstname), s($eu->email),
+                        !empty($eu->attended) ? html_writer::span('Asiste', 'badge bg-success') : html_writer::span('No asiste', 'badge bg-warning text-dark'),
+                        $submitted ? html_writer::span('Finalizado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
+                        $grade === null ? '-' : format_float($grade, 2, true),
+                        $eligible ? html_writer::span($result, 'badge bg-success') : html_writer::span($result, 'badge bg-warning text-dark'),
+                        $certificate ? html_writer::span('Generado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-secondary'),
+                    ];
+                }
+                echo html_writer::table($atable);
+                echo html_writer::tag('p', ($pointsmode || ($minimum !== null && $minimum > 0))
+                    ? 'Criterio: cuestionario finalizado y nota mínima ' . format_float(max(0.0, (float)($minimum ?? 0.0)), 2, true) . '.'
+                    : 'Criterio: cuestionario finalizado.', ['class' => 'text-muted']);
+            } else {
+                $hasinternaltask = in_array('assign', $requiredtypes, true);
             if ($hasinternaltask) {
                 echo html_writer::start_tag('form', ['method' => 'post', 'action' => new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid])]);
                 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
@@ -233,6 +270,7 @@ if ($edition) {
                 echo html_writer::tag('p', 'La nota mínima para poder generar certificado es 5 sobre 10.', ['class' => 'text-muted']);
                 echo html_writer::tag('button', local_ga_btn_icon('t/save', 'Guardar notas de tarea'), ['type' => 'submit', 'class' => 'btn btn-primary']);
                 echo html_writer::end_tag('form');
+            }
             }
         }
     } else {

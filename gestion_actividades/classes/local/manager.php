@@ -3636,7 +3636,29 @@ class manager {
 
 
     public static function get_required_activity_types(\stdClass $edition): array {
+        $candidatecmids = [];
+        if (!empty($edition->requiredquizcmid)) {
+            $candidatecmids[] = (int)$edition->requiredquizcmid;
+        }
+        if (!empty($edition->requiredassigncmid)) {
+            $candidatecmids[] = (int)$edition->requiredassigncmid;
+        }
+        if (!empty($edition->requiredcmid)) {
+            $candidatecmids[] = (int)$edition->requiredcmid;
+        }
+        foreach (array_unique($candidatecmids) as $cmid) {
+            $modname = self::get_module_name_from_cmid($cmid);
+            if ($modname === 'quiz') {
+                return ['quiz'];
+            }
+            if ($modname === 'assign') {
+                return ['assign'];
+            }
+        }
         $raw = strtolower((string)($edition->activitycreationtype ?? $edition->requiredmodname ?? ''));
+        if (strpos($raw, 'quiz') !== false || strpos($raw, 'cuestion') !== false || strpos($raw, 'test') !== false) {
+            return ['quiz'];
+        }
         if (strpos($raw, 'assign') !== false || strpos($raw, 'tarea') !== false) {
             return ['assign'];
         }
@@ -4023,7 +4045,10 @@ class manager {
             $edition->requiredcmid = $cmid;
         }
         if (isset($columns['requiredmodname'])) {
-            $edition->requiredmodname = trim((string)($edition->activitycreationtype ?? $cm->modname));
+            $edition->requiredmodname = (string)$cm->modname;
+        }
+        if (isset($columns['activitycreationtype'])) {
+            $edition->activitycreationtype = (string)$cm->modname;
         }
         $edition->timemodified = time();
         $DB->update_record('local_ga_workshop_editions', self::filter_record_to_existing_fields('local_ga_workshop_editions', $edition));
@@ -4927,7 +4952,22 @@ class manager {
             return typeb_certificate_policy::is_eligible($editionid, $userid);
         }
 
-        // Todos los Talleres Tipo A exigen tarea entregada y nota igual o superior a 5.
+        $types = self::get_required_activity_types($edition);
+        if (in_array('quiz', $types, true)) {
+            $cmid = !empty($edition->requiredquizcmid) ? (int)$edition->requiredquizcmid : (int)($edition->requiredcmid ?? 0);
+            if ($cmid <= 0 || (!self::user_submitted_required_activity($userid, $cmid)
+                    && !self::user_completed_required_activity($userid, $cmid))) {
+                return false;
+            }
+            $minimum = self::parse_decimal_input($edition->tasknumericgrade ?? null);
+            $pointsmode = (string)($edition->quizgradingmode ?? 'completion') === 'points';
+            if ($pointsmode || ($minimum !== null && $minimum > 0)) {
+                $minimum = max(0.0, (float)($minimum ?? 0.0));
+                $grade = self::get_user_grade_for_cmid($userid, $cmid);
+                return $grade !== null && $grade >= $minimum;
+            }
+            return true;
+        }
         return self::user_has_submitted_internal_task($editionid, $userid)
             && self::user_has_passing_internal_task_grade($editionid, $userid);
     }
@@ -5170,7 +5210,24 @@ class manager {
             return typeb_certificate_policy::missing_requirements($editionid, $userid);
         }
 
-        if (!self::user_has_submitted_internal_task($editionid, $userid)) {
+        $types = self::get_required_activity_types($edition);
+        if (in_array('quiz', $types, true)) {
+            $cmid = !empty($edition->requiredquizcmid) ? (int)$edition->requiredquizcmid : (int)($edition->requiredcmid ?? 0);
+            if ($cmid <= 0 || (!self::user_submitted_required_activity($userid, $cmid)
+                    && !self::user_completed_required_activity($userid, $cmid))) {
+                $missing[] = 'cuestionario';
+            } else {
+                $minimum = self::parse_decimal_input($edition->tasknumericgrade ?? null);
+                $pointsmode = (string)($edition->quizgradingmode ?? 'completion') === 'points';
+                if ($pointsmode || ($minimum !== null && $minimum > 0)) {
+                    $minimum = max(0.0, (float)($minimum ?? 0.0));
+                    $grade = self::get_user_grade_for_cmid($userid, $cmid);
+                    if ($grade === null || $grade < $minimum) {
+                        $missing[] = 'nota mínima del cuestionario (' . format_float($minimum, 2, true) . ')';
+                    }
+                }
+            }
+        } else if (!self::user_has_submitted_internal_task($editionid, $userid)) {
             $missing[] = 'tarea';
         } else if (!self::user_has_passing_internal_task_grade($editionid, $userid)) {
             $missing[] = 'nota de tarea igual o superior a 5';
