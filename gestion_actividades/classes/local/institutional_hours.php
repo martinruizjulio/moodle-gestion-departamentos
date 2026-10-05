@@ -79,8 +79,25 @@ class institutional_hours {
             }
         }
         $index = new \xmldb_index($indexname, $unique ? XMLDB_INDEX_UNIQUE : XMLDB_INDEX_NOTUNIQUE, $fields);
-        if (!$dbman->index_exists($table, $index)) {
+        if ($dbman->index_exists($table, $index)) {
+            return;
+        }
+        if ($unique) {
+            // Older versions could store several rows per user. Adding a UNIQUE
+            // index over duplicates would abort the Moodle upgrade, so skip it
+            // and leave the duplicates for a manual review (no data is deleted).
+            $cols = implode(', ', $fields);
+            $dup = $DB->get_records_sql("SELECT $cols, COUNT(1) AS n FROM {" . $tablename . "} GROUP BY $cols HAVING COUNT(1) > 1", [], 0, 1);
+            if ($dup) {
+                debugging('Gestión HEE: no se crea el índice único ' . $indexname . ' en ' . $tablename
+                    . ' porque existen filas duplicadas. Revísalas manualmente.', DEBUG_DEVELOPER);
+                return;
+            }
+        }
+        try {
             $dbman->add_index($table, $index);
+        } catch (\Throwable $e) {
+            debugging('Gestión HEE: no se pudo crear el índice ' . $indexname . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
     }
 
