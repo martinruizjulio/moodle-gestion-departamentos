@@ -209,6 +209,11 @@ Punto de partida verificado: `e9ca208`, local 1.5.115-alpha (`2026100530`), bloq
 - **Bloque — modal de instrucciones**: el modal vivía dentro del cajón de bloques (con `transform`), por lo que quedaba recortado y tapado por su fondo. Se mueve a `<body>` al cargar y se añaden también los atributos de Bootstrap 4.
 - **Terminología**: restos visibles de «Talleres A» → «Seminarios A» (nota final, exportación PDF de notas, informe de horas, portafolio del gestor, traspasos, importación institucional y strings de horas). No se tocan nombres internos ni la plantilla de certificado ya almacenada.
 
+**Ampliación (petición de Julio):**
+- **Baja de alumnos y plaza manual**: `edition_students.php` incorpora «Dar de baja» (POST + sesskey + confirmación) para Profesor HEE / Gestor HEE de la edición. `manager::unenrol_user_from_edition()` conserva el registro como `cancelled`, borra su asistencia, lo saca del grupo Moodle y actualiza el bloque; no permite la baja si ya tiene certificado. Las incorporaciones manuales que crean plaza extra se marcan (`reason = MANUAL_SEAT_REASON`) y, al darlas de baja, se resta esa plaza de forma atómica (nunca por debajo de 1). Las plazas manuales creadas antes de esta versión no llevan marca y no se restan.
+- **Archivado de actividades**: el «hard archive» heredado sacaba la actividad de la secuencia de su sección; Moodle deja entonces de resolverla (sin acceso, sin revisión, sin enlace) y no la recupera al reconstruir la caché. Además se aplicaba a todo el curso, dejando inaccesibles los cuestionarios/reflexiones de otras ediciones activas al finalizar una edición o vincular una actividad, y la limpieza por nombre podía borrar apuntes de otras ediciones del mismo seminario base. Ahora: el contenido de una Edición de seminarios nunca se saca de la secuencia ni se borra por esas limpiezas; al finalizar una edición sus actividades se **ocultan y se mueven al final de su sección**; la reflexión Tipo B queda accesible (oculta en la página si el sitio permite actividades «stealth») para la prórroga individual; `move_workshop_modules()` repara módulos huérfanos de versiones anteriores. Las ediciones heredadas fuera de una serie mantienen el comportamiento anterior.
+- Limitación: si se finaliza la Edición de seminarios completa, su sección queda oculta y el alumnado ya no puede abrir sus actividades, tampoco con prórroga.
+
 `move_section_to()`: se mantiene. En Moodle 5.2 está deprecada (`#[deprecated]`, MDL-86862) y emite aviso de depuración, pero sigue funcionando como envoltorio de `core_courseformat\local\sectionactions::move_at()`; su retirada está prevista para Moodle 6.0 (MDL-87419). No se ha verificado que `move_at()` exista en Moodle 5.0/5.1, así que migrar ahora podría romper esas versiones: queda para cuando se fije la versión mínima.
 
 Validación: `php -l` en todos los PHP, XML bien formado, sin métodos/funciones inexistentes del plugin, strings en/es completos en ambos plugins. APIs de Moodle contrastadas con el código fuente de Moodle (rama principal). **Sin ejecución en Moodle real.**
@@ -257,5 +262,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.116-alpha** (`2026100531`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.117-alpha** (`2026100532`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.25-alpha** (`2026100509`).
