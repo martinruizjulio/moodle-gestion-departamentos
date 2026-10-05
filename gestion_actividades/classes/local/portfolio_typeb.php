@@ -51,9 +51,7 @@ class portfolio_typeb {
             'author' => fullname(\core_user::get_user($userid)),
         ], $tmpfilepath);
 
-        if (function_exists('local_gestion_actividades_invalidate_block_gestion_hee_user_cache')) {
-            local_gestion_actividades_invalidate_block_gestion_hee_user_cache($userid);
-        }
+        self::after_change($userid, false);
         return (int)$id;
     }
 
@@ -80,14 +78,57 @@ class portfolio_typeb {
         return $DB->get_records_sql($sql, ['status' => 'pending']);
     }
 
-    public static function list_all(): array {
+    /**
+     * List external Type B requests, optionally filtered by student and status.
+     * Callers (portfolio_admin.php) rely on both filters.
+     */
+    public static function list_all(int $userid = 0, string $status = ''): array {
         global $DB;
         self::ensure_table();
+        $where = [];
+        $params = [];
+        if ($userid > 0) {
+            $where[] = 'c.userid = :userid';
+            $params['userid'] = $userid;
+        }
+        if ($status !== '') {
+            $where[] = 'c.status = :status';
+            $params['status'] = $status;
+        }
+        $wheresql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
         $sql = "SELECT c.*, u.firstname, u.lastname, u.email
                   FROM {local_ga_typeb_certs} c
                   JOIN {user} u ON u.id = c.userid
+                 $wheresql
               ORDER BY c.timecreated DESC, c.id DESC";
-        return $DB->get_records_sql($sql);
+        return $DB->get_records_sql($sql, $params);
+    }
+
+    public static function count_pending(): int {
+        global $DB;
+        self::ensure_table();
+        return (int)$DB->count_records('local_ga_typeb_certs', ['status' => 'pending']);
+    }
+
+    /**
+     * Backwards-compatible entry point used by typeb_review.php. Accepts the
+     * legacy 'pending' value to return a request to the review queue.
+     */
+    public static function set_status(int $id, string $status, string $comment, int $reviewerid): bool {
+        global $DB;
+        if ($status !== 'pending') {
+            return self::review($id, $status, $comment, $reviewerid);
+        }
+        self::ensure_table();
+        $record = self::get($id);
+        $record->status = 'pending';
+        $record->reviewcomment = trim($comment);
+        $record->reviewedby = $reviewerid;
+        $record->timereviewed = time();
+        $record->timemodified = time();
+        $DB->update_record('local_ga_typeb_certs', $record);
+        self::after_change((int)$record->userid);
+        return true;
     }
 
     public static function review(int $id, string $status, string $comment, int $reviewedby): bool {
@@ -106,9 +147,7 @@ class portfolio_typeb {
         $record->timereviewed = time();
         $record->timemodified = time();
         $DB->update_record('local_ga_typeb_certs', $record);
-        if (function_exists('local_gestion_actividades_invalidate_block_gestion_hee_user_cache')) {
-            local_gestion_actividades_invalidate_block_gestion_hee_user_cache((int)$record->userid);
-        }
+        self::after_change((int)$record->userid);
         return true;
     }
 
@@ -131,9 +170,7 @@ class portfolio_typeb {
         $record->status = 'validated';
         $record->timemodified = time();
         $DB->update_record('local_ga_typeb_certs', $record);
-        if (function_exists('local_gestion_actividades_invalidate_block_gestion_hee_user_cache')) {
-            local_gestion_actividades_invalidate_block_gestion_hee_user_cache($userid);
-        }
+        self::after_change($userid);
         return true;
     }
 
@@ -150,6 +187,36 @@ class portfolio_typeb {
             }
         }
         return $sum;
+    }
+
+    /**
+     * All hours the student has submitted for external Type B review, whatever
+     * their status (shown as "Tipo B subido" in portfolio.php).
+     */
+    public static function total_uploaded_hours(int $userid): float {
+        $sum = 0.0;
+        foreach (self::list_for_user($userid) as $record) {
+            $sum += (float)$record->hours;
+        }
+        return $sum;
+    }
+
+    /**
+     * Refresh derived state after a Type B record changes: block cache and,
+     * when hours may have changed, the HEE gradebook items.
+     */
+    private static function after_change(int $userid, bool $syncgrades = true): void {
+        global $CFG;
+        if ($userid <= 0) {
+            return;
+        }
+        if (!function_exists('local_gestion_actividades_invalidate_block_gestion_hee_user_cache')) {
+            require_once($CFG->dirroot . '/local/gestion_actividades/lib.php');
+        }
+        local_gestion_actividades_invalidate_block_gestion_hee_user_cache($userid);
+        if ($syncgrades) {
+            grade_manager::sync_user_safely($userid);
+        }
     }
 
     public static function count_validated(int $userid): int {
