@@ -23,6 +23,8 @@ final class date_helper {
     }
 
     public static function input_datetime(int $timestamp): string {
-        return $timestamp > 0 ? userdate($timestamp, '%Y-%m-%dT%H:%M') : '';
+        // fixday/fixhour must be false: userdate() would otherwise strip the
+        // leading zero of %d (2026-10-5T…), which a datetime-local input rejects.
+        return $timestamp > 0 ? userdate($timestamp, '%Y-%m-%dT%H:%M', 99, false, false) : '';
     }
 }

@@ -88,8 +88,8 @@ echo html_writer::empty_tag('input', ['type' => 'text', 'name' => 'title', 'id' 
 
 $defaultfrom = time() + 7 * DAYSECS;
 $defaultto = $defaultfrom + 6 * DAYSECS;
-$datefromvalue = !empty($record->datefrom) ? date('Y-m-d H:i', (int)$record->datefrom) : date('Y-m-d H:i', $defaultfrom);
-$datetovalue = !empty($record->dateto) ? date('Y-m-d H:i', (int)$record->dateto) : date('Y-m-d H:i', $defaultto);
+$datefromvalue = date_helper::input_datetime(!empty($record->datefrom) ? (int)$record->datefrom : (int)$defaultfrom);
+$datetovalue = date_helper::input_datetime(!empty($record->dateto) ? (int)$record->dateto : (int)$defaultto);
 echo html_writer::label('Inicio de la edición', 'datefrom_text');
 echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'datefrom_text', 'id' => 'datefrom_text', 'class' => 'form-control mb-3', 'required' => 'required', 'value' => str_replace(' ', 'T', $datefromvalue)]);
 echo html_writer::label('Fin de la edición', 'dateto_text');

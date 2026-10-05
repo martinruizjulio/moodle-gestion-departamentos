@@ -177,10 +177,10 @@ echo html_writer::tag('textarea', s(($prefilldescription !== '' ? $prefilldescri
 $editionnamevalue = $record->name ?? ($workshop->code . ' - ' . $workshop->name);
 $editioncodevalue = $record->editioncode ?? ($workshop->code . '_E1');
 $defaultsessiontime = $linkedseries ? max((int)$linkedseries->datefrom, time() + DAYSECS) : time() + 14 * DAYSECS;
-$sessiondatevalue = !empty($record->sessiondate) ? date('Y-m-d H:i', $record->sessiondate) : date('Y-m-d H:i', $defaultsessiontime);
+$sessiondatevalue = date_helper::input_datetime(!empty($record->sessiondate) ? (int)$record->sessiondate : (int)$defaultsessiontime);
 $existingend = $item ? (int)$item->sessionenddate : 0;
-$sessionendvalue = $existingend > 0 ? date('Y-m-d H:i', $existingend) : date('Y-m-d H:i', $defaultsessiontime + 2 * HOURSECS);
-$enrolenddatevalue = !empty($record->enrolenddate) ? date('Y-m-d H:i', $record->enrolenddate) : date('Y-m-d H:i', $defaultsessiontime - 7 * DAYSECS);
+$sessionendvalue = date_helper::input_datetime($existingend > 0 ? $existingend : (int)$defaultsessiontime + 2 * HOURSECS);
+$enrolenddatevalue = date_helper::input_datetime(!empty($record->enrolenddate) ? (int)$record->enrolenddate : (int)$defaultsessiontime - 7 * DAYSECS);
 $placesvalue = $record->places ?? 20;
 $workshophoursvalue = $prefillhours !== '' ? $prefillhours : (isset($workshop->hours) && $workshop->hours !== null ? str_replace('.', ',', (string)$workshop->hours) : '');
 
