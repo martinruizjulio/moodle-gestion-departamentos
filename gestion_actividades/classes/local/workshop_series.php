@@ -287,7 +287,7 @@ class workshop_series {
             $DB->set_field(self::TABLE, 'sectionid', $series->sectionid, ['id' => $seriesid]);
         }
 
-        $visible = ($series->status === 'finished' || ((int)$series->dateto > 0 && (int)$series->dateto < time())) ? 0 : 1;
+        $visible = $series->status === 'finished' ? 0 : 1;
         $DB->update_record('course_sections', (object)[
             'id' => (int)$section->id,
             'name' => $series->title,
