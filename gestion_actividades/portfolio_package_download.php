@@ -58,10 +58,8 @@ foreach ($typeacerts as $cert) {
     $files[$name] = $path;
 }
 
-$typebcerts = portfolio_typeb::list_for_user((int)$userid);
-usort($typebcerts, function($a, $b) {
-    return ((int)($a->activitydate ?? 0)) <=> ((int)($b->activitydate ?? 0));
-});
+// Solo las solicitudes externas Tipo B validadas forman parte del expediente oficial.
+$typebcerts = portfolio_pdf::get_typeb_certificates((int)$userid);
 
 $n = 1;
 $fs = get_file_storage();
@@ -74,8 +72,17 @@ foreach ($typebcerts as $cert) {
         }
     }
     if (!$file || $file->is_directory()) { continue; }
-    $name = sprintf('02_Tipo_B/%02d_%s_%s.pdf', $n++, userdate((int)$cert->activitydate, '%Y%m%d'), clean_filename($cert->activityname));
-    $path = $tempdir . '/tipob_' . $n . '.pdf';
+
+    $extension = pathinfo((string)$cert->filename, PATHINFO_EXTENSION);
+    $extension = $extension !== '' ? strtolower($extension) : 'pdf';
+    $name = sprintf(
+        '02_Tipo_B_Externos_Validados/%02d_%s_%s.%s',
+        $n++,
+        userdate((int)$cert->activitydate, '%Y%m%d'),
+        clean_filename($cert->activityname),
+        clean_param($extension, PARAM_ALPHANUMEXT)
+    );
+    $path = $tempdir . '/tipob_' . $n . '_' . clean_filename($cert->filename);
     $file->copy_content_to($path);
     $files[$name] = $path;
 }
