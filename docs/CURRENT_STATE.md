@@ -1,6 +1,6 @@
 # CURRENT_STATE — Moodle Gestión de Departamentos
 
-Última consolidación: 2026-10-05.
+Última consolidación: 2026-10-05 (revisión independiente de Claude tras la auditoría de ChatGPT).
 
 Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es la fuente de verdad. Mantener este proyecto aislado de otros Moodle del usuario.
 
@@ -86,6 +86,35 @@ Se revisaron permisos, mutaciones, creación manual/Excel, secciones/subseccione
 - Se comprobó la presencia de la estructura mínima de ambos plugins.
 - La comprobación temporal no forma parte del árbol final del repositorio.
 
+## Revisión independiente (Claude) — 2026-10-05
+
+Se revisó el HEAD `df60619` contra el código, sin dar por buena la auditoría anterior. Correcciones aplicadas (un commit por tema):
+
+- **Observer Tipo B (Alta)**: `mod_assign` deja `relateduserid` vacío cuando el alumno entrega su propia tarea, y los eventos `submission_created/updated` se disparan antes de guardar el estado `submitted`. El observer no sincronizaba nada en el caso normal. Ahora resuelve el propietario desde `assign_submission` y escucha también `\mod_assign\event\assessable_submitted`.
+- **Elegibilidad Tipo B (Alta)**: `manager::user_is_certificate_eligible()` seguía aceptando solo asistencia para Tipo B. Ahora delega en `typeb_certificate_policy`, igual que `certificate_missing_requirements()`.
+- **Alcance por edición (Alta)**: `user_can_access_workshop_resources()` daba acceso de staff por cualquier edición del taller base. Ahora usa `can_manage_edition()`. `pluginfile` exige contexto de curso y comprueba que el registro pertenece a ese curso. Los materiales ocultos no se sirven al alumnado. Los materiales compartidos (`editionid = 0`), que antes daban 404 al alumnado, se sirven a quien tenga acceso a alguna edición del taller.
+- **Cuentas Moodle (Alta)**: crear o actualizar usuarios desde CSV (y «crear usuarios que falten» en la importación de notas) exige `moodle/user:create` / `moodle/user:update`. Los administradores del sitio nunca se modifican. No se cambia el método de autenticación.
+- **CSRF (Media)**: `enrol.php` inscribía con un GET sin sesskey; ahora pide confirmación si no hay sesskey. `repair_sections.php` y `repair_course_visuals.php` exigen sesskey.
+- **Regenerar certificado (Media)**: se comprueba la elegibilidad antes de borrar y se elimina también el PDF antiguo, que antes quedaba huérfano.
+- **Actividad obligatoria (Media)**: vincular o desvincular la actividad requerida queda reservado a Gestor HEE o a quien tenga `moodle/course:manageactivities`, igual que crearla.
+- **Upgrade (Alta potencial)**: el índice único de `local_ga_institutional_hours.userid` no se crea si hay usuarios duplicados. Antes rompía el upgrade; ahora deja aviso y no borra datos.
+- **Menores**: SQL con placeholder repetido en `workshop_series::series_for_edition()`; strings en inglés que faltaban; comparación int/string en `myhours.php`; no se reenvían correos de certificados ya emitidos; `block_gestion_hee` declara `null_provider` de privacidad.
+
+Validación: `php -l` sobre los 101 PHP y parseo de todos los XML, sin errores. **No se ha ejecutado en Moodle.**
+
+### Riesgos abiertos detectados (no corregidos, requieren decisión o prueba real)
+- **Tipo A con cuestionario**: `user_is_certificate_eligible()` exige siempre una entrega en la tarea interna HEE con nota ≥ 5. Una edición Tipo A cuya actividad obligatoria sea solo un cuestionario Moodle nunca genera certificado. Hay que definir la regla (finalizado o nota mínima) antes de cambiarla.
+- **Usuarios `auth=manual` con contraseña conocida**: quien tenga `moodle/user:create` puede seguir creando cuentas paralelas a la autenticación institucional. Decidir si deben crearse con la autenticación institucional o eliminar esa opción.
+- **Asociación edición↔serie por fechas**: se resuelve por el rango `datefrom/dateto`. Si se editan fechas o se solapan series, una edición puede cambiar de serie. Las fechas se interpretan con `strtotime` en la zona horaria del servidor, no la del usuario.
+- **`workshop_view.php`** usa la edición «primaria» del taller base para autoinscribir; con talleres reutilizados en varias ediciones debe comprobarse en real.
+- **DDL en tiempo de ejecución** (`ensure_table`/`ensure_schema` en clases): un revisor de plugins lo marcará. Ya está en `upgrade.php`, así que puede retirarse de las páginas en una versión posterior.
+- **Privacidad**: el plugin local solo declara metadatos (sin exportación ni borrado). Pendiente de política institucional.
+- **Tabla heredada `local_ga_typeb_reflections`**: si el alumno elimina su entrega, la fila de compatibilidad no se borra (decisión conservadora: no borrar datos). Los cálculos canónicos usan la Tarea Moodle.
+- **Moodle 5 / Bootstrap 5**: se usan clases BS4 (`badge-success`, `float-right`, `btn-block`, `mr-*`, `form-inline`). Funcionan con la capa de compatibilidad de Moodle 5.0, pero conviene migrarlas.
+- `export.php` y `gradehistory.php` usan la capacidad de sistema `local/gestion_actividades:view` en lugar de `can_manage_globally()`.
+- `typeb_upload.php` usa `$_FILES` directamente, sin validar el tipo de archivo (un revisor de Moodle pediría un filepicker).
+- Los observers del bloque escuchan `\core\event\file_created/file_deleted`, que no existen en core: no se disparan nunca.
+
 ## Estado funcional actual
 
 El código queda cerrado a nivel estático para los flujos diseñados:
@@ -115,5 +144,5 @@ Quedan únicamente comprobaciones que no pueden certificarse desde el repositori
 No declarar compatibilidad de producción únicamente por las comprobaciones estáticas anteriores.
 
 ## Versión actual
-- `local_gestion_actividades`: **1.5.96-alpha** (`2026100511`).
-- `block_gestion_hee`: **1.0.17-alpha** (`2026100501`).
+- `local_gestion_actividades`: **1.5.97-alpha** (`2026100512`). Último savepoint de esquema: `2026100510`.
+- `block_gestion_hee`: **1.0.18-alpha** (`2026100502`).
