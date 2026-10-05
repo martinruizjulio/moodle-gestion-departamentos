@@ -614,6 +614,65 @@ class manager {
         return 0;
     }
 
+    /**
+     * Requirement of a Type A edition whose required activity is a Moodle quiz.
+     * Minimum: the HEE minimum when configured; otherwise the quiz's own
+     * "Grade to pass" (grade_items.gradepass) when set; otherwise none.
+     */
+    public static function get_quiz_requirement(\stdClass $edition): \stdClass {
+        global $DB;
+        $cmid = !empty($edition->requiredquizcmid) ? (int)$edition->requiredquizcmid : (int)($edition->requiredcmid ?? 0);
+        $out = (object)['cmid' => $cmid, 'minimum' => null, 'source' => ''];
+        $hee = self::parse_decimal_input($edition->tasknumericgrade ?? null);
+        $pointsmode = (string)($edition->quizgradingmode ?? 'completion') === 'points';
+        if ($pointsmode || ($hee !== null && $hee > 0)) {
+            $out->minimum = max(0.0, (float)($hee ?? 0.0));
+            $out->source = 'hee';
+            return $out;
+        }
+        if ($cmid > 0) {
+            $item = self::get_module_grade_item($cmid);
+            if ($item && (float)($item->gradepass ?? 0) > 0) {
+                $out->minimum = (float)$item->gradepass;
+                $out->source = 'moodle';
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Null when the quiz requirement is met, otherwise a short description.
+     */
+    public static function quiz_missing_requirement(\stdClass $edition, int $userid): ?string {
+        $req = self::get_quiz_requirement($edition);
+        if ($req->cmid <= 0 || (!self::user_submitted_required_activity($userid, $req->cmid)
+                && !self::user_completed_required_activity($userid, $req->cmid))) {
+            return 'cuestionario';
+        }
+        if ($req->minimum !== null) {
+            $grade = self::get_user_grade_for_cmid($userid, $req->cmid);
+            if ($grade === null || $grade < $req->minimum) {
+                return 'nota mínima del cuestionario (' . format_float($req->minimum, 2, true) . ')';
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Main grade item of a course module (itemnumber 0; ignores outcomes).
+     */
+    private static function get_module_grade_item(int $cmid): ?\stdClass {
+        global $DB;
+        $sql = "SELECT gi.id, gi.gradepass, gi.grademax
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module
+                  JOIN {grade_items} gi ON gi.courseid = cm.course AND gi.itemtype = 'mod'
+                       AND gi.itemmodule = m.name AND gi.iteminstance = cm.instance AND gi.itemnumber = 0
+                 WHERE cm.id = :cmid";
+        $records = $DB->get_records_sql($sql, ['cmid' => $cmid], 0, 1);
+        return $records ? reset($records) : null;
+    }
+
     public static function get_user_grade_for_cmid(int $userid, int $cmid): ?float {
         global $DB;
         if ($cmid <= 0) { return null; }
@@ -621,7 +680,7 @@ class manager {
         if (!$cm) { return null; }
         $module = $DB->get_record('modules', ['id' => $cm->module], 'id,name');
         if (!$module) { return null; }
-        $item = $DB->get_record('grade_items', ['courseid' => $cm->course, 'itemmodule' => $module->name, 'iteminstance' => $cm->instance], 'id');
+        $item = self::get_module_grade_item($cmid);
         if (!$item) { return null; }
         $grade = $DB->get_record('grade_grades', ['itemid' => $item->id, 'userid' => $userid], 'finalgrade');
         if (!$grade || $grade->finalgrade === null) { return null; }
@@ -4876,19 +4935,7 @@ class manager {
 
         $types = self::get_required_activity_types($edition);
         if (in_array('quiz', $types, true)) {
-            $cmid = !empty($edition->requiredquizcmid) ? (int)$edition->requiredquizcmid : (int)($edition->requiredcmid ?? 0);
-            if ($cmid <= 0 || (!self::user_submitted_required_activity($userid, $cmid)
-                    && !self::user_completed_required_activity($userid, $cmid))) {
-                return false;
-            }
-            $minimum = self::parse_decimal_input($edition->tasknumericgrade ?? null);
-            $pointsmode = (string)($edition->quizgradingmode ?? 'completion') === 'points';
-            if ($pointsmode || ($minimum !== null && $minimum > 0)) {
-                $minimum = max(0.0, (float)($minimum ?? 0.0));
-                $grade = self::get_user_grade_for_cmid($userid, $cmid);
-                return $grade !== null && $grade >= $minimum;
-            }
-            return true;
+            return self::quiz_missing_requirement($edition, $userid) === null;
         }
         return self::user_has_submitted_internal_task($editionid, $userid)
             && self::user_has_passing_internal_task_grade($editionid, $userid);
@@ -5163,20 +5210,9 @@ class manager {
 
         $types = self::get_required_activity_types($edition);
         if (in_array('quiz', $types, true)) {
-            $cmid = !empty($edition->requiredquizcmid) ? (int)$edition->requiredquizcmid : (int)($edition->requiredcmid ?? 0);
-            if ($cmid <= 0 || (!self::user_submitted_required_activity($userid, $cmid)
-                    && !self::user_completed_required_activity($userid, $cmid))) {
-                $missing[] = 'cuestionario';
-            } else {
-                $minimum = self::parse_decimal_input($edition->tasknumericgrade ?? null);
-                $pointsmode = (string)($edition->quizgradingmode ?? 'completion') === 'points';
-                if ($pointsmode || ($minimum !== null && $minimum > 0)) {
-                    $minimum = max(0.0, (float)($minimum ?? 0.0));
-                    $grade = self::get_user_grade_for_cmid($userid, $cmid);
-                    if ($grade === null || $grade < $minimum) {
-                        $missing[] = 'nota mínima del cuestionario (' . format_float($minimum, 2, true) . ')';
-                    }
-                }
+            $quizmissing = self::quiz_missing_requirement($edition, $userid);
+            if ($quizmissing !== null) {
+                $missing[] = $quizmissing;
             }
         } else if (!self::user_has_submitted_internal_task($editionid, $userid)) {
             $missing[] = 'tarea';

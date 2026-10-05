@@ -225,9 +225,8 @@ if ($edition) {
             $requiredtypes = manager::get_required_activity_types($edition);
             $hasquiz = in_array('quiz', $requiredtypes, true);
             if ($hasquiz) {
-                $quizcmid = !empty($edition->requiredquizcmid) ? (int)$edition->requiredquizcmid : (int)($edition->requiredcmid ?? 0);
-                $minimum = manager::parse_decimal_input($edition->tasknumericgrade ?? null);
-                $pointsmode = (string)($edition->quizgradingmode ?? 'completion') === 'points';
+                $quizrequirement = manager::get_quiz_requirement($edition);
+                $quizcmid = (int)$quizrequirement->cmid;
                 $atable->head = [get_string('lastname'), get_string('firstname'), get_string('email'), 'Asistencia', 'Cuestionario', 'Nota', 'Resultado', 'Certificado'];
                 foreach ($enrolledusers as $eu) {
                     $userid = (int)$eu->userid;
@@ -246,8 +245,9 @@ if ($edition) {
                     ];
                 }
                 echo html_writer::table($atable);
-                echo html_writer::tag('p', ($pointsmode || ($minimum !== null && $minimum > 0))
-                    ? 'Criterio: cuestionario finalizado y nota mínima ' . format_float(max(0.0, (float)($minimum ?? 0.0)), 2, true) . '.'
+                echo html_writer::tag('p', $quizrequirement->minimum !== null
+                    ? 'Criterio: cuestionario finalizado y nota mínima ' . format_float((float)$quizrequirement->minimum, 2, true)
+                        . ($quizrequirement->source === 'moodle' ? ' (calificación para aprobar del cuestionario Moodle).' : '.')
                     : 'Criterio: cuestionario finalizado.', ['class' => 'text-muted']);
             } else {
                 $hasinternaltask = in_array('assign', $requiredtypes, true);
