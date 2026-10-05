@@ -15,11 +15,29 @@ $manualadd = optional_param('manualadd', 0, PARAM_INT);
 $markattendance = optional_param('markattendance', 0, PARAM_INT);
 $attended = optional_param('attended', 0, PARAM_BOOL);
 
-
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
     return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
 }
+
+function local_ga_is_course_student(int $courseid, int $userid): bool {
+    global $DB;
+    if ($courseid <= 0 || $userid <= 0) {
+        return false;
+    }
+    $context = context_course::instance($courseid, IGNORE_MISSING);
+    if (!$context || !is_enrolled($context, $userid, '', true)) {
+        return false;
+    }
+    $sql = "SELECT 1
+              FROM {role_assignments} ra
+              JOIN {role} r ON r.id = ra.roleid
+             WHERE ra.userid = :userid
+               AND ra.contextid = :contextid
+               AND (r.shortname = 'student' OR r.archetype = 'student')";
+    return $DB->record_exists_sql($sql, ['userid' => $userid, 'contextid' => $context->id]);
+}
+
 try {
     $edition = manager::get_workshop_edition($id);
     $workshop = manager::get_workshop((int)$edition->workshopid);
@@ -31,6 +49,9 @@ try {
     }
 
     if (!empty($manualadd) && confirm_sesskey()) {
+        if (!local_ga_is_course_student((int)$course->id, (int)$manualadd)) {
+            throw new invalid_parameter_exception('El usuario seleccionado no es un estudiante matriculado en este curso.');
+        }
         $enrolresult = manager::enrol_user_in_edition((int)$id, (int)$manualadd, 'manual');
         redirect(
             new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $id]),
@@ -41,6 +62,10 @@ try {
     }
 
     if (!empty($markattendance) && confirm_sesskey()) {
+        $enrolment = $DB->get_record('local_ga_edition_enrolments', ['id' => (int)$markattendance], 'id,editionid', MUST_EXIST);
+        if ((int)$enrolment->editionid !== (int)$id) {
+            throw new invalid_parameter_exception('La inscripción indicada no pertenece a esta edición.');
+        }
         manager::set_enrolment_attendance((int)$markattendance, (bool)$attended, (int)$USER->id);
         redirect(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $id, 't' => time()]), get_string('attendancesaved', 'local_gestion_actividades'));
     }
@@ -52,7 +77,7 @@ try {
     $PAGE->set_heading(format_string($course->fullname));
 
     echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+    echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 
     echo $OUTPUT->heading(get_string('enrolledstudentsattendance', 'local_gestion_actividades') . ': ' . format_string($workshop->code . ' - ' . $workshop->name));
 
@@ -69,13 +94,7 @@ echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividad
 
     if ($students) {
         $table = new html_table();
-        $table->head = [
-            get_string('lastname'),
-            get_string('firstname'),
-            get_string('email'),
-            get_string('attendance', 'local_gestion_actividades'),
-            get_string('actions')
-        ];
+        $table->head = [get_string('lastname'), get_string('firstname'), get_string('email'), get_string('attendance', 'local_gestion_actividades'), get_string('actions')];
         foreach ($students as $s) {
             $isattended = !empty($s->attended);
             $toggleurl = new moodle_url('/local/gestion_actividades/edition_students.php', [
@@ -87,11 +106,7 @@ echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividad
             $status = $isattended
                 ? html_writer::span(get_string('attended', 'local_gestion_actividades'), 'badge badge-success')
                 : html_writer::span(get_string('notattended', 'local_gestion_actividades'), 'badge badge-secondary');
-            $button = html_writer::link(
-                $toggleurl,
-                $isattended ? get_string('marknotattended', 'local_gestion_actividades') : get_string('markattended', 'local_gestion_actividades'),
-                ['class' => $isattended ? 'btn btn-warning btn-sm' : 'btn btn-success btn-sm']
-            );
+            $button = html_writer::link($toggleurl, $isattended ? get_string('marknotattended', 'local_gestion_actividades') : get_string('markattended', 'local_gestion_actividades'), ['class' => $isattended ? 'btn btn-warning btn-sm' : 'btn btn-success btn-sm']);
             $table->data[] = [s($s->lastname), s($s->firstname), s($s->email), $status, $button];
         }
         echo html_writer::table($table);
@@ -161,7 +176,7 @@ echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividad
     echo $OUTPUT->header();
     echo $OUTPUT->heading(get_string('enrolledstudentsattendance', 'local_gestion_actividades'));
     echo $OUTPUT->notification(get_string('attendance_page_error', 'local_gestion_actividades') . ': ' . s($e->getMessage()), 'error');
-    echo html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php'), local_ga_btn_icon('i/course', get_string('workshops', 'local_gestion_actividades')), ['class' => 'btn btn-secondary']);
+    echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php'), local_ga_btn_icon('i/course', 'Mis talleres HEE'), ['class' => 'btn btn-secondary']);
     if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
         local_gestion_actividades_enable_interactive_tables();
     }
