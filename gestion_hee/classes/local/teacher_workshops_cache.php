@@ -81,12 +81,21 @@ class teacher_workshops_cache {
             }
         }
 
+        $hasseries = $dbman->table_exists(new \xmldb_table('local_ga_workshop_series'))
+            && array_key_exists('seriesid', $DB->get_columns('local_ga_workshop_editions'));
+        $seriesjoin = $hasseries
+            ? ' LEFT JOIN {local_ga_workshop_series} s ON s.id = e.seriesid'
+            : '';
+        $seriesfinished = $hasseries ? " OR s.status = 'finished'" : '';
+        $finished = "(e.archived = 1 OR e.status IN ('archived','finished','completed','closed_full','closed_finished')$seriesfinished)";
+
         $sql = "SELECT
-                    SUM(CASE WHEN e.archived = 1 OR e.status IN ('archived','finished','completed','closed_finished') THEN 0 ELSE 1 END) AS activecount,
-                    SUM(CASE WHEN e.archived = 1 OR e.status IN ('archived','finished','completed','closed_finished') THEN 1 ELSE 0 END) AS finishedcount
+                    SUM(CASE WHEN $finished THEN 0 ELSE 1 END) AS activecount,
+                    SUM(CASE WHEN $finished THEN 1 ELSE 0 END) AS finishedcount
                   FROM {local_ga_edition_teachers} et
                   JOIN {local_ga_workshop_editions} e ON e.id = et.editionid
                   JOIN {local_ga_workshops} w ON w.id = e.workshopid
+                  $seriesjoin
                  WHERE et.userid = :userid";
         $row = $DB->get_record_sql($sql, ['userid' => $userid]);
 
