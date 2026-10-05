@@ -87,19 +87,27 @@ class bulk_workshops {
         return $out;
     }
 
-    public static function import(string $token, int $courseid, int $quiztemplatecmid = 0, int $notestemplatecmid = 0): \stdClass {
+    public static function import(string $token, int $courseid, int $seriesid, int $quiztemplatecmid = 0, int $notestemplatecmid = 0): \stdClass {
         global $DB, $CFG;
+        $series = workshop_series::get($seriesid);
+        if ((int)$series->courseid !== $courseid) {
+            throw new \RuntimeException('La edición de talleres no pertenece al curso seleccionado.');
+        }
         $rows = self::preview($token, $courseid);
         $validrows = array_values(array_filter($rows, function($row) { return !empty($row['ok']); }));
         foreach ($validrows as $row) {
             if (!empty($row['createquiz']) && $quiztemplatecmid <= 0) {
                 throw new \RuntimeException('Hay talleres que requieren cuestionario. Selecciona un cuestionario Moodle modelo antes de confirmar.');
             }
+            if ($row['sessiondate'] < (int)$series->datefrom || $row['sessiondate'] > (int)$series->dateto) {
+                throw new \RuntimeException($row['code'] . ': la fecha del taller queda fuera de las fechas de la edición.');
+            }
         }
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-        $summary = (object)['created' => 0, 'skipped' => count($rows) - count($validrows), 'quizcreated' => 0, 'notescreated' => 0, 'messages' => []];
+        $summary = (object)['created' => 0, 'skipped' => count($rows) - count($validrows), 'quizcreated' => 0, 'notescreated' => 0, 'seriesid' => $seriesid, 'messages' => []];
         $transaction = $DB->start_delegated_transaction();
         try {
+            $order = 1;
             foreach ($validrows as $row) {
                 $workshopid = manager::save_workshop((object)[
                     'id' => 0, 'courseid' => $courseid, 'code' => $row['code'], 'name' => $row['name'],
@@ -117,6 +125,7 @@ class bulk_workshops {
                 ]);
                 $edition = manager::get_workshop_edition($editionid);
                 $groupid = (int)($edition->groupid ?? 0);
+                $notescmid = 0;
 
                 if (!empty($row['createquiz'])) {
                     require_once($CFG->dirroot . '/course/lib.php');
@@ -136,13 +145,16 @@ class bulk_workshops {
                     $summary->quizcreated++;
                 }
                 if (!empty($row['createnotes']) && $notestemplatecmid > 0) {
-                    self::duplicate_template($course, $notestemplatecmid, $groupid, 'Apuntes ' . $row['code'], 0);
+                    $notescmid = self::duplicate_template($course, $notestemplatecmid, $groupid, 'Apuntes ' . $row['code'], 0);
                     $summary->notescreated++;
                 }
                 manager::ensure_workshop_course_visuals_safely($workshopid);
+                workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid);
                 $summary->created++;
-                $summary->messages[] = $row['code'] . ': creado.';
+                $summary->messages[] = $row['code'] . ': creado como Taller ' . sprintf('%02d', $order) . ' de ' . $series->title . '.';
+                $order++;
             }
+            workshop_series::ensure_course_structure($seriesid);
             $transaction->allow_commit();
         } catch (\Throwable $e) {
             $transaction->rollback($e);
