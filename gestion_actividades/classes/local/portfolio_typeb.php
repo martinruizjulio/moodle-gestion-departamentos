@@ -8,7 +8,7 @@ class portfolio_typeb {
 
     public static function ensure_table(): void {
         global $DB;
-        if (!$DB->get_manager()->table_exists(new \xmldb_table(self::TABLE))) {
+        if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_typeb_certs'))) {
             throw new \coding_exception('El esquema de certificados Tipo B no está instalado. Ejecuta la actualización de Moodle.');
         }
     }
@@ -47,10 +47,14 @@ class portfolio_typeb {
             'filepath' => '/',
             'filename' => clean_filename($filename),
             'mimetype' => function_exists('mimeinfo') ? mimeinfo('type', clean_filename($filename)) : 'application/octet-stream',
+            'userid' => $userid,
+            'author' => fullname(\core_user::get_user($userid)),
         ], $tmpfilepath);
 
-        self::invalidate_block_cache_for_user($userid);
-        return $id;
+        if (function_exists('local_gestion_actividades_invalidate_block_gestion_hee_user_cache')) {
+            local_gestion_actividades_invalidate_block_gestion_hee_user_cache($userid);
+        }
+        return (int)$id;
     }
 
     public static function get(int $id): \stdClass {
@@ -62,57 +66,48 @@ class portfolio_typeb {
     public static function list_for_user(int $userid): array {
         global $DB;
         self::ensure_table();
-        return $DB->get_records('local_ga_typeb_certs', ['userid' => $userid], 'activitydate DESC, timecreated DESC');
+        return $DB->get_records('local_ga_typeb_certs', ['userid' => $userid], 'activitydate DESC, timecreated DESC, id DESC');
     }
 
-    public static function list_all(int $userid = 0, string $status = ''): array {
+    public static function list_pending(): array {
         global $DB;
         self::ensure_table();
-        $params = [];
-        $where = [];
-        if ($userid > 0) {
-            $where[] = 'c.userid = :userid';
-            $params['userid'] = $userid;
-        }
-        if ($status !== '') {
-            $where[] = 'c.status = :status';
-            $params['status'] = $status;
-        }
-        $wheresql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
         $sql = "SELECT c.*, u.firstname, u.lastname, u.email
                   FROM {local_ga_typeb_certs} c
                   JOIN {user} u ON u.id = c.userid
-                 $wheresql
-              ORDER BY c.timecreated DESC";
-        return $DB->get_records_sql($sql, $params);
+                 WHERE c.status = :status
+              ORDER BY c.timecreated ASC, c.id ASC";
+        return $DB->get_records_sql($sql, ['status' => 'pending']);
     }
 
-    public static function count_pending(): int {
+    public static function list_all(): array {
         global $DB;
         self::ensure_table();
-        return (int)$DB->count_records('local_ga_typeb_certs', ['status' => 'pending']);
+        $sql = "SELECT c.*, u.firstname, u.lastname, u.email
+                  FROM {local_ga_typeb_certs} c
+                  JOIN {user} u ON u.id = c.userid
+              ORDER BY c.timecreated DESC, c.id DESC";
+        return $DB->get_records_sql($sql);
     }
 
-    public static function set_status(int $id, string $status, string $comment, int $reviewerid): bool {
+    public static function review(int $id, string $status, string $comment, int $reviewedby): bool {
         global $DB;
         self::ensure_table();
-        if (!in_array($status, ['pending', 'validated', 'rejected'], true)) {
+        if (!in_array($status, ['validated', 'rejected'], true)) {
             return false;
         }
         $record = self::get($id);
-        $storedstatus = $status;
         if ($status === 'validated' && trim((string)($record->reflectiontext ?? '')) === '') {
-            $storedstatus = self::STATUS_VALIDATED_PENDING_REFLECTION;
+            $status = self::STATUS_VALIDATED_PENDING_REFLECTION;
         }
-        $record->status = $storedstatus;
-        $record->reviewcomment = $comment;
-        $record->reviewedby = $reviewerid;
+        $record->status = $status;
+        $record->reviewcomment = trim($comment);
+        $record->reviewedby = $reviewedby;
         $record->timereviewed = time();
         $record->timemodified = time();
         $DB->update_record('local_ga_typeb_certs', $record);
-        self::invalidate_block_cache_for_user((int)$record->userid);
-        if (class_exists('\\local_gestion_actividades\\local\\grade_manager')) {
-            grade_manager::sync_user_safely((int)$record->userid);
+        if (function_exists('local_gestion_actividades_invalidate_block_gestion_hee_user_cache')) {
+            local_gestion_actividades_invalidate_block_gestion_hee_user_cache((int)$record->userid);
         }
         return true;
     }
@@ -120,24 +115,24 @@ class portfolio_typeb {
     public static function save_reflection(int $id, int $userid, string $reflectiontext): bool {
         global $DB;
         self::ensure_table();
+        $record = self::get($id);
+        if ((int)$record->userid !== $userid) {
+            return false;
+        }
+        if (!in_array((string)$record->status, [self::STATUS_VALIDATED_PENDING_REFLECTION, 'validated'], true)) {
+            return false;
+        }
         $reflectiontext = trim($reflectiontext);
         if ($reflectiontext === '') {
             return false;
         }
-        $record = self::get($id);
-        if ((int)$record->userid !== $userid || !in_array((string)$record->status, [self::STATUS_VALIDATED_PENDING_REFLECTION, 'validated'], true)) {
-            return false;
-        }
-        $DB->update_record('local_ga_typeb_certs', (object)[
-            'id' => $id,
-            'status' => 'validated',
-            'reflectiontext' => $reflectiontext,
-            'reflectiontime' => time(),
-            'timemodified' => time(),
-        ]);
-        self::invalidate_block_cache_for_user($userid);
-        if (class_exists('\\local_gestion_actividades\\local\\grade_manager')) {
-            grade_manager::sync_user_safely($userid);
+        $record->reflectiontext = $reflectiontext;
+        $record->reflectiontime = time();
+        $record->status = 'validated';
+        $record->timemodified = time();
+        $DB->update_record('local_ga_typeb_certs', $record);
+        if (function_exists('local_gestion_actividades_invalidate_block_gestion_hee_user_cache')) {
+            local_gestion_actividades_invalidate_block_gestion_hee_user_cache($userid);
         }
         return true;
     }
@@ -147,62 +142,41 @@ class portfolio_typeb {
             && trim((string)($record->reflectiontext ?? '')) !== '';
     }
 
-    public static function delete_upload(int $id): bool {
-        global $DB;
-        self::ensure_table();
-        $record = self::get($id);
-        $userid = (int)$record->userid;
-        $context = \context_system::instance();
-        get_file_storage()->delete_area_files($context->id, 'local_gestion_actividades', 'typeb_certificate', $id);
-        $DB->delete_records('local_ga_typeb_certs', ['id' => $id]);
-        self::invalidate_block_cache_for_user($userid);
-        return true;
-    }
-
     public static function total_validated_hours(int $userid): float {
-        global $DB;
-        self::ensure_table();
-        $total = $DB->get_field_sql(
-            "SELECT COALESCE(SUM(hours), 0)
-               FROM {local_ga_typeb_certs}
-              WHERE userid = :userid
-                AND status = 'validated'
-                AND reflectiontext IS NOT NULL
-                AND " . $DB->sql_compare_text('reflectiontext') . " <> :emptyreflection",
-            ['userid' => $userid, 'emptyreflection' => '']
-        );
-        return (float)$total;
-    }
-
-    public static function total_uploaded_hours(int $userid): float {
-        global $DB;
-        self::ensure_table();
-        $total = $DB->get_field_sql("SELECT COALESCE(SUM(hours), 0) FROM {local_ga_typeb_certs} WHERE userid = :userid", ['userid' => $userid]);
-        return (float)$total;
-    }
-
-    private static function invalidate_block_cache_for_user(int $userid): void {
-        global $CFG;
-
-        $userid = max(0, $userid);
-        if ($userid <= 0) {
-            return;
-        }
-
-        try {
-            if (!function_exists('block_gestion_hee_invalidate_user_cache')) {
-                $blocklib = $CFG->dirroot . '/blocks/gestion_hee/lib.php';
-                if (is_readable($blocklib)) {
-                    require_once($blocklib);
-                }
-            }
-            if (function_exists('block_gestion_hee_invalidate_user_cache')) {
-                block_gestion_hee_invalidate_user_cache($userid);
-            }
-        } catch (\Throwable $e) {
-            if (function_exists('debugging')) {
-                debugging('No se ha podido invalidar la caché del bloque Gestión HEE: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        $sum = 0.0;
+        foreach (self::list_for_user($userid) as $record) {
+            if (self::is_countable($record)) {
+                $sum += (float)$record->hours;
             }
         }
+        return $sum;
+    }
+
+    public static function count_validated(int $userid): int {
+        $count = 0;
+        foreach (self::list_for_user($userid) as $record) {
+            if (self::is_countable($record)) {
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    public static function get_file(\stdClass $record): ?\stored_file {
+        $fs = get_file_storage();
+        $context = \context_system::instance();
+        $filename = trim((string)($record->filename ?? ''));
+        if ($filename !== '') {
+            $file = $fs->get_file($context->id, 'local_gestion_actividades', 'typeb_certificate', (int)$record->id, '/', $filename);
+            if ($file && !$file->is_directory()) {
+                return $file;
+            }
+        }
+        foreach ($fs->get_area_files($context->id, 'local_gestion_actividades', 'typeb_certificate', (int)$record->id, 'filename', false) as $file) {
+            if (!$file->is_directory()) {
+                return $file;
+            }
+        }
+        return null;
     }
 }
