@@ -143,6 +143,9 @@ class block_gestion_hee extends block_base {
                 'class' => 'btn btn-warning fw-bold w-100 py-2',
                 'data-bs-toggle' => 'modal',
                 'data-bs-target' => '#' . $modalid,
+                // Bootstrap 4 attributes for themes/sites still on Moodle 4.x.
+                'data-toggle' => 'modal',
+                'data-target' => '#' . $modalid,
                 'aria-controls' => $modalid,
             ]
         );
@@ -175,6 +178,7 @@ class block_gestion_hee extends block_base {
             'type' => 'button',
             'class' => 'btn-close',
             'data-bs-dismiss' => 'modal',
+            'data-dismiss' => 'modal',
             'aria-label' => get_string('close', 'core'),
         ]);
         $html .= html_writer::end_div();
@@ -184,11 +188,20 @@ class block_gestion_hee extends block_base {
             'type' => 'button',
             'class' => 'btn btn-secondary',
             'data-bs-dismiss' => 'modal',
+            'data-dismiss' => 'modal',
         ]);
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
+
+        // Blocks live in the Boost block drawer, which uses a CSS transform; a
+        // position:fixed modal inside it is clipped to the drawer and covered
+        // by its own backdrop. Move the modal to <body> before it is opened.
+        $this->page->requires->js_init_code(
+            "(function(){var m=document.getElementById(" . json_encode($modalid) . ");" .
+            "if(m&&m.parentNode!==document.body){document.body.appendChild(m);}})();"
+        );
 
         return $html;
     }
