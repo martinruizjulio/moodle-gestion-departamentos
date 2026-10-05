@@ -9,8 +9,11 @@ $workshopid = required_param('workshopid', PARAM_INT);
 $workshop = manager::get_workshop($workshopid);
 $course = $DB->get_record('course', ['id' => $workshop->courseid], '*', MUST_EXIST);
 $context = context_course::instance((int)$course->id);
-if (!manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id)) {
-    throw new required_capability_exception($context, 'moodle/course:update', 'nopermissions', '');
+
+// Structural edition administration is deliberately global-manager only.
+// Professor HEE manages the concrete editions assigned to them from my_workshops.php.
+if (!manager::can_manage_globally((int)$USER->id)) {
+    throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
 }
 
 $PAGE->set_context($context);
@@ -23,7 +26,6 @@ echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividad
 
 echo $OUTPUT->heading(get_string('editions', 'local_gestion_actividades') . ': ' . s($workshop->code) . ' - ' . format_string($workshop->name));
 if ($course) { echo html_writer::tag('p', get_string('coursewherecreated', 'local_gestion_actividades') . ': ' . html_writer::tag('strong', format_string($course->fullname) . ' [' . s($course->shortname) . '] — ID ' . $course->id), ['class' => 'alert alert-info']); }
-
 
 echo html_writer::div(
     html_writer::link(new moodle_url('/local/gestion_actividades/edition_edit.php', ['workshopid' => $workshopid]), get_string('newedition', 'local_gestion_actividades'), ['class' => 'btn btn-primary']) . ' ' .
