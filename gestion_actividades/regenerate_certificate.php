@@ -2,7 +2,6 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
-use local_gestion_actividades\local\typeb_certificate_policy;
 
 $id = required_param('id', PARAM_INT); // certificate id
 require_login();
@@ -17,18 +16,24 @@ if (!manager::can_manage_edition((int)$edition->id, (int)$USER->id)) {
     throw new required_capability_exception($coursecontext, 'moodle/course:update', 'nopermissions', '');
 }
 
-// Regeneration must obey the same eligibility rule as first generation.
-if (manager::is_typeb_workshop($workshop)
-        && !typeb_certificate_policy::is_eligible((int)$edition->id, (int)$cert->userid)) {
+// Regeneration must obey the same eligibility rule as first generation and is
+// checked BEFORE deleting anything: an ineligible student keeps the certificate
+// already issued instead of silently losing it.
+if (!manager::user_is_certificate_eligible((int)$edition->id, (int)$cert->userid)) {
+    $message = manager::is_typeb_workshop($workshop)
+        ? 'No se puede regenerar este certificado Tipo B porque ya no se cumplen asistencia + reflexión. Se conserva el certificado actual.'
+        : 'No se puede regenerar este certificado porque ya no se cumplen los requisitos. Se conserva el certificado actual.';
     redirect(
         new moodle_url('/local/gestion_actividades/certificates.php', ['editionid' => $cert->editionid]),
-        'No se puede regenerar este certificado Tipo B porque ya no se cumplen asistencia + reflexión.',
+        $message,
         null,
         \core\output\notification::NOTIFY_ERROR
     );
 }
 
 $DB->delete_records('local_ga_certificates', ['id' => $id]);
+// Remove the old PDF too; the new certificate gets a new id/itemid.
+get_file_storage()->delete_area_files($coursecontext->id, 'local_gestion_actividades', 'certificate', (int)$cert->id);
 try {
     $blocklib = $CFG->dirroot . '/blocks/gestion_hee/lib.php';
     if (!function_exists('block_gestion_hee_invalidate_user_cache') && is_readable($blocklib)) {
