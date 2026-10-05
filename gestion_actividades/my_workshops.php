@@ -10,7 +10,7 @@ $context = context_system::instance();
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => $view]));
-$PAGE->set_title($view === 'finished' ? 'Mis talleres finalizados' : 'Talleres vigentes');
+$PAGE->set_title($view === 'finished' ? 'Profesor HEE · Mis talleres finalizados' : 'Profesor HEE · Mis talleres vigentes');
 $PAGE->set_heading('Gestión HEE');
 
 $dbman = $DB->get_manager();
@@ -47,7 +47,12 @@ echo html_writer::div(
         ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
-echo $OUTPUT->heading($view === 'finished' ? 'Mis talleres finalizados' : 'Talleres vigentes');
+echo $OUTPUT->heading($view === 'finished' ? 'Profesor HEE · Mis talleres finalizados' : 'Profesor HEE · Mis talleres vigentes');
+echo html_writer::tag(
+    'p',
+    'Como Profesor HEE puedes gestionar únicamente las ediciones de talleres que te han sido asignadas: alumnado, asistencia, materiales y la actividad obligatoria o reflexión correspondiente. Este permiso no te concede edición general del curso Moodle.',
+    ['class' => 'alert alert-info']
+);
 
 echo html_writer::start_div('mb-3');
 echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'active']),
@@ -58,8 +63,8 @@ echo html_writer::end_div();
 
 if (!$rows) {
     echo $OUTPUT->notification($view === 'finished'
-        ? 'No tienes talleres finalizados asignados.'
-        : 'No tienes talleres vigentes asignados.', 'info');
+        ? 'No tienes talleres finalizados asignados como Profesor HEE.'
+        : 'No tienes talleres vigentes asignados como Profesor HEE.', 'info');
 } else {
     $table = new html_table();
     $table->head = ['Tipo', 'Código', 'Taller', 'Edición', 'Fecha', 'Curso', 'Acciones'];
@@ -70,7 +75,7 @@ if (!$rows) {
         }
         $type = manager::normalize_workshop_type((string)($row->workshoptype ?? 'typea')) === 'typeb' ? 'Tipo B' : 'Tipo A';
         $date = !empty($row->sessiondate) ? manager::format_date_compact((int)$row->sessiondate) : '-';
-        $label = $view === 'finished' ? 'Editar asistencia y calificaciones' : 'Gestionar taller';
+        $label = $view === 'finished' ? 'Revisar taller' : 'Gestionar taller';
         $actions = html_writer::link(
             new moodle_url('/local/gestion_actividades/teacher_view.php', [
                 'id' => (int)$row->workshopid,
