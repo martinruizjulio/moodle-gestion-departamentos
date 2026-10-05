@@ -29,4 +29,8 @@ if (!$file || $file->is_directory()) {
     throw new moodle_exception('filenotfound');
 }
 
-send_stored_file($file, 0, 0, false, ['filename' => $record->filename ?: ('certificado_tipo_b_' . $record->id . '.pdf')]);
+// Student-supplied evidence: only PDF and raster images are shown inline.
+// Anything else (e.g. HTML/SVG uploaded before the filepicker restriction)
+// is forced to download so it can never run in the Moodle origin.
+$inline = in_array($file->get_mimetype(), ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'], true);
+send_stored_file($file, 0, 0, !$inline, ['filename' => $record->filename ?: ('certificado_tipo_b_' . $record->id . '.pdf')]);

@@ -69,6 +69,12 @@ function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea,
     $fs = get_file_storage();
     $file = $fs->get_file($context->id, 'local_gestion_actividades', $filearea, $itemid, $filepath, $filename);
     if (!$file || $file->is_directory()) { return false; }
+    // Task submissions are uploaded by students: never render active content
+    // (HTML/SVG/...) inline in the Moodle origin.
+    if ($filearea === 'tasksubmission'
+            && !in_array($file->get_mimetype(), ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'], true)) {
+        $forcedownload = true;
+    }
     send_stored_file($file, 0, 0, $forcedownload, $options);
 }
 
