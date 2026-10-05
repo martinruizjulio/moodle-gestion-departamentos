@@ -25,7 +25,7 @@ class block_gestion_hee extends block_base {
     }
 
     public function get_content() {
-        global $USER;
+        global $USER, $DB;
 
         if ($this->content !== null) {
             return $this->content;
@@ -40,6 +40,17 @@ class block_gestion_hee extends block_base {
 
         try {
             $teachersummary = \block_gestion_hee\local\teacher_workshops_cache::get_summary((int)$USER->id);
+
+            // A newly assigned Profesor HEE may still have a cached zero summary for a few
+            // minutes. Check the canonical assignment table before falling back to the
+            // student view so the teacher tools appear immediately after assignment.
+            if (empty($teachersummary['total'])
+                    && $DB->get_manager()->table_exists(new xmldb_table('local_ga_edition_teachers'))
+                    && $DB->record_exists('local_ga_edition_teachers', ['userid' => (int)$USER->id])) {
+                \block_gestion_hee\local\teacher_workshops_cache::invalidate_user((int)$USER->id);
+                $teachersummary = \block_gestion_hee\local\teacher_workshops_cache::get_summary((int)$USER->id);
+            }
+
             if (!empty($teachersummary['total'])) {
                 $this->content->text = $this->render_teacher_tools($teachersummary);
             } else {
