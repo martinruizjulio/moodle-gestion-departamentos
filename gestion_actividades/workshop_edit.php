@@ -15,21 +15,20 @@ $series = $seriesid > 0 ? workshop_series::get($seriesid) : null;
 $record = $id ? manager::get_workshop($id) : null;
 $syscontext = context_system::instance();
 $context = $syscontext;
-$canmanageplugin = manager::can_manage_globally((int)$USER->id);
+
+// Workshop structure is global HEE administration. Profesor HEE operates only
+// the concrete editions assigned to them through teacher_view/my_workshops.
+if (!manager::can_manage_globally((int)$USER->id)) {
+    throw new required_capability_exception($syscontext, 'local/gestion_actividades:manage', 'nopermissions', '');
+}
+
 if ($record) {
     $course = $DB->get_record('course', ['id' => $record->courseid], '*', MUST_EXIST);
     $context = context_course::instance((int)$course->id);
-    if (!manager::can_manage_workshop_instance((int)$record->id, (int)$USER->id)) {
-        throw new required_capability_exception($context, 'moodle/course:update', 'nopermissions', '');
-    }
     $linkedseries = workshop_series::series_for_workshop((int)$record->id);
     if ($linkedseries) {
         $series = $linkedseries;
         $seriesid = (int)$linkedseries->id;
-    }
-} else {
-    if (!manager::can_manage_globally((int)$USER->id)) {
-        throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
     }
 }
 
@@ -42,7 +41,7 @@ if (data_submitted() && confirm_sesskey()) {
     $postseriesid = optional_param('seriesid', $seriesid, PARAM_INT);
     $postsortorder = optional_param('sortorder', $sortorder, PARAM_INT);
     $selectedseries = $postseriesid > 0 ? workshop_series::get($postseriesid) : null;
-    $selectedcourseid = ($record && empty($canmanageplugin)) ? (int)$record->courseid : required_param('courseid', PARAM_INT);
+    $selectedcourseid = required_param('courseid', PARAM_INT);
     if ($selectedseries && (int)$selectedseries->courseid !== $selectedcourseid) {
         throw new moodle_exception('invaliddata', 'error', '', 'La edición de talleres y el taller deben pertenecer al mismo curso.');
     }
