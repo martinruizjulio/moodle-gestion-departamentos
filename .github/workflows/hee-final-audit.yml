@@ -1,0 +1,187 @@
+name: HEE final source audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/hee-final-audit.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Finish reviewer-oriented cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # The schema is formalised in install.xml + db/upgrade.php. Remove the
+          # last unused runtime DDL helper from institutional_hours.
+          path = Path('gestion_actividades/classes/local/institutional_hours.php')
+          text = path.read_text(encoding='utf-8')
+          pattern = r"\n    private static function add_index_if_possible\(.*?\n    \}\n\n    public static function list_for_user"
+          text, count = re.subn(pattern, "\n\n    public static function list_for_user", text, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit('Residual institutional_hours runtime DDL helper was not found exactly once')
+          path.write_text(text, encoding='utf-8')
+
+          # Finish only the requested Bootstrap 4 -> 5 utility replacements.
+          replacements = [
+              ('badge badge-success', 'badge bg-success'),
+              ('badge badge-warning', 'badge bg-warning text-dark'),
+              ('badge badge-danger', 'badge bg-danger'),
+              ('badge badge-secondary', 'badge bg-secondary'),
+              ('float-right', 'float-end'),
+              (' mr-', ' me-'),
+              (' ml-', ' ms-'),
+              ("'mr-", "'me-"),
+              ('"mr-', '"me-'),
+              ("'ml-", "'ms-"),
+              ('"ml-', '"ms-'),
+              ('btn-block', 'd-block w-100'),
+              ('form-inline', 'd-flex flex-wrap align-items-center gap-2'),
+          ]
+          for root in [Path('gestion_actividades'), Path('gestion_hee')]:
+              for ui in root.rglob('*'):
+                  if not ui.is_file() or ui.suffix.lower() not in {'.php', '.css', '.mustache', '.js'}:
+                      continue
+                  old = ui.read_text(encoding='utf-8')
+                  new = old
+                  for a, b in replacements:
+                      new = new.replace(a, b)
+                  if new != old:
+                      ui.write_text(new, encoding='utf-8')
+
+          version = Path('gestion_actividades/version.php')
+          vtext = version.read_text(encoding='utf-8')
+          vtext = re.sub(r'\$plugin->version\s*=\s*\d+;', '$plugin->version = 2026100514;', vtext)
+          vtext = re.sub(r"\$plugin->release\s*=\s*'[^']+';", "$plugin->release = '1.5.99-alpha';", vtext)
+          version.write_text(vtext, encoding='utf-8')
+          PY
+
+      - name: Validate all PHP and XML
+        shell: bash
+        run: |
+          set -euo pipefail
+          find gestion_actividades gestion_hee -type f -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/hee-php-lint.log
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+          for path in pathlib.Path('.').glob('**/*.xml'):
+              if '.git' not in path.parts:
+                  ET.parse(path)
+          print('PHP syntax and XML well-formedness: OK')
+          PY
+
+      - name: Reviewer-oriented source assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          roots = [Path('gestion_actividades'), Path('gestion_hee')]
+
+          ddl = re.compile(r'->\s*(?:create_table|add_field|add_index|drop_table|drop_field|drop_index)\s*\(')
+          ddl_hits = []
+          for path in Path('gestion_actividades').rglob('*.php'):
+              if path.as_posix() == 'gestion_actividades/db/upgrade.php':
+                  continue
+              if ddl.search(path.read_text(encoding='utf-8')):
+                  ddl_hits.append(str(path))
+          if ddl_hits:
+              raise SystemExit('Runtime DDL remains outside db/upgrade.php: ' + ', '.join(ddl_hits))
+
+          manual_auth = re.compile(r"['\"]auth['\"]\s*=>\s*['\"]manual['\"]", re.I)
+          auth_hits = [str(p) for p in Path('gestion_actividades').rglob('*.php') if manual_auth.search(p.read_text(encoding='utf-8'))]
+          if auth_hits:
+              raise SystemExit('Manual Moodle account creation remains: ' + ', '.join(auth_hits))
+
+          if '$_FILES' in Path('gestion_actividades/typeb_upload.php').read_text(encoding='utf-8'):
+              raise SystemExit('Type B upload still uses raw $_FILES')
+
+          legacy_tokens = ['badge-success', 'badge-warning', 'badge-danger', 'badge-secondary', 'float-right', 'btn-block', 'form-inline']
+          margin_re = re.compile(r'(?<![A-Za-z0-9_-])(?:mr|ml)-[0-9]+(?![A-Za-z0-9_-])')
+          legacy_hits = []
+          for root in roots:
+              for path in root.rglob('*'):
+                  if not path.is_file() or path.suffix.lower() not in {'.php', '.css', '.mustache', '.js'}:
+                      continue
+                  text = path.read_text(encoding='utf-8')
+                  found = [token for token in legacy_tokens if token in text]
+                  if found or margin_re.search(text):
+                      legacy_hits.append(str(path))
+          if legacy_hits:
+              raise SystemExit('Bootstrap 4 classes remain: ' + ', '.join(sorted(set(legacy_hits))))
+
+          events = Path('gestion_hee/db/events.php').read_text(encoding='utf-8')
+          if r'\core\event\file_created' in events or r'\core\event\file_deleted' in events:
+              raise SystemExit('Invalid block file observers remain')
+          if Path('gestion_hee/classes/observer.php').exists():
+              raise SystemExit('Obsolete block observer class still exists')
+
+          privacy = Path('gestion_actividades/classes/privacy/provider.php').read_text(encoding='utf-8')
+          for required in ['request_provider', 'core_userlist_provider', 'export_user_data', 'get_users_in_context', 'delete_data_for_user']:
+              if required not in privacy:
+                  raise SystemExit('Privacy provider missing: ' + required)
+
+          upload = Path('gestion_actividades/typeb_upload.php').read_text(encoding='utf-8')
+          uploadform = Path('gestion_actividades/classes/form/typeb_upload_form.php').read_text(encoding='utf-8')
+          if 'typeb_upload_form' not in upload or "addElement('filepicker'" not in uploadform:
+              raise SystemExit('Type B external upload is not using moodleform/filepicker')
+
+          for path in ['gestion_actividades/export.php', 'gestion_actividades/gradehistory.php']:
+              if 'can_manage_globally' not in Path(path).read_text(encoding='utf-8'):
+                  raise SystemExit(path + ' is not restricted to global HEE managers')
+
+          access = Path('gestion_actividades/db/access.php').read_text(encoding='utf-8')
+          if 'RISK_PERSONAL' not in access or 'RISK_CONFIG' not in access:
+              raise SystemExit('Capability risk bitmasks are incomplete')
+
+          manager = Path('gestion_actividades/classes/local/manager.php').read_text(encoding='utf-8')
+          teacher = Path('gestion_actividades/teacher_view.php').read_text(encoding='utf-8')
+          if 'quizgradingmode' not in manager or 'get_user_grade_for_cmid' not in manager or 'cuestionario' not in manager.lower():
+              raise SystemExit('Type A quiz certificate eligibility is incomplete')
+          if 'Cuestionario del taller' not in teacher:
+              raise SystemExit('Teacher view is not quiz-aware')
+
+          workshopview = Path('gestion_actividades/workshop_view.php').read_text(encoding='utf-8')
+          if "optional_param('editionid'" not in workshopview or 'can_manage_edition' not in workshopview:
+              raise SystemExit('Student workshop view is not bound to a concrete edition')
+
+          install = Path('gestion_actividades/db/install.xml').read_text(encoding='utf-8')
+          upgrade = Path('gestion_actividades/db/upgrade.php').read_text(encoding='utf-8')
+          if 'NAME="seriesid"' not in install or '2026100513' not in upgrade:
+              raise SystemExit('Explicit edition-series schema link is missing')
+
+          grade = Path('gestion_actividades/classes/local/grade_manager.php').read_text(encoding='utf-8')
+          if 'typeb_reflection_activity::submission_summary' not in grade:
+              raise SystemExit('Type B canonical Moodle reflection state is not used in grade manager')
+
+          print('Reviewer-oriented source assertions: OK')
+          PY
+
+      - name: Publish audited cleanup and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/hee-final-audit.yml
+          git add -A
+          git commit -m "chore: finish HEE reviewer-oriented cleanup"
+          git push origin HEAD:main
