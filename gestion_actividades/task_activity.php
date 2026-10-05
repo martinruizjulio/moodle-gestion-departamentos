@@ -59,6 +59,20 @@ if (!in_array($type, ['assign', 'quiz'], true)) {
     $type = 'assign';
 }
 
+// Linking/unlinking the required activity changes the certification basis of
+// the edition. Reserve it to global HEE managers or users who can already
+// manage activities in the Moodle course, like creation below.
+$canchangerequiredactivity = manager::can_manage_globally((int)$USER->id)
+    || has_capability('moodle/course:manageactivities', $coursecontext);
+if (($clearinvalid || !empty($linkcmid)) && !$canchangerequiredactivity) {
+    redirect(
+        new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]),
+        'Tu permiso Profesor HEE no permite cambiar la actividad obligatoria vinculada a la edición.',
+        null,
+        \core\output\notification::NOTIFY_WARNING
+    );
+}
+
 if ($clearinvalid && confirm_sesskey()) {
     local_ga_clear_required_activity((int)$id);
     redirect(new moodle_url('/local/gestion_actividades/task_activity.php', ['id' => $id, 'type' => $type]));
