@@ -169,6 +169,12 @@ Validación: `php -l` (todos los PHP), XML bien formado, sin llamadas a métodos
 - Profesor HEE: «Cerrado por plazas» (`closed_full`) sigue en vigentes; estados nulos ya no hacen desaparecer ediciones.
 - Prueba unitaria local del calculador (SQLite simulado): A 9 h − traspaso 2 = 7; B = 3 interno + 6 externo + 2 traspaso = 11; reflexión pendiente 2 h no cuenta; externos sin reflexión no cuentan.
 
+## Reflexión Tipo B fuera de plazo (decisión de Julio, 2026-10-05)
+- Al finalizar/archivar una edición Tipo B, o al cerrar su Edición de talleres, se fija la **fecha de corte** de la Tarea Moodle de reflexión: ya no admite entregas nuevas.
+- El profesor de la edición (Profesor HEE o gestor) puede **permitir a un alumno concreto** entregarla durante 7 días (`typeb_certificate_policy::LATE_REFLECTION_DAYS`) desde `teacher_view.php`, y retirar el permiso. Se usa la prórroga nativa de Moodle (`assign_user_flags.extensionduedate`); no hay cambios de esquema ni de roles.
+- El alumno ve en `workshop_view.php` si el plazo está cerrado (y que debe pedir permiso) o hasta cuándo puede entregar.
+- Al entregar, la reflexión cuenta (observer) y el profesor vuelve a «Generar certificados» para emitir el certificado y sumar las horas.
+
 ## Versiones actuales
-- `local_gestion_actividades`: **1.5.105-alpha** (`2026100520`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.106-alpha** (`2026100521`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.22-alpha** (`2026100506`).
