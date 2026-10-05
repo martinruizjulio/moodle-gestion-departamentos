@@ -24,7 +24,6 @@ class upload_form extends \moodleform {
         $mform->setType('gradecolumn', PARAM_ALPHANUMEXT);
         $mform->setDefault('gradecolumn', 'nota');
 
-
         $currentyear = (int)date('Y');
         $defaultyear = $currentyear . '/' . ($currentyear + 1);
         $mform->addElement('text', 'academicyear', get_string('academicyear', 'local_gestion_actividades'), ['size' => 12]);
@@ -45,10 +44,8 @@ class upload_form extends \moodleform {
         $mform->setDefault('gradeitemname', get_string('defaultgradeitemname', 'local_gestion_actividades'));
         $mform->hideIf('gradeitemname', 'updategradebook', 'notchecked');
 
-        $mform->addElement('advcheckbox', 'createmissingusers', get_string('createmissingusers', 'local_gestion_actividades'));
-        $mform->setDefault('createmissingusers', 0);
-        $mform->addHelpButton('createmissingusers', 'createmissingusers', 'local_gestion_actividades');
-
+        // Missing users are intentionally never created by Gestión HEE. They must
+        // already exist through the institutional Moodle provisioning process.
         $mform->addElement('advcheckbox', 'creategroup', get_string('creategroup', 'local_gestion_actividades'));
         $mform->setDefault('creategroup', 1);
 
