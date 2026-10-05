@@ -4875,9 +4875,9 @@ class manager {
         }
 
         if (self::is_typeb_workshop($workshop)) {
-            // En Tipo B la asistencia es el único requisito para reconocer el taller.
-            // El comentario sigue siendo obligatorio para completar el portafolio.
-            return true;
+            // Tipo B interno: asistencia confirmada + Tarea Moodle de reflexión
+            // entregada. Única regla, compartida con typeb_certificate_policy.
+            return typeb_certificate_policy::is_eligible($editionid, $userid);
         }
 
         // Todos los Talleres Tipo A exigen tarea entregada y nota igual o superior a 5.
@@ -5120,7 +5120,7 @@ class manager {
         }
 
         if (self::is_typeb_workshop($workshop)) {
-            return $missing;
+            return typeb_certificate_policy::missing_requirements($editionid, $userid);
         }
 
         if (!self::user_has_submitted_internal_task($editionid, $userid)) {
