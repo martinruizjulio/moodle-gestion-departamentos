@@ -35,7 +35,7 @@ class selfassessment_quiz {
 
         $module = $DB->get_record('modules', ['name' => 'quiz'], '*', MUST_EXIST);
         if (property_exists($module, 'visible') && empty($module->visible)) {
-            throw new \moodle_exception('moduledisable', 'error', '', 'quiz');
+            throw new \coding_exception('El módulo Cuestionario está deshabilitado en esta instalación Moodle.');
         }
 
         // Idempotency: if HEE already has a valid selected quiz, keep it.
@@ -93,7 +93,7 @@ class selfassessment_quiz {
             'visible' => 1,
         ]);
 
-        $quizconfig = get_config('quiz');
+        $quizconfig = (object)get_config('quiz');
         $moduleinfo = (object)[
             'modulename' => 'quiz',
             'module' => (int)$module->id,
@@ -121,10 +121,11 @@ class selfassessment_quiz {
             'overduehandling' => self::config_value($quizconfig, 'overduehandling', 'autosubmit'),
             'graceperiod' => (int)self::config_value($quizconfig, 'graceperiod', 0),
             'grade' => (float)self::config_value($quizconfig, 'maximumgrade', 10),
+            'sumgrades' => 0.0,
             'attempts' => (int)self::config_value($quizconfig, 'attempts', 1),
-            'grademethod' => (int)self::config_value($quizconfig, 'grademethod', QUIZ_GRADEHIGHEST),
+            'grademethod' => (int)self::config_value($quizconfig, 'grademethod', 1),
             'questionsperpage' => (int)self::config_value($quizconfig, 'questionsperpage', 1),
-            'navmethod' => (string)self::config_value($quizconfig, 'navmethod', QUIZ_NAVMETHOD_FREE),
+            'navmethod' => (string)self::config_value($quizconfig, 'navmethod', 'free'),
             'shuffleanswers' => (int)self::config_value($quizconfig, 'shuffleanswers', 1),
             'preferredbehaviour' => (string)self::config_value($quizconfig, 'preferredbehaviour', 'deferredfeedback'),
             'canredoquestions' => (int)self::config_value($quizconfig, 'canredoquestions', 0),
@@ -138,6 +139,8 @@ class selfassessment_quiz {
             'delay1' => 0,
             'delay2' => 0,
             'browsersecurity' => (string)self::config_value($quizconfig, 'browsersecurity', '-'),
+            'allowofflineattempts' => 0,
+            'precreateattempts' => 0,
         ];
         self::apply_review_defaults($moduleinfo, $quizconfig);
 
