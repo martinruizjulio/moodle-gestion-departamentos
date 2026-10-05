@@ -47,16 +47,18 @@ Internamente se conservan los nombres históricos `workshop`, `workshop_series` 
 ## Tipo A
 
 - Arquitectura: Edición Tipo A → calendario → subsecciones de seminario → grupo/inscripción.
-- Puede contener asistencia, apuntes y actividad obligatoria.
-- La actividad obligatoria puede ser tarea interna HEE o cuestionario Moodle.
-- Tarea interna: asistencia + entrega + nota mínima **5/10**.
-- Cuestionario Moodle: asistencia + cuestionario finalizado + nota mínima **5/10**, reescalada según la nota máxima real del cuestionario.
+- **Actividad predeterminada para cualquier seminario Tipo A nuevo: Cuestionario Moodle.**
+- La creación manual marca las nuevas ediciones como `quiz` desde el inicio lógico; editar una edición antigua conserva el tipo de actividad que ya tuviera configurado.
+- La importación masiva también deja toda edición Tipo A nueva en modo `quiz` aunque en esa fila no se duplique todavía un cuestionario modelo; si «Crear cuestionario» = Sí, se duplica el modelo seleccionado y queda vinculado.
+- Un gestor con permisos Moodle adecuados puede posteriormente vincular/cambiar la actividad obligatoria si existe una excepción; el valor por defecto sigue siendo cuestionario.
+- Regla canónica del cuestionario: asistencia + cuestionario finalizado + nota mínima **5/10**, reescalada según la nota máxima real del cuestionario.
+- Se mantiene compatibilidad con ediciones históricas Tipo A que ya usen una tarea; no se migran destructivamente ni se les cambia la actividad al editar otros datos.
 - `teacher_view.php` distingue falta de asistencia, cuestionario no finalizado, pendiente de calificar, nota insuficiente y Apto.
 
 ## Tipo B interno
 
 - Misma arquitectura visual que Tipo A, pero en su sección padre Tipo B.
-- Actividad final: **Tarea Moodle de reflexión**, sin nota numérica, con texto en línea y archivo opcional.
+- Actividad final predeterminada y canónica: **Tarea Moodle de reflexión**, sin nota numérica, con texto en línea y archivo opcional.
 - Regla canónica: **asistencia confirmada + reflexión Moodle realmente entregada = Apto**.
 - La última entrega Moodle en estado `submitted` es la fuente de verdad; la tabla legacy `local_ga_typeb_reflections` no puede rescatar una entrega eliminada.
 - Al finalizar/archivar la edición se cierra la entrega de nuevas reflexiones.
@@ -146,7 +148,7 @@ Reglas:
 - La migración 2026100513 añadió el vínculo explícito `seriesid`.
 - La migración 2026100516 reconcilia campos/tablas/índices que falten sin eliminar datos.
 - El DDL se mantiene en instalación/upgrade, no en páginas de ejecución.
-- La jerarquía A/B, la ordenación del curso, el listado imprimible y la ayuda emergente de alumnado **no requieren cambio de esquema**.
+- La jerarquía A/B, la ordenación del curso, el listado imprimible, la ayuda emergente de alumnado y el cambio de valor predeterminado de Tipo A **no requieren cambio de esquema**.
 
 ## Privacidad
 
@@ -158,7 +160,7 @@ Reglas:
 
 Las rondas anteriores de ChatGPT/Claude dejaron comprobados estáticamente PHP/XML y corrigieron, entre otros, permisos por edición, rutas de upgrade, DDL en ejecución, creación `auth=manual`, Bootstrap 5, observers, filepicker Tipo B, reflexión canónica y cálculo único de horas.
 
-La nueva jerarquía A/B de `course_layout`, el listado imprimible y el modal de instrucciones se han revisado contra el código actual, pero **todavía necesitan la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
+La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de instrucciones y el valor predeterminado de cuestionario para Tipo A se han revisado contra el código actual, pero **todavía necesitan la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
 
 ## Pruebas Moodle 5 pendientes antes del ZIP final
 
@@ -173,12 +175,15 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible y el modal de 
   7. Autoevaluación final HEE solo al alcanzar 54 h;
   8. ediciones anteriores ocultas debajo.
 - Crear edición A manual e intentar añadir B: debe rechazarse; repetir a la inversa.
+- Crear un seminario Tipo A manual nuevo y comprobar que queda configurado como **Cuestionario Moodle** por defecto; editar después sus datos y verificar que conserva el cuestionario.
+- Importar Excel Tipo A con «Crear cuestionario = Sí» y comprobar duplicación/vínculo del modelo; importar otra fila Tipo A sin duplicarlo y verificar que la edición queda igualmente en modo `quiz`, pendiente de vincular/crear el cuestionario.
+- Verificar que una edición histórica Tipo A que ya use tarea mantiene esa tarea al editar metadatos.
 - Importar Excel solo A y solo B; un Excel mixto debe rechazarse antes de crear la sección.
 - Finalizar/reabrir ediciones y comprobar movimiento/visibilidad real con `mod_subsection`.
 - Comprobar que el calendario sigue siendo la primera subsección de cada edición.
 - Verificar con 53,9 h que no aparece autoevaluación y con 54 h que aparece.
 - Verificar cuestionario auto-generado y cuestionario existente seleccionado manualmente.
-- Tipo A: tareas/cuestionarios, nota mínima y certificados.
+- Tipo A: cuestionario, nota mínima y certificados.
 - Tipo B interno: reflexión texto/archivo, eliminación/reenvío, prórroga y certificado.
 - Tipo B externo: subida → validación → reflexión → horas.
 - Profesor HEE real UCV sin permiso de edición general.
@@ -189,5 +194,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible y el modal de 
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.109-alpha** (`2026100524`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.110-alpha** (`2026100525`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.23-alpha** (`2026100507`).
