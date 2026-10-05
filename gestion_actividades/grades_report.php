@@ -87,7 +87,7 @@ echo html_writer::div(
 echo $OUTPUT->heading('6. Notas de alumnos');
 echo html_writer::tag(
     'p',
-    'Desglose de Nota Talleres A, Portafolio, Autoevaluación y Nota Final. La Nota Final se calcula como 60% + 30% + 10% y solo se publica cuando las tres partes están disponibles.',
+    'Desglose de Nota Seminarios A, Portafolio, Autoevaluación y Nota Final. La Nota Final se calcula como 60% + 30% + 10% y solo se publica cuando las tres partes están disponibles.',
     ['class' => 'text-muted']
 );
 
@@ -246,7 +246,7 @@ if (!$rows) {
         'Nombre',
         'Email',
         'Grupo',
-        'Nota Talleres A',
+        'Nota Seminarios A',
         'Portafolio',
         'Autoevaluación',
         'Nota Final',
