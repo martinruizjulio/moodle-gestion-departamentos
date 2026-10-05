@@ -20,20 +20,20 @@ $PAGE->set_heading('Gestión HEE');
 
 function local_ga_inst_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 function local_ga_inst_status_badge(string $status): string {
     if ($status === 'found') {
-        return html_writer::span('Encontrado', 'badge badge-success');
+        return html_writer::span('Encontrado', 'badge bg-success');
     }
     if ($status === 'notfound') {
-        return html_writer::span('No encontrado', 'badge badge-warning');
+        return html_writer::span('No encontrado', 'badge bg-warning text-dark');
     }
     if ($status === 'duplicate') {
-        return html_writer::span('Duplicado', 'badge badge-danger');
+        return html_writer::span('Duplicado', 'badge bg-danger');
     }
-    return html_writer::span('Inválido', 'badge badge-secondary');
+    return html_writer::span('Inválido', 'badge bg-secondary');
 }
 
 function local_ga_inst_render_preview(array $rows, bool $limit = true): string {

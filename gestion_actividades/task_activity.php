@@ -119,7 +119,7 @@ $PAGE->set_title(get_string('configuretaskquiz', 'local_gestion_actividades'));
 $PAGE->set_heading(format_string($course->fullname));
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo $OUTPUT->heading(get_string('configuretaskquiz', 'local_gestion_actividades') . ': ' . format_string($workshop->code . ' - ' . $workshop->name));
 
 $typename = $type === 'quiz' ? 'Cuestionario' : 'Tarea';
@@ -132,15 +132,15 @@ if (!$caneditnative) {
 }
 
 if ($currentactivity && !empty($currentactivity->cmid) && local_ga_required_cmid_is_valid((int)$currentactivity->cmid, (int)$course->id)) {
-    echo html_writer::link(new moodle_url('/mod/' . $type . '/view.php', ['id' => (int)$currentactivity->cmid]), 'Abrir ' . strtolower(s($typename)), ['class' => 'btn btn-outline-secondary mr-2 mb-2']);
+    echo html_writer::link(new moodle_url('/mod/' . $type . '/view.php', ['id' => (int)$currentactivity->cmid]), 'Abrir ' . strtolower(s($typename)), ['class' => 'btn btn-outline-secondary me-2 mb-2']);
     if ($caneditnative) {
-        echo html_writer::link(new moodle_url('/course/modedit.php', ['update' => (int)$currentactivity->cmid, 'return' => 1]), 'Editar ' . strtolower(s($typename)), ['class' => 'btn btn-primary mr-2 mb-2']);
+        echo html_writer::link(new moodle_url('/course/modedit.php', ['update' => (int)$currentactivity->cmid, 'return' => 1]), 'Editar ' . strtolower(s($typename)), ['class' => 'btn btn-primary me-2 mb-2']);
     }
 }
 
 if ($caneditnative) {
     $createurl = new moodle_url('/local/gestion_actividades/task_activity.php', ['id' => $id, 'type' => $type, 'go' => 1, 'sesskey' => sesskey()]);
-    echo html_writer::link($createurl, 'Gestionar ' . strtolower(s($typename)), ['class' => 'btn btn-secondary mr-2 mb-2']);
+    echo html_writer::link($createurl, 'Gestionar ' . strtolower(s($typename)), ['class' => 'btn btn-secondary me-2 mb-2']);
     if ($currentactivity && !empty($currentactivity->cmid)) {
         echo html_writer::link(new moodle_url('/local/gestion_actividades/task_activity.php', ['id' => $id, 'type' => $type, 'clearinvalid' => 1, 'sesskey' => sesskey()]), 'Desvincular y elegir otra', ['class' => 'btn btn-warning mb-2']);
     }

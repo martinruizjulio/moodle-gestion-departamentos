@@ -69,7 +69,7 @@ $messagetype = 'info';
 
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 if ($action === 'enrol' && confirm_sesskey()) {
@@ -85,7 +85,7 @@ if ($action === 'enrol' && confirm_sesskey()) {
 
 echo $OUTPUT->header();
 
-$topbuttons = html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), local_ga_btn_icon('t/left', get_string('backtocourse', 'local_gestion_actividades')), ['class' => 'btn btn-outline-secondary mr-2 mb-2']);
+$topbuttons = html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), local_ga_btn_icon('t/left', get_string('backtocourse', 'local_gestion_actividades')), ['class' => 'btn btn-outline-secondary me-2 mb-2']);
 if ($canmanage) {
     $topbuttons .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid]), local_ga_btn_icon('t/edit', 'Gestionar este taller'), ['class' => 'btn btn-primary mb-2']);
 }

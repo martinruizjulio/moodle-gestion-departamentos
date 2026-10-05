@@ -14,15 +14,15 @@ $PAGE->set_heading('Gestión HEE');
 
 function local_ga_typeb_status_badge(string $status): string {
     if ($status === 'validated') {
-        return html_writer::span('Validado y completado', 'badge badge-success');
+        return html_writer::span('Validado y completado', 'badge bg-success');
     }
     if ($status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) {
-        return html_writer::span('Validado · falta reflexión', 'badge badge-warning');
+        return html_writer::span('Validado · falta reflexión', 'badge bg-warning text-dark');
     }
     if ($status === 'rejected') {
-        return html_writer::span('Rechazado', 'badge badge-danger');
+        return html_writer::span('Rechazado', 'badge bg-danger');
     }
-    return html_writer::span('Pendiente', 'badge badge-warning');
+    return html_writer::span('Pendiente', 'badge bg-warning text-dark');
 }
 
 $action = optional_param('action', '', PARAM_ALPHANUMEXT);
@@ -93,7 +93,7 @@ echo $OUTPUT->header();
 echo html_writer::div(
     html_writer::link(
         new moodle_url('/local/gestion_actividades/portfolio.php', $courseid > 0 ? ['courseid' => $courseid] : []),
-        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al portafolio',
+        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al portafolio',
         ['class' => 'btn btn-outline-secondary mb-3']
     )
 );

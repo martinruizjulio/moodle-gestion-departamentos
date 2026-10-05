@@ -103,7 +103,7 @@ class block_gestion_hee extends block_base {
             new moodle_url('/local/gestion_actividades/transfer_typeb.php'),
             get_string('transfertypeb', 'block_gestion_hee'),
             [
-                'class' => 'btn btn-sm ' . ($transfereligible ? 'btn-warning' : 'btn-outline-secondary') . ' btn-block mb-1',
+                'class' => 'btn btn-sm ' . ($transfereligible ? 'btn-warning' : 'btn-outline-secondary') . ' d-block w-100 mb-1',
                 'title' => $transfereligible
                     ? 'Puedes consultar y realizar los traspasos disponibles.'
                     : 'Consulta aquí las condiciones y los talleres que pueden traspasarse.',
@@ -113,14 +113,14 @@ class block_gestion_hee extends block_base {
             new moodle_url('/local/gestion_actividades/typeb_upload.php'),
             'Solicitar validación Tipo B',
             [
-                'class' => 'btn btn-sm btn-outline-secondary btn-block mb-1',
+                'class' => 'btn btn-sm btn-outline-secondary d-block w-100 mb-1',
                 'title' => 'Sube un certificado de formación externa para solicitar su reconocimiento como Taller Tipo B.',
             ]
         );
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/portfolio.php'),
             get_string('myportfolio', 'block_gestion_hee'),
-            ['class' => 'btn btn-sm btn-outline-secondary btn-block']
+            ['class' => 'btn btn-sm btn-outline-secondary d-block w-100']
         );
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
@@ -138,12 +138,12 @@ class block_gestion_hee extends block_base {
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'active']),
             'Talleres vigentes (' . $active . ')',
-            ['class' => 'btn btn-sm btn-primary btn-block mb-1']
+            ['class' => 'btn btn-sm btn-primary d-block w-100 mb-1']
         );
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'finished']),
             'Mis talleres finalizados (' . $finished . ')',
-            ['class' => 'btn btn-sm btn-outline-secondary btn-block']
+            ['class' => 'btn btn-sm btn-outline-secondary d-block w-100']
         );
         $html .= html_writer::end_div();
         return $html;
@@ -152,7 +152,7 @@ class block_gestion_hee extends block_base {
     private function render_metric(string $label, float $value, string $badgeclass = 'badge-secondary'): string {
         $valueformatted = format_float($value, 2, true) . ' h';
         $content = html_writer::span(s($label), 'local-ga-label');
-        $content .= html_writer::span($valueformatted, 'badge ' . $badgeclass . ' float-right');
+        $content .= html_writer::span($valueformatted, 'badge ' . $badgeclass . ' float-end');
         return html_writer::div($content, 'mb-2');
     }
 }

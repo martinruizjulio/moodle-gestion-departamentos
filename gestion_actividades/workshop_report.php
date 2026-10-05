@@ -107,7 +107,7 @@ echo $OUTPUT->header();
 echo html_writer::div(
     html_writer::link(
         new moodle_url('/local/gestion_actividades/dashboard.php'),
-        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al panel',
+        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel',
         ['class' => 'btn btn-outline-secondary mb-3']
     )
 );
@@ -129,7 +129,7 @@ echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'card mb-4'])
 echo html_writer::start_div('card-body');
 echo html_writer::tag('h3', 'Seleccionar talleres', ['class' => 'h5']);
 echo html_writer::tag('div',
-    html_writer::tag('button', 'Seleccionar todos', ['type' => 'button', 'class' => 'btn btn-outline-secondary btn-sm mr-2', 'id' => 'ga-select-all']) .
+    html_writer::tag('button', 'Seleccionar todos', ['type' => 'button', 'class' => 'btn btn-outline-secondary btn-sm me-2', 'id' => 'ga-select-all']) .
     html_writer::tag('button', 'Quitar selección', ['type' => 'button', 'class' => 'btn btn-outline-secondary btn-sm', 'id' => 'ga-clear-all']),
     ['class' => 'mb-3']
 );
@@ -176,7 +176,7 @@ if ($selected) {
     echo html_writer::div(
         html_writer::link(
             new moodle_url('/local/gestion_actividades/workshop_report.php', $exportparams),
-            $OUTPUT->pix_icon('t/download', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Descargar CSV',
+            $OUTPUT->pix_icon('t/download', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Descargar CSV',
             ['class' => 'btn btn-primary mb-3']
         )
     );

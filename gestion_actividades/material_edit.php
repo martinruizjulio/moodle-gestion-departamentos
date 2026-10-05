@@ -99,7 +99,7 @@ $PAGE->set_title(get_string('editmaterial', 'local_gestion_actividades'));
 $PAGE->set_heading(format_string($course->fullname));
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid, 'editionid' => $editionid]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid, 'editionid' => $editionid]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 
 echo $OUTPUT->heading(get_string('editmaterial', 'local_gestion_actividades') . ': ' . format_string($workshop->name));
 echo html_writer::tag('p', get_string('materialupload_simple_help', 'local_gestion_actividades'), ['class' => 'alert alert-info']);

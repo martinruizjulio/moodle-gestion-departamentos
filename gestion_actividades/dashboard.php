@@ -22,7 +22,7 @@ $PAGE->set_heading(get_string('title', 'local_gestion_actividades'));
 
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 function local_ga_dash_card(string $title, string $text, moodle_url $url, string $button, string $classes = 'btn btn-primary'): string {
@@ -49,14 +49,14 @@ function local_ga_dash_series_edition(stdClass $series, int $workshopid): ?stdCl
 
 function local_ga_dash_type_badge(?string $type): string {
     $type = manager::normalize_workshop_type((string)($type ?? 'typea'));
-    return html_writer::span($type === 'typeb' ? 'Tipo B' : 'Tipo A', $type === 'typeb' ? 'badge badge-primary' : 'badge badge-success');
+    return html_writer::span($type === 'typeb' ? 'Tipo B' : 'Tipo A', $type === 'typeb' ? 'badge badge-primary' : 'badge bg-success');
 }
 
 function local_ga_dash_workshop_status(?stdClass $edition): string {
-    if (!$edition) { return html_writer::span('Pendiente de configurar', 'badge badge-warning'); }
+    if (!$edition) { return html_writer::span('Pendiente de configurar', 'badge bg-warning text-dark'); }
     $status = (string)($edition->status ?? '');
-    if (in_array($status, ['open', 'active', 'published'], true)) { return html_writer::span('Abierto', 'badge badge-success'); }
-    if (in_array($status, ['closed', 'completed', 'finished', 'closed_finished'], true)) { return html_writer::span('Cerrado', 'badge badge-secondary'); }
+    if (in_array($status, ['open', 'active', 'published'], true)) { return html_writer::span('Abierto', 'badge bg-success'); }
+    if (in_array($status, ['closed', 'completed', 'finished', 'closed_finished'], true)) { return html_writer::span('Cerrado', 'badge bg-secondary'); }
     return html_writer::span($status !== '' ? s($status) : 'Configurado', 'badge badge-info');
 }
 
@@ -142,8 +142,8 @@ foreach ($serieslist as $series) {
         if ($sessiondate > 0 && $sessionend > 0) { $schedule .= '–' . userdate($sessionend, '%H:%M'); }
         $actions = '-';
         if ($edition) {
-            $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => (int)$edition->id, 'workshopid' => (int)$item->workshopid, 'seriesid' => (int)$series->id, 'sortorder' => (int)$item->sortorder]), local_ga_btn_icon('t/edit', 'Editar'), ['class' => 'btn btn-secondary btn-sm mr-1 mb-1']);
-            $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$edition->id]), local_ga_btn_icon('i/users', 'Alumnos / asistencia'), ['class' => 'btn btn-secondary btn-sm mr-1 mb-1']);
+            $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => (int)$edition->id, 'workshopid' => (int)$item->workshopid, 'seriesid' => (int)$series->id, 'sortorder' => (int)$item->sortorder]), local_ga_btn_icon('t/edit', 'Editar'), ['class' => 'btn btn-secondary btn-sm me-1 mb-1']);
+            $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$edition->id]), local_ga_btn_icon('i/users', 'Alumnos / asistencia'), ['class' => 'btn btn-secondary btn-sm me-1 mb-1']);
             $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/edition_sync.php', ['id' => (int)$edition->id]), local_ga_btn_icon('t/reload', 'Sincronizar'), ['class' => 'btn btn-outline-secondary btn-sm mb-1']);
         }
         $table->data[] = ['Taller ' . sprintf('%02d', (int)$item->sortorder), local_ga_dash_type_badge($item->workshoptype ?? 'typea'), format_string($item->name), $sessiondate > 0 ? userdate($sessiondate, '%d/%m/%Y') : '-', $schedule, format_float((float)($item->hours ?? 0), 2, true) . ' h', $edition && (int)($edition->places ?? 0) > 0 ? (int)$edition->places : '-', $edition ? manager::get_edition_enrolment_count((int)$edition->id) : '-', $teachernames ? s(implode(', ', $teachernames)) : '-', local_ga_dash_workshop_status($edition), $actions];
@@ -167,7 +167,7 @@ if ($legacyrows) {
     $table->attributes['class'] = 'generaltable table-sm';
     $table->head = ['Tipo', 'Código', 'Taller', 'Fecha', 'Horas', 'Plazas', 'Inscritos', 'Profesor/es', 'Acciones'];
     foreach ($legacyrows as $row) {
-        $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => (int)$row->id, 'workshopid' => (int)$row->workshopid]), local_ga_btn_icon('t/edit', 'Editar'), ['class' => 'btn btn-secondary btn-sm mr-1']);
+        $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => (int)$row->id, 'workshopid' => (int)$row->workshopid]), local_ga_btn_icon('t/edit', 'Editar'), ['class' => 'btn btn-secondary btn-sm me-1']);
         $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$row->id]), local_ga_btn_icon('i/users', 'Alumnos / asistencia'), ['class' => 'btn btn-secondary btn-sm']);
         $table->data[] = [local_ga_dash_type_badge($row->workshoptype ?? 'typea'), s($row->workshopcode ?? ''), format_string($row->workshopname ?? ''), !empty($row->sessiondate) ? manager::format_date_compact((int)$row->sessiondate) : '-', isset($row->workshophours) && $row->workshophours !== null ? format_float((float)$row->workshophours, 2, true) . ' h' : '-', (int)($row->places ?? 0), (int)($row->enrolledcount ?? 0), $row->teachers ?: '-', $actions];
     }

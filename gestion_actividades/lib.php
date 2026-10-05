@@ -259,7 +259,7 @@ function local_gestion_actividades_enable_interactive_tables(string $selector = 
 
         var input = document.createElement('input');
         input.type = 'search';
-        input.className = 'form-control form-control-sm mr-2 mb-1';
+        input.className = 'form-control form-control-sm me-2 mb-1';
         input.style.maxWidth = '360px';
         input.placeholder = 'Filtrar este listado…';
         input.setAttribute('aria-label', 'Filtrar filas del listado');
@@ -304,7 +304,7 @@ function local_gestion_actividades_enable_interactive_tables(string $selector = 
                 return;
             }
             var details = document.createElement('details');
-            details.className = 'local-ga-check-filter mr-2 mb-1 ' + cssclass;
+            details.className = 'local-ga-check-filter me-2 mb-1 ' + cssclass;
             var summary = document.createElement('summary');
             summary.className = 'btn btn-outline-secondary btn-sm';
             summary.textContent = label + ' (todos)';
@@ -400,7 +400,7 @@ function local_gestion_actividades_enable_interactive_tables(string $selector = 
                 header.setAttribute('data-local-ga-sort', ascending ? 'asc' : 'desc');
                 header.setAttribute('aria-sort', ascending ? 'ascending' : 'descending');
                 var indicator = document.createElement('span');
-                indicator.className = 'local-ga-sort-indicator ml-1';
+                indicator.className = 'local-ga-sort-indicator ms-1';
                 indicator.textContent = ascending ? '▲' : '▼';
                 header.appendChild(indicator);
 

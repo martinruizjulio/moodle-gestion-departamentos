@@ -31,7 +31,7 @@ $PAGE->set_title('Gestionar tarea');
 $PAGE->set_heading(format_string($course->fullname));
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo $OUTPUT->heading('Gestionar tarea: ' . format_string($workshop->name));
 
 echo html_writer::start_tag('form', ['method' => 'post', 'enctype' => 'multipart/form-data']);

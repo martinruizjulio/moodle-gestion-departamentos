@@ -23,7 +23,7 @@ function local_ga_dl_clean(string $name, string $fallback = 'documento'): string
 
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 /**
@@ -448,7 +448,7 @@ function local_ga_dl_send_zip(array $files, string $zipname, string $emptyredire
 }
 
 function local_ga_dl_nav_button(string $url, string $label, string $class = 'btn btn-outline-secondary'): string {
-    return html_writer::link(new moodle_url($url), local_ga_btn_icon('t/left', $label), ['class' => $class . ' mr-2 mb-2']);
+    return html_writer::link(new moodle_url($url), local_ga_btn_icon('t/left', $label), ['class' => $class . ' me-2 mb-2']);
 }
 
 function local_ga_dl_action_url(string $action, bool $includesesskey = false): moodle_url {
@@ -719,7 +719,7 @@ echo $OUTPUT->header();
 
 if ($viewmode !== '') {
     echo html_writer::div(
-        html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_btn_icon('t/left', 'Volver al panel'), ['class' => 'btn btn-outline-secondary mr-2 mb-3']) .
+        html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_btn_icon('t/left', 'Volver al panel'), ['class' => 'btn btn-outline-secondary me-2 mb-3']) .
         html_writer::link(new moodle_url('/local/gestion_actividades/manager_downloads.php'), local_ga_btn_icon('t/left', 'Volver a listados'), ['class' => 'btn btn-outline-secondary mb-3']),
         'mb-2'
     );
@@ -735,22 +735,22 @@ if ($viewmode !== '') {
         foreach (local_ga_dl_workshop_activity_rows() as $r) {
             $hasTask = strpos((string)($r->activitycreationtype ?? ''), 'assign') !== false || strpos((string)($r->activitycreationtype ?? ''), 'tarea') !== false;
             $taskvalue = !$hasTask
-                ? html_writer::span('No procede', 'badge badge-secondary')
-                : ((int)($r->tasksubmitted ?? 0) === 1 ? html_writer::span('Entregada', 'badge badge-success') : html_writer::span('No entregada', 'badge badge-warning'));
+                ? html_writer::span('No procede', 'badge bg-secondary')
+                : ((int)($r->tasksubmitted ?? 0) === 1 ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('No entregada', 'badge bg-warning text-dark'));
             $taskgradevalue = (!$hasTask || (int)($r->tasksubmitted ?? 0) !== 1 || $r->taskgrade === null || $r->taskgrade === '') ? '-' : format_float((float)$r->taskgrade, 2, true);
             if (!$hasTask) {
-                $taskresultvalue = html_writer::span('No procede', 'badge badge-secondary');
+                $taskresultvalue = html_writer::span('No procede', 'badge bg-secondary');
             } else if ((int)($r->tasksubmitted ?? 0) !== 1) {
-                $taskresultvalue = html_writer::span('Pendiente entrega', 'badge badge-warning');
+                $taskresultvalue = html_writer::span('Pendiente entrega', 'badge bg-warning text-dark');
             } else if ($taskgradevalue === '-') {
-                $taskresultvalue = html_writer::span('Pendiente nota', 'badge badge-warning');
+                $taskresultvalue = html_writer::span('Pendiente nota', 'badge bg-warning text-dark');
             } else if ((float)$r->taskgrade >= 5.0) {
-                $taskresultvalue = html_writer::span('Apto', 'badge badge-success');
+                $taskresultvalue = html_writer::span('Apto', 'badge bg-success');
             } else {
-                $taskresultvalue = html_writer::span('No apto', 'badge badge-danger');
+                $taskresultvalue = html_writer::span('No apto', 'badge bg-danger');
             }
             $attendancevalue = $r->userid
-                ? (!empty($r->attended) ? html_writer::span('Asiste', 'badge badge-success') : html_writer::span('No asiste', 'badge badge-warning'))
+                ? (!empty($r->attended) ? html_writer::span('Asiste', 'badge bg-success') : html_writer::span('No asiste', 'badge bg-warning text-dark'))
                 : '-';
 
             $rows[] = [
@@ -787,10 +787,10 @@ if ($viewmode !== '') {
                 s($r->seriestitle ?: '-'), s($r->coursename ?? ''), s($r->code ?? ''), s($r->workshopname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h',
                 s($r->editionname ?? '-'), !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%d/%m/%Y %H:%M') : '-',
                 $r->userid ? s(fullname($r)) : '-', s($r->email ?? ''),
-                !empty($r->attended) ? html_writer::span('Confirmada', 'badge badge-success') : html_writer::span('No confirmada', 'badge badge-warning'),
-                $submitted ? html_writer::span('Entregada', 'badge badge-success') : html_writer::span('Pendiente', 'badge badge-warning'),
+                !empty($r->attended) ? html_writer::span('Confirmada', 'badge bg-success') : html_writer::span('No confirmada', 'badge bg-warning text-dark'),
+                $submitted ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
                 $text !== '' ? s(\core_text::substr($text, 0, 220)) : ($submitted ? 'Entrega mediante archivo' : '-'),
-                !empty($r->certificateid) ? html_writer::span('Generado', 'badge badge-success') : html_writer::span('Pendiente', 'badge badge-warning'),
+                !empty($r->certificateid) ? html_writer::span('Generado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
                 !empty($r->certificatetimeissued) ? userdate((int)$r->certificatetimeissued, '%d/%m/%Y %H:%M') : '-',
                 '-',
             ];
@@ -798,7 +798,7 @@ if ($viewmode !== '') {
         foreach (local_ga_dl_typeb_rows() as $r) {
             $status = (string)($r->status ?? 'pending');
             $hasreflection = trim((string)($r->reflectiontext ?? '')) !== '';
-            $confirm = html_writer::span($status === 'validated' ? 'Validado' : 'Pendiente', $status === 'validated' ? 'badge badge-success' : 'badge badge-warning');
+            $confirm = html_writer::span($status === 'validated' ? 'Validado' : 'Pendiente', $status === 'validated' ? 'badge bg-success' : 'badge bg-warning text-dark');
             if ($status === 'pending') {
                 $confirm = html_writer::start_tag('form', ['method' => 'post', 'action' => new moodle_url('/local/gestion_actividades/typeb_review.php'), 'class' => 'm-0']);
                 $confirm .= html_writer::empty_tag('input', ['type'=>'hidden','name'=>'id','value'=>(int)$r->id]);
@@ -808,18 +808,18 @@ if ($viewmode !== '') {
                 $confirm .= html_writer::tag('button', 'Confirmar', ['type'=>'submit','class'=>'btn btn-success btn-sm']);
                 $confirm .= html_writer::end_tag('form');
             } else if ($status === 'rejected') {
-                $confirm = html_writer::span('Rechazado', 'badge badge-danger');
+                $confirm = html_writer::span('Rechazado', 'badge bg-danger');
             } else if ($status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) {
-                $confirm = html_writer::span('Validado · falta reflexión', 'badge badge-warning');
+                $confirm = html_writer::span('Validado · falta reflexión', 'badge bg-warning text-dark');
             }
             $evidence = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id'=>(int)$r->id]), local_ga_btn_icon('t/download', 'Ver evidencia'), ['class'=>'btn btn-secondary btn-sm']);
             $rows[] = [
                 'Externo', 'Externo', '-', s($r->activityname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h',
                 'Subido por el alumno', !empty($r->activitydate) ? userdate((int)$r->activitydate, '%d/%m/%Y') : '-',
-                s(fullname($r)), s($r->email ?? ''), html_writer::span('No procede', 'badge badge-secondary'),
-                $hasreflection ? html_writer::span('Entregada', 'badge badge-success') : html_writer::span('Pendiente', 'badge badge-warning'),
+                s(fullname($r)), s($r->email ?? ''), html_writer::span('No procede', 'badge bg-secondary'),
+                $hasreflection ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
                 $hasreflection ? s(\core_text::substr((string)$r->reflectiontext, 0, 220)) : '-',
-                $status === 'validated' ? html_writer::span('Reconocido', 'badge badge-success') : html_writer::span('No computa', 'badge badge-warning'),
+                $status === 'validated' ? html_writer::span('Reconocido', 'badge bg-success') : html_writer::span('No computa', 'badge bg-warning text-dark'),
                 !empty($r->timereviewed) ? userdate((int)$r->timereviewed, '%d/%m/%Y %H:%M') : '-',
                 $evidence . html_writer::div($confirm, 'mt-1'),
             ];
@@ -831,7 +831,7 @@ if ($viewmode !== '') {
         echo html_writer::tag('h2', 'Listado de Certificados Tipo A');
         echo html_writer::tag('p', 'Consulta los certificados Tipo A generados por el sistema y descarga cada PDF individual si lo necesitas.', ['class' => 'text-muted']);
         echo html_writer::div(
-            html_writer::link(local_ga_dl_action_url('typea_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mr-2 mb-3']) .
+            html_writer::link(local_ga_dl_action_url('typea_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary me-2 mb-3']) .
             html_writer::link(local_ga_dl_action_url('typea_zip', true), local_ga_btn_icon('t/download', 'Descargar PDFs ZIP'), ['class' => 'btn btn-secondary mb-3']),
             'mb-2'
         );
@@ -883,7 +883,7 @@ if ($viewmode !== '') {
         echo html_writer::tag('h2', 'Listado de Certificados Tipo B externos');
         echo html_writer::tag('p', 'El listado administrativo muestra todos los estados. El ZIP incluye exclusivamente evidencias validadas cuya reflexión obligatoria ya está completada.', ['class' => 'text-muted']);
         echo html_writer::div(
-            html_writer::link(local_ga_dl_action_url('typeb_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mr-2 mb-3']) .
+            html_writer::link(local_ga_dl_action_url('typeb_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary me-2 mb-3']) .
             html_writer::link(local_ga_dl_action_url('typeb_zip', true), local_ga_btn_icon('t/download', 'Descargar PDFs validados ZIP'), ['class' => 'btn btn-secondary mb-3']),
             'mb-2'
         );
@@ -936,8 +936,8 @@ if ($viewmode !== '') {
         echo html_writer::tag('h2', 'Listado de portafolios');
         echo html_writer::tag('p', 'Consulta en pantalla los portafolios disponibles y descarga el PDF individual de cada alumno o los paquetes masivos.', ['class' => 'text-muted']);
         echo html_writer::div(
-            html_writer::link(local_ga_dl_action_url('portfolios_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mr-2 mb-3']) .
-            html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_all.php', ['sesskey' => sesskey()]), local_ga_btn_icon('t/download', 'Descargar portafolios PDF ZIP'), ['class' => 'btn btn-primary mr-2 mb-3']) .
+            html_writer::link(local_ga_dl_action_url('portfolios_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary me-2 mb-3']) .
+            html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_all.php', ['sesskey' => sesskey()]), local_ga_btn_icon('t/download', 'Descargar portafolios PDF ZIP'), ['class' => 'btn btn-primary me-2 mb-3']) .
             html_writer::link(local_ga_dl_action_url('packages_zip', true), local_ga_btn_icon('t/download', 'Descargar expedientes completos ZIP'), ['class' => 'btn btn-secondary mb-3']),
             'mb-2'
         );
@@ -985,7 +985,7 @@ $leftcards = [
         $workshopcount . ' fila(s)',
         'Listado completo de talleres y ediciones, agrupado por Edición de talleres.',
         [
-            html_writer::link(local_ga_dl_action_url('view_workshops'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary mr-1 mb-1']),
+            html_writer::link(local_ga_dl_action_url('view_workshops'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']),
             html_writer::link(local_ga_dl_action_url('workshops_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1']),
         ]
     ),
@@ -994,7 +994,7 @@ $leftcards = [
         count(manager::list_all_typeb_transfers()) . ' traspaso(s)',
         'Listado de traspasos de Talleres Tipo A a Tipo B realizados por alumnado.',
         [
-            html_writer::link(local_ga_dl_action_url('view_transfers'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary mr-1 mb-1']),
+            html_writer::link(local_ga_dl_action_url('view_transfers'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']),
             html_writer::link(local_ga_dl_action_url('transfers_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1']),
         ]
     ),
@@ -1003,7 +1003,7 @@ $leftcards = [
         $hoursstudentcount . ' alumno(s) · ' . round($hourstotal, 2) . ' h',
         'Listado de horas acumuladas por alumno, incluyendo Tipo A y Tipo B validado.',
         [
-            html_writer::link(local_ga_dl_action_url('view_hours'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary mr-1 mb-1']),
+            html_writer::link(local_ga_dl_action_url('view_hours'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']),
             html_writer::link(local_ga_dl_action_url('hours_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1']),
         ]
     ),
@@ -1015,7 +1015,7 @@ $rightcards = [
         count(local_ga_dl_internal_typeb_rows()) . ' fila(s)',
         'Talleres Tipo B: asistencia, reflexión de la Tarea Moodle y certificado generado.',
         [
-            html_writer::link(local_ga_dl_action_url('view_typeb_workshops'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary mr-1 mb-1']),
+            html_writer::link(local_ga_dl_action_url('view_typeb_workshops'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']),
             html_writer::link(local_ga_dl_action_url('typeb_workshops_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1']),
         ]
     ),
@@ -1024,8 +1024,8 @@ $rightcards = [
         $typeacount . ' certificado(s)',
         'Listado y descarga masiva de certificados generados por el sistema.',
         [
-            html_writer::link(local_ga_dl_action_url('view_typea'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary mr-1 mb-1']),
-            html_writer::link(local_ga_dl_action_url('typea_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mr-1 mb-1']),
+            html_writer::link(local_ga_dl_action_url('view_typea'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']),
+            html_writer::link(local_ga_dl_action_url('typea_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary me-1 mb-1']),
             html_writer::link(local_ga_dl_action_url('typea_zip', true), local_ga_btn_icon('t/download', 'Descargar PDFs ZIP'), ['class' => 'btn btn-secondary mb-1']),
         ]
     ),
@@ -1034,9 +1034,9 @@ $rightcards = [
         count($portfolioids) . ' alumno(s)',
         'Portafolios principales y expedientes completos. Los expedientes solo incorporan Tipo B externo plenamente reconocido.',
         [
-            html_writer::link(local_ga_dl_action_url('view_portfolios'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary mr-1 mb-1']),
-            html_writer::link(local_ga_dl_action_url('portfolios_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mr-1 mb-1']),
-            html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_all.php', ['sesskey' => sesskey()]), local_ga_btn_icon('t/download', 'Descargar portafolios PDF ZIP'), ['class' => 'btn btn-primary mr-1 mb-1']),
+            html_writer::link(local_ga_dl_action_url('view_portfolios'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']),
+            html_writer::link(local_ga_dl_action_url('portfolios_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary me-1 mb-1']),
+            html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_all.php', ['sesskey' => sesskey()]), local_ga_btn_icon('t/download', 'Descargar portafolios PDF ZIP'), ['class' => 'btn btn-primary me-1 mb-1']),
             html_writer::link(local_ga_dl_action_url('packages_zip', true), local_ga_btn_icon('t/download', 'Descargar expedientes completos ZIP'), ['class' => 'btn btn-secondary mb-1']),
         ]
     ),

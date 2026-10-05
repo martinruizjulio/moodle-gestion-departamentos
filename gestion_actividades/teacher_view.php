@@ -63,7 +63,7 @@ $PAGE->set_heading(format_string($course->fullname));
 
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 function local_ga_valid_activity_cm(int $cmid, int $courseid, array $allowedmods = ['assign', 'quiz']): ?stdClass {
@@ -110,10 +110,10 @@ if ($editions) {
     echo html_writer::start_div('card mb-3');
     echo html_writer::start_div('card-body');
     echo html_writer::tag('h3', 'Edición que se está gestionando', ['class' => 'h5']);
-    echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'form-inline']);
+    echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'd-flex flex-wrap align-items-center gap-2']);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $id]);
     echo html_writer::label('Edición', 'editionid', false, ['class' => 'mr-2']);
-    echo html_writer::start_tag('select', ['name' => 'editionid', 'id' => 'editionid', 'class' => 'form-control mr-2 mb-2']);
+    echo html_writer::start_tag('select', ['name' => 'editionid', 'id' => 'editionid', 'class' => 'form-control me-2 mb-2']);
     foreach ($editions as $availableedition) {
         $label = trim((string)($availableedition->editioncode ?? ''));
         if (!empty($availableedition->name)) { $label .= ($label !== '' ? ' · ' : '') . format_string($availableedition->name); }
@@ -188,7 +188,7 @@ echo html_writer::start_div('card-body');
 echo html_writer::tag('h3', $istypeb ? 'Asistencia y reflexión' : 'Asistencia y entrega de tarea');
 if ($edition) {
     echo html_writer::start_div('mb-3');
-    echo html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $edition->id, 'mode' => 'manual']), local_ga_btn_icon('t/add', 'Matriculación manual'), ['class' => 'btn btn-primary mr-2 mb-2']);
+    echo html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $edition->id, 'mode' => 'manual']), local_ga_btn_icon('t/add', 'Matriculación manual'), ['class' => 'btn btn-primary me-2 mb-2']);
     echo html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $edition->id]), local_ga_btn_icon('i/users', 'Alumnos / asistencia'), ['class' => 'btn btn-secondary mb-2']);
     echo html_writer::end_div();
     if (!empty($edition->attendancecmid)) {
@@ -213,10 +213,10 @@ if ($edition) {
                     s($eu->lastname),
                     s($eu->firstname),
                     s($eu->email),
-                    $attended ? html_writer::span('Presente', 'badge badge-success') : html_writer::span('Pendiente', 'badge badge-warning'),
-                    $submitted ? html_writer::span('Entregada', 'badge badge-success') : html_writer::span('Pendiente', 'badge badge-warning'),
-                    $eligible ? html_writer::span('Apto', 'badge badge-success') : html_writer::span('Pendiente', 'badge badge-warning'),
-                    $certificate ? html_writer::span('Generado', 'badge badge-success') : html_writer::span('Pendiente', 'badge badge-secondary'),
+                    $attended ? html_writer::span('Presente', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
+                    $submitted ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
+                    $eligible ? html_writer::span('Apto', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
+                    $certificate ? html_writer::span('Generado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-secondary'),
                 ];
             }
             echo html_writer::table($atable);
@@ -262,8 +262,8 @@ if ($edition) {
                 $submissionurl = ($submission && !empty($submission->fileitemid)) ? manager::get_filearea_url($coursecontext, 'tasksubmission', (int)$submission->fileitemid) : '';
                 $grade = ($submission && property_exists($submission, 'grade') && $submission->grade !== null && $submission->grade !== '') ? (float)$submission->grade : null;
                 $gradeinput = ($hasinternaltask && $submissionurl !== '') ? html_writer::empty_tag('input', ['type' => 'number', 'step' => '0.01', 'min' => '0', 'max' => '10', 'name' => 'taskgrade[' . (int)$eu->userid . ']', 'value' => $grade !== null ? rtrim(rtrim(number_format($grade, 2, '.', ''), '0'), '.') : '', 'class' => 'form-control form-control-sm', 'style' => 'max-width:95px;']) : '-';
-                $resultbadge = !$hasinternaltask ? html_writer::span('No procede', 'badge badge-secondary') : ($submissionurl === '' ? html_writer::span('Pendiente entrega', 'badge badge-warning') : ($grade === null ? html_writer::span('Pendiente nota', 'badge badge-warning') : ($grade >= 5.0 ? html_writer::span('Apto', 'badge badge-success') : html_writer::span('No apto', 'badge badge-danger'))));
-                $atable->data[] = [s($eu->lastname), s($eu->firstname), s($eu->email), !empty($eu->attended) ? html_writer::span('Asiste', 'badge badge-success') : html_writer::span('No asiste', 'badge badge-warning'), $submissionurl !== '' ? html_writer::span('Entregada', 'badge badge-success') : html_writer::span('No entregada', 'badge badge-warning'), $submissionurl !== '' ? html_writer::link($submissionurl, 'Ver/descargar', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank']) : '-', $gradeinput, $resultbadge];
+                $resultbadge = !$hasinternaltask ? html_writer::span('No procede', 'badge bg-secondary') : ($submissionurl === '' ? html_writer::span('Pendiente entrega', 'badge bg-warning text-dark') : ($grade === null ? html_writer::span('Pendiente nota', 'badge bg-warning text-dark') : ($grade >= 5.0 ? html_writer::span('Apto', 'badge bg-success') : html_writer::span('No apto', 'badge bg-danger'))));
+                $atable->data[] = [s($eu->lastname), s($eu->firstname), s($eu->email), !empty($eu->attended) ? html_writer::span('Asiste', 'badge bg-success') : html_writer::span('No asiste', 'badge bg-warning text-dark'), $submissionurl !== '' ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('No entregada', 'badge bg-warning text-dark'), $submissionurl !== '' ? html_writer::link($submissionurl, 'Ver/descargar', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank']) : '-', $gradeinput, $resultbadge];
             }
             echo html_writer::table($atable);
             if ($hasinternaltask) {

@@ -21,7 +21,7 @@ $PAGE->set_title('Portada del portafolio');
 $PAGE->set_heading('Portada del portafolio');
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 
 echo $OUTPUT->heading('Portada editable del portafolio');
 echo html_writer::tag('p', 'Esta portada se usará en todos los PDF de portafolio y se imprimirá sobre la misma plantilla visual UCV usada para los certificados. Puedes editar el texto y usar las variables automáticas.', ['class' => 'alert alert-info']);

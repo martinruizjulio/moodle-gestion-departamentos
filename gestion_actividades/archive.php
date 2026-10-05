@@ -20,7 +20,7 @@ $PAGE->set_heading(get_string('title', 'local_gestion_actividades'));
 function local_ga_archive_type_badge(?string $type): string {
     $type = manager::normalize_workshop_type((string)($type ?? 'typea'));
     $label = $type === 'typeb' ? 'Tipo B' : 'Tipo A';
-    $class = $type === 'typeb' ? 'badge badge-primary' : 'badge badge-success';
+    $class = $type === 'typeb' ? 'badge badge-primary' : 'badge bg-success';
     return html_writer::span($label, $class, ['style' => 'font-size:0.82rem;padding:6px 9px;']);
 }
 
@@ -58,7 +58,7 @@ if (optional_param('archive_due', 0, PARAM_BOOL) && confirm_sesskey()) {
 }
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo $OUTPUT->heading(get_string('workshoparchive', 'local_gestion_actividades'));
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/archive.php', ['archive_due' => 1, 'sesskey' => sesskey()]), get_string('archivedueworkshops', 'local_gestion_actividades'), ['class' => 'btn btn-primary']), 'mb-3');
 echo html_writer::tag('p', 'Las Ediciones de talleres finalizadas o cuya fecha final ya ha pasado se muestran agrupadas de la más reciente a la más antigua. Los talleres del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
@@ -107,7 +107,7 @@ foreach ($serieslist as $series) {
         }
         $actions = '-';
         if ($edition) {
-            $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$edition->id]), 'Alumnos / asistencia', ['class' => 'btn btn-secondary btn-sm mr-1 mb-1']);
+            $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$edition->id]), 'Alumnos / asistencia', ['class' => 'btn btn-secondary btn-sm me-1 mb-1']);
             if (manager::normalize_workshop_type((string)($item->workshoptype ?? 'typea')) === 'typea') {
                 $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => (int)$item->workshopid, 'editionid' => (int)$edition->id]), 'Modificar notas', ['class' => 'btn btn-primary btn-sm mb-1']);
             }
@@ -132,7 +132,7 @@ if ($legacyarchived) {
     $table->attributes['class'] = 'generaltable table-sm';
     $table->head = ['Tipo', 'Código', 'Taller', 'Código de edición', 'Fecha', 'Plazas', 'Inscritos', 'Profesor/es', 'Grupo', 'Acciones'];
     foreach ($legacyarchived as $row) {
-        $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$row->id]), 'Alumnos / asistencia', ['class' => 'btn btn-secondary btn-sm mr-1 mb-1']);
+        $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$row->id]), 'Alumnos / asistencia', ['class' => 'btn btn-secondary btn-sm me-1 mb-1']);
         if (manager::normalize_workshop_type((string)($row->workshoptype ?? 'typea')) === 'typea') {
             $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => (int)$row->workshopid, 'editionid' => (int)$row->id]), 'Modificar notas', ['class' => 'btn btn-primary btn-sm mb-1']);
         }

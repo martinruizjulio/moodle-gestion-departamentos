@@ -4558,7 +4558,7 @@ class manager {
             try {
                 $enrol = self::get_user_edition_enrolment((int)$edition->id, (int)$USER->id);
                 if ($enrol) {
-                    $html .= \html_writer::span(get_string('alreadyenrolledshort', 'local_gestion_actividades'), 'badge badge-success', ['style' => 'padding:8px 10px;']);
+                    $html .= \html_writer::span(get_string('alreadyenrolledshort', 'local_gestion_actividades'), 'badge bg-success', ['style' => 'padding:8px 10px;']);
                 } else {
                     $enrolurl = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id, 'enrol' => 1, 'sesskey' => sesskey()]);
                     $html .= \html_writer::link($enrolurl, get_string('enrolme', 'local_gestion_actividades'), ['class' => 'btn btn-primary btn-sm']);

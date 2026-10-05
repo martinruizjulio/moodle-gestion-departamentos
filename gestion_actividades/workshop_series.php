@@ -59,7 +59,7 @@ $PAGE->set_heading('Gestión HEE');
 
 echo $OUTPUT->header();
 echo html_writer::div(
-    html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), '← Volver al panel', ['class' => 'btn btn-outline-secondary mr-2 mb-3']) .
+    html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), '← Volver al panel', ['class' => 'btn btn-outline-secondary me-2 mb-3']) .
     html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Talleres', ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
@@ -113,13 +113,13 @@ if ($series) {
     foreach ($series as $s) {
         $course = $DB->get_record('course', ['id' => $s->courseid], 'id,fullname', IGNORE_MISSING);
         $count = count(workshop_series::items((int)$s->id));
-        $actions = html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php', ['id' => $s->id]), 'Editar', ['class' => 'btn btn-sm btn-primary mr-1']);
-        $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/workshop_edit.php', ['type' => 'typea', 'seriesid' => $s->id, 'sortorder' => workshop_series::next_sortorder((int)$s->id)]), 'Añadir taller manual', ['class' => 'btn btn-sm btn-success mr-1']);
+        $actions = html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php', ['id' => $s->id]), 'Editar', ['class' => 'btn btn-sm btn-primary me-1']);
+        $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/workshop_edit.php', ['type' => 'typea', 'seriesid' => $s->id, 'sortorder' => workshop_series::next_sortorder((int)$s->id)]), 'Añadir taller manual', ['class' => 'btn btn-sm btn-success me-1']);
         $actions .= html_writer::start_tag('form', ['method' => 'post', 'style' => 'display:inline-block']);
         $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
         $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $s->id]);
         $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'refresh']);
-        $actions .= html_writer::tag('button', 'Actualizar calendario', ['type' => 'submit', 'class' => 'btn btn-sm btn-outline-secondary mr-1']);
+        $actions .= html_writer::tag('button', 'Actualizar calendario', ['type' => 'submit', 'class' => 'btn btn-sm btn-outline-secondary me-1']);
         $actions .= html_writer::end_tag('form');
         if ($s->status === 'finished') {
             $actions .= html_writer::start_tag('form', ['method' => 'post', 'style' => 'display:inline-block']);

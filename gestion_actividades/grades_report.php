@@ -54,12 +54,12 @@ $PAGE->set_heading('Gestión HEE');
 
 function local_ga_grades_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 function local_ga_grades_value($value): string {
     if ($value === null || $value === '') {
-        return html_writer::span('Pendiente', 'badge badge-warning');
+        return html_writer::span('Pendiente', 'badge bg-warning text-dark');
     }
     return html_writer::span(format_float((float)$value, 2, true), 'font-weight-bold');
 }
@@ -90,9 +90,9 @@ if (!$courses) {
 }
 
 if (count($courses) > 1) {
-    echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'form-inline mb-3']);
+    echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'd-flex flex-wrap align-items-center gap-2 mb-3']);
     echo html_writer::label('Curso', 'courseid', false, ['class' => 'mr-2']);
-    echo html_writer::start_tag('select', ['name' => 'courseid', 'id' => 'courseid', 'class' => 'form-control mr-2']);
+    echo html_writer::start_tag('select', ['name' => 'courseid', 'id' => 'courseid', 'class' => 'form-control me-2']);
     foreach ($courses as $availablecourse) {
         $attributes = ['value' => (int)$availablecourse->id];
         if ((int)$availablecourse->id === $courseid) {
@@ -167,12 +167,12 @@ echo html_writer::start_div('mb-2');
 echo html_writer::link(
     new moodle_url('/local/gestion_actividades/grades_export.php', ['courseid' => $courseid, 'format' => 'excel']),
     local_ga_grades_icon('t/download', 'Descargar Excel'),
-    ['class' => 'btn btn-primary mr-2 mb-1']
+    ['class' => 'btn btn-primary me-2 mb-1']
 );
 echo html_writer::link(
     new moodle_url('/local/gestion_actividades/grades_export.php', ['courseid' => $courseid, 'format' => 'pdf']),
     local_ga_grades_icon('t/download', 'Descargar PDF'),
-    ['class' => 'btn btn-secondary mr-2 mb-1']
+    ['class' => 'btn btn-secondary me-2 mb-1']
 );
 echo html_writer::start_tag('form', ['method' => 'post', 'class' => 'd-inline']);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);

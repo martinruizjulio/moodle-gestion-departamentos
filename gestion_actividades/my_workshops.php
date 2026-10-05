@@ -42,7 +42,7 @@ if (!$totalassigned && !manager::can_manage_globally((int)$USER->id)) {
 echo $OUTPUT->header();
 echo html_writer::div(
     html_writer::link(new moodle_url('/my/'),
-        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver a mis cursos',
+        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver a mis cursos',
         ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
@@ -55,7 +55,7 @@ echo html_writer::tag(
 
 echo html_writer::start_div('mb-3');
 echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'active']),
-    'Talleres vigentes', ['class' => 'btn ' . ($view === 'active' ? 'btn-primary' : 'btn-outline-secondary') . ' mr-2']);
+    'Talleres vigentes', ['class' => 'btn ' . ($view === 'active' ? 'btn-primary' : 'btn-outline-secondary') . ' me-2']);
 echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'finished']),
     'Mis talleres finalizados', ['class' => 'btn ' . ($view === 'finished' ? 'btn-primary' : 'btn-outline-secondary')]);
 echo html_writer::end_div();

@@ -16,7 +16,7 @@ $PAGE->set_heading('Gestión HEE');
 
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 function local_ga_student_return_course_button(): string {
@@ -30,15 +30,15 @@ function local_ga_student_return_course_button(): string {
 
 function local_ga_portfolio_badge(string $status): string {
     if ($status === 'generated' || $status === 'validated') {
-        return html_writer::span($status === 'generated' ? 'Generado' : 'Validado', 'badge badge-success', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+        return html_writer::span($status === 'generated' ? 'Generado' : 'Validado', 'badge bg-success', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
     }
     if ($status === 'pending') {
-        return html_writer::span('Pendiente de revisión', 'badge badge-warning', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+        return html_writer::span('Pendiente de revisión', 'badge bg-warning text-dark', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
     }
     if ($status === 'rejected') {
-        return html_writer::span('Rechazado', 'badge badge-danger', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+        return html_writer::span('Rechazado', 'badge bg-danger', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
     }
-    return html_writer::span(s($status), 'badge badge-secondary', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+    return html_writer::span(s($status), 'badge bg-secondary', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
 }
 
 $action = optional_param('action', '', PARAM_ALPHANUMEXT);
@@ -87,8 +87,8 @@ function local_ga_student_progress_block(float $typeahours, float $typebvalidate
     $content .= html_writer::tag('p', '<strong>Tipo A:</strong> ' . round($typeahours, 2) . ' h · ' . (int)$typeacount . ' certificado(s)', ['class' => 'mb-1']);
     $content .= html_writer::tag('p', '<strong>Tipo B validado:</strong> ' . round($typebvalidatedhours, 2) . ' h', ['class' => 'mb-1']);
     $content .= html_writer::tag('p', '<strong>Tipo B subido:</strong> ' . round($typebuploadedhours, 2) . ' h · ' . (int)$typebcount . ' certificado(s)', ['class' => 'mb-2']);
-    $content .= html_writer::link(new moodle_url('/local/gestion_actividades/portfolio.php'), local_ga_btn_icon('i/report', 'Ver portafolio'), ['class' => 'btn btn-primary btn-sm btn-block mb-1']);
-    $content .= html_writer::link(new moodle_url('/local/gestion_actividades/transfer_typeb.php'), local_ga_btn_icon('t/right', 'Traspasar A a B'), ['class' => 'btn btn-secondary btn-sm btn-block']);
+    $content .= html_writer::link(new moodle_url('/local/gestion_actividades/portfolio.php'), local_ga_btn_icon('i/report', 'Ver portafolio'), ['class' => 'btn btn-primary btn-sm d-block w-100 mb-1']);
+    $content .= html_writer::link(new moodle_url('/local/gestion_actividades/transfer_typeb.php'), local_ga_btn_icon('t/right', 'Traspasar A a B'), ['class' => 'btn btn-secondary btn-sm d-block w-100']);
     $content .= html_writer::end_div();
 
     $block = new block_contents();
@@ -164,7 +164,7 @@ echo html_writer::tag('h2', 'Previsualización del portafolio', ['class' => 'h4 
 echo html_writer::tag('p', 'Consulta aquí tu resumen de horas, talleres, reconocimiento institucional y traspasos. Puedes descargar el portafolio o el expediente completo desde esta misma pantalla.', ['class' => 'text-muted mb-0']);
 echo html_writer::end_div();
 echo html_writer::start_div('mb-2');
-echo html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_download.php'), local_ga_btn_icon('t/download', 'Descargar portafolio PDF'), ['class' => 'btn btn-primary mr-2 mb-2']);
+echo html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_download.php'), local_ga_btn_icon('t/download', 'Descargar portafolio PDF'), ['class' => 'btn btn-primary me-2 mb-2']);
 echo html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_package_download.php'), local_ga_btn_icon('t/download', 'Descargar expediente ZIP'), ['class' => 'btn btn-primary mb-2']);
 echo html_writer::end_div();
 echo html_writer::end_div();
@@ -173,7 +173,7 @@ echo html_writer::end_div();
 if ($gradesummary) {
     $formatgrade = static function($value): string {
         return ($value === null || $value === '')
-            ? html_writer::span('Pendiente', 'badge badge-warning')
+            ? html_writer::span('Pendiente', 'badge bg-warning text-dark')
             : html_writer::span(format_float((float)$value, 2, true) . ' / 10', 'font-weight-bold');
     };
     echo html_writer::start_div('card mb-3');
@@ -259,8 +259,8 @@ if (!empty($institutionalrecords)) {
         if ((float)$r->typebhours > 0) {
             $reflection = trim((string)($r->typebreflection ?? ''));
             $reflectionstatus = $reflection !== ''
-                ? html_writer::span('Cumplimentado', 'badge badge-success')
-                : html_writer::span('Pendiente', 'badge badge-warning');
+                ? html_writer::span('Cumplimentado', 'badge bg-success')
+                : html_writer::span('Pendiente', 'badge bg-warning text-dark');
             $table->data[] = ['Reconocimiento institucional - Horas Tipo B', s($r->source), s($r->courselevel ?? '-'), s($r->groupname ?? '-'), format_float((float)$r->typebhours, 2, true) . ' h', 'Confirmada', 'No aplica', '-', $reflectionstatus];
         }
     }

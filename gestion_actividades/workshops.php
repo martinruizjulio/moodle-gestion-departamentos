@@ -23,7 +23,7 @@ $PAGE->set_heading(get_string('title', 'local_gestion_actividades'));
 
 function local_ga_workshops_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 /**
@@ -55,24 +55,24 @@ function local_ga_series_workshop_edition(stdClass $series, int $workshopid): ?s
 
 function local_ga_series_status_label(stdClass $series): string {
     if (($series->status ?? '') === 'finished') {
-        return html_writer::span('Finalizada / oculta', 'badge badge-secondary');
+        return html_writer::span('Finalizada / oculta', 'badge bg-secondary');
     }
     if (!empty($series->dateto) && (int)$series->dateto < time()) {
-        return html_writer::span('Fecha final superada / oculta', 'badge badge-secondary');
+        return html_writer::span('Fecha final superada / oculta', 'badge bg-secondary');
     }
-    return html_writer::span('Activa', 'badge badge-success');
+    return html_writer::span('Activa', 'badge bg-success');
 }
 
 function local_ga_workshop_status_label(?stdClass $edition): string {
     if (!$edition) {
-        return html_writer::span('Pendiente de configurar', 'badge badge-warning');
+        return html_writer::span('Pendiente de configurar', 'badge bg-warning text-dark');
     }
     $status = (string)($edition->status ?? '');
     if (in_array($status, ['open', 'active', 'published'], true)) {
-        return html_writer::span('Abierto', 'badge badge-success');
+        return html_writer::span('Abierto', 'badge bg-success');
     }
     if (in_array($status, ['closed', 'completed', 'finished', 'closed_finished'], true)) {
-        return html_writer::span('Cerrado', 'badge badge-secondary');
+        return html_writer::span('Cerrado', 'badge bg-secondary');
     }
     return html_writer::span($status !== '' ? s($status) : 'Configurado', 'badge badge-info');
 }
@@ -105,12 +105,12 @@ echo html_writer::div(
     html_writer::link(
         new moodle_url('/local/gestion_actividades/workshop_series.php'),
         local_ga_workshops_btn_icon('i/calendar', 'Ediciones de talleres'),
-        ['class' => 'btn btn-primary mr-1 mb-1']
+        ['class' => 'btn btn-primary me-1 mb-1']
     ) . ' ' .
     html_writer::link(
         new moodle_url('/local/gestion_actividades/workshop_bulk_import.php'),
         local_ga_workshops_btn_icon('t/upload', 'Crear edición desde Excel'),
-        ['class' => 'btn btn-success mr-1 mb-1']
+        ['class' => 'btn btn-success me-1 mb-1']
     ) . ' ' .
     html_writer::link(
         new moodle_url('/local/gestion_actividades/repair_course_visuals.php', ['sesskey' => sesskey()]),
@@ -161,7 +161,7 @@ foreach ($serieslist as $series) {
     echo html_writer::link(
         new moodle_url('/local/gestion_actividades/workshop_series.php', ['id' => (int)$series->id]),
         local_ga_workshops_btn_icon('t/edit', 'Editar edición'),
-        ['class' => 'btn btn-sm btn-outline-primary mr-1 mb-1']
+        ['class' => 'btn btn-sm btn-outline-primary me-1 mb-1']
     );
     echo html_writer::link(
         new moodle_url('/local/gestion_actividades/workshop_edit.php', [
@@ -170,7 +170,7 @@ foreach ($serieslist as $series) {
             'sortorder' => workshop_series::next_sortorder((int)$series->id),
         ]),
         local_ga_workshops_btn_icon('t/add', 'Añadir taller manual'),
-        ['class' => 'btn btn-sm btn-success mr-1 mb-1']
+        ['class' => 'btn btn-sm btn-success me-1 mb-1']
     );
     echo html_writer::link(
         local_ga_course_series_url($series),
@@ -209,7 +209,7 @@ foreach ($serieslist as $series) {
         $actions = html_writer::link(
             new moodle_url('/local/gestion_actividades/edition_edit.php', $editparams),
             local_ga_workshops_btn_icon('t/edit', 'Editar taller'),
-            ['class' => 'btn btn-sm btn-primary mr-1 mb-1']
+            ['class' => 'btn btn-sm btn-primary me-1 mb-1']
         );
         if ($edition) {
             $actions .= html_writer::link(

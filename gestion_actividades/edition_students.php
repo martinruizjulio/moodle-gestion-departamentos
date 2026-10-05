@@ -17,7 +17,7 @@ $attended = optional_param('attended', 0, PARAM_BOOL);
 
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 function local_ga_is_course_student(int $courseid, int $userid): bool {
@@ -77,7 +77,7 @@ try {
     $PAGE->set_heading(format_string($course->fullname));
 
     echo $OUTPUT->header();
-    echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+    echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 
     echo $OUTPUT->heading(get_string('enrolledstudentsattendance', 'local_gestion_actividades') . ': ' . format_string($workshop->code . ' - ' . $workshop->name));
 
@@ -104,8 +104,8 @@ try {
                 'sesskey' => sesskey(),
             ]);
             $status = $isattended
-                ? html_writer::span(get_string('attended', 'local_gestion_actividades'), 'badge badge-success')
-                : html_writer::span(get_string('notattended', 'local_gestion_actividades'), 'badge badge-secondary');
+                ? html_writer::span(get_string('attended', 'local_gestion_actividades'), 'badge bg-success')
+                : html_writer::span(get_string('notattended', 'local_gestion_actividades'), 'badge bg-secondary');
             $button = html_writer::link($toggleurl, $isattended ? get_string('marknotattended', 'local_gestion_actividades') : get_string('markattended', 'local_gestion_actividades'), ['class' => $isattended ? 'btn btn-warning btn-sm' : 'btn btn-success btn-sm']);
             $table->data[] = [s($s->lastname), s($s->firstname), s($s->email), $status, $button];
         }

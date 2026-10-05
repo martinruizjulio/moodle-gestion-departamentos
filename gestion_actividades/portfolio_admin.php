@@ -21,23 +21,23 @@ $PAGE->set_heading('Portafolio de certificados - gestor');
 
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 function local_ga_admin_badge(string $status): string {
     if ($status === 'generated' || $status === 'validated') {
-        return html_writer::span($status === 'generated' ? 'Generado' : 'Validado y completado', 'badge badge-success', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+        return html_writer::span($status === 'generated' ? 'Generado' : 'Validado y completado', 'badge bg-success', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
     }
     if ($status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) {
-        return html_writer::span('Validado · falta reflexión', 'badge badge-warning', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+        return html_writer::span('Validado · falta reflexión', 'badge bg-warning text-dark', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
     }
     if ($status === 'pending') {
-        return html_writer::span('Pendiente de validar', 'badge badge-warning', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+        return html_writer::span('Pendiente de validar', 'badge bg-warning text-dark', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
     }
     if ($status === 'rejected') {
-        return html_writer::span('Rechazado', 'badge badge-danger', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+        return html_writer::span('Rechazado', 'badge bg-danger', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
     }
-    return html_writer::span(s($status), 'badge badge-secondary', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+    return html_writer::span(s($status), 'badge bg-secondary', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
 }
 
 function local_ga_admin_typea_hours_from_certificates(array $certificates): float {
@@ -51,7 +51,7 @@ function local_ga_admin_typea_hours_from_certificates(array $certificates): floa
 }
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo $OUTPUT->heading('Portafolio de certificados - gestor');
 echo html_writer::tag('p', 'En los reconocimientos externos Tipo B hay dos pasos: el gestor valida el certificado aportado y, después, el alumno entrega una breve reflexión. Las horas solo computan cuando ambos pasos están completados.', ['class' => 'alert alert-info']);
 

@@ -16,7 +16,7 @@ $PAGE->set_heading(get_string('title', 'local_gestion_actividades'));
 
 function local_ga_hours_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
-    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
+    return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $label;
 }
 
 echo $OUTPUT->header();

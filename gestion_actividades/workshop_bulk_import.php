@@ -84,8 +84,8 @@ $PAGE->set_heading('Gestión HEE');
 
 echo $OUTPUT->header();
 echo html_writer::div(
-    html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), '← Volver al panel', ['class' => 'btn btn-outline-secondary mr-2 mb-3']) .
-    html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php'), 'Ediciones de talleres', ['class' => 'btn btn-outline-secondary mr-2 mb-3']) .
+    html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), '← Volver al panel', ['class' => 'btn btn-outline-secondary me-2 mb-3']) .
+    html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php'), 'Ediciones de talleres', ['class' => 'btn btn-outline-secondary me-2 mb-3']) .
     html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Talleres', ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
@@ -179,7 +179,7 @@ if ($token !== '' && $courseid > 0) {
         }
         if ($rowvalid) $valid++;
         if (!empty($row['createquiz'])) $needsquiz = true;
-        if (!$messages) $messages[] = html_writer::span('Preparado', 'badge badge-success');
+        if (!$messages) $messages[] = html_writer::span('Preparado', 'badge bg-success');
         $schedule = '-';
         if (!empty($row['sessiondate'])) {
             $schedule = userdate((int)$row['sessiondate'], '%d/%m/%Y %H:%M');
