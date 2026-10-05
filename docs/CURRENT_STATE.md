@@ -15,6 +15,10 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 - El bloque `gestion_hee` muestra el acceso **Solicitar validación Tipo B**.
 - El panel de gestión enlaza directamente a las solicitudes Tipo B pendientes mediante `portfolio_admin.php?status=pending`.
 - Se conserva el flujo de revisión ya existente: ver/descargar certificado, validar o rechazar y añadir comentario.
+- Criterio definitivo: solo las solicitudes externas Tipo B con `status = validated` forman parte del expediente oficial del alumno.
+- El PDF del portafolio incluye una sección **Formaciones externas reconocidas como Tipo B** con actividad, fecha, horas, justificación, comentario de validación y nombre del archivo acreditativo.
+- Las solicitudes `pending` o `rejected` no aparecen en el PDF oficial.
+- `portfolio_package_download.php` incluye físicamente el certificado aportado por el alumno dentro de `02_Tipo_B_Externos_Validados/` únicamente cuando ha sido validado; pendientes y rechazados quedan fuera del ZIP del expediente.
 
 ### Listado personalizado de talleres
 - Añadido `gestion_actividades/workshop_report.php`.
@@ -29,9 +33,11 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 - Revisados `AGENTS.md`, `CURRENT_STATE.md`, HEAD y commits recientes antes de modificar.
 - Confirmado que `local_ga_typeb_certs`, `portfolio_typeb::create_upload()`, `portfolio_typeb::set_status()` y el cómputo de horas validadas ya existían en el código, por lo que no se ha creado una segunda estructura paralela.
 - Confirmado que las horas de certificados Tipo B externos solo se suman cuando `status = validated`.
+- Se detectó y corrigió que el ZIP individual del expediente incluía anteriormente certificados externos Tipo B de cualquier estado; ahora usa exclusivamente certificados validados.
+- El portafolio PDF filtra igualmente los certificados externos a `validated` antes de mostrarlos.
+- Se detectó una actualización concurrente de `portfolio_package_download.php`; se releyó HEAD y el cambio se aplicó sobre la versión más reciente, evitando sobrescribir trabajo ajeno.
 - No se ha realizado todavía una prueba funcional en un servidor Moodle real ni una instalación/actualización del plugin. No declarar producción validada.
 
 ## Pendientes para siguientes cambios
 - Seguir acumulando los cambios solicitados por Julio antes de preparar una descarga o paquete final.
-- Revisar al cierre si los certificados Tipo B externos validados deben aparecer también como documento explícito dentro del PDF final del portafolio, además de computar sus horas y estar disponibles en el expediente ZIP.
-- Hacer auditoría final de navegación, permisos, listados/exportaciones y consistencia de versiones antes de generar el paquete instalable.
+- Hacer auditoría final de navegación, permisos, listados/exportaciones, paquetes masivos y consistencia de versiones antes de generar el paquete instalable.
