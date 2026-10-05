@@ -29,13 +29,13 @@ echo $OUTPUT->heading($typetitle);
 
 echo html_writer::div(
     html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php'), local_ga_btn_icon('i/calendar', 'Ediciones de talleres'), ['class' => 'btn btn-primary mr-1']) . ' ' .
-    html_writer::link(new moodle_url('/local/gestion_actividades/workshop_edit.php', ['type' => $type]), local_ga_btn_icon('t/add', 'Crear taller manualmente'), ['class' => 'btn btn-outline-primary mr-1']) . ' ' .
+    html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php'), local_ga_btn_icon('t/add', 'Añadir taller manual a una edición'), ['class' => 'btn btn-outline-primary mr-1']) . ' ' .
     html_writer::link(new moodle_url('/local/gestion_actividades/workshop_bulk_import.php'), local_ga_btn_icon('t/upload', 'Crear edición desde Excel'), ['class' => 'btn btn-success mr-1']) . ' ' .
     html_writer::link(new moodle_url('/local/gestion_actividades/repair_course_visuals.php', ['sesskey' => sesskey()]), local_ga_btn_icon('t/reload', get_string('repaircoursevisuals', 'local_gestion_actividades')), ['class' => 'btn btn-secondary']),
     'mb-3'
 );
 
-echo html_writer::tag('p', 'Una edición de talleres actúa como contenedor. Puede crearse desde Excel o ir completándose manualmente taller a taller. Ambos caminos generan la misma estructura y el calendario se mantiene sincronizado.', ['class' => 'text-muted']);
+echo html_writer::tag('p', 'Flujo único: primero se crea o selecciona una Edición de talleres. Después se añaden sus talleres manualmente o desde Excel. Ambos caminos usan los mismos datos, grupos, subsecciones y calendario.', ['class' => 'text-muted']);
 
 $workshops = manager::list_workshops(0, $type);
 $table = new html_table();
