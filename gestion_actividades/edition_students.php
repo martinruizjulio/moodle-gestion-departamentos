@@ -14,6 +14,7 @@ $studentq = optional_param('studentq', '', PARAM_TEXT);
 $manualadd = optional_param('manualadd', 0, PARAM_INT);
 $markattendance = optional_param('markattendance', 0, PARAM_INT);
 $attended = optional_param('attended', 0, PARAM_BOOL);
+$unenrol = optional_param('unenrol', 0, PARAM_INT);
 
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
@@ -58,6 +59,20 @@ try {
             $enrolresult->message,
             null,
             $enrolresult->success ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_WARNING
+        );
+    }
+
+    if (!empty($unenrol) && data_submitted() && confirm_sesskey()) {
+        $target = $DB->get_record('local_ga_edition_enrolments', ['id' => $unenrol], 'id,editionid,userid', MUST_EXIST);
+        if ((int)$target->editionid !== (int)$id) {
+            throw new invalid_parameter_exception('La inscripción indicada no pertenece a esta edición.');
+        }
+        $unenrolresult = manager::unenrol_user_from_edition((int)$id, (int)$target->userid);
+        redirect(
+            new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $id, 't' => time()]),
+            $unenrolresult->message,
+            null,
+            $unenrolresult->success ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_WARNING
         );
     }
 
@@ -106,7 +121,17 @@ try {
             $status = $isattended
                 ? html_writer::span(get_string('attended', 'local_gestion_actividades'), 'badge bg-success')
                 : html_writer::span(get_string('notattended', 'local_gestion_actividades'), 'badge bg-secondary');
-            $button = html_writer::link($toggleurl, $isattended ? get_string('marknotattended', 'local_gestion_actividades') : get_string('markattended', 'local_gestion_actividades'), ['class' => $isattended ? 'btn btn-warning btn-sm' : 'btn btn-success btn-sm']);
+            $button = html_writer::link($toggleurl, $isattended ? get_string('marknotattended', 'local_gestion_actividades') : get_string('markattended', 'local_gestion_actividades'), ['class' => $isattended ? 'btn btn-warning btn-sm me-1' : 'btn btn-success btn-sm me-1']);
+            $button .= html_writer::start_tag('form', [
+                'method' => 'post',
+                'action' => new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $id]),
+                'class' => 'd-inline',
+                'onsubmit' => 'return window.confirm(' . json_encode('¿Dar de baja a ' . trim($s->firstname . ' ' . $s->lastname) . ' de esta edición?') . ');',
+            ]);
+            $button .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+            $button .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'unenrol', 'value' => (int)$s->enrolmentid]);
+            $button .= html_writer::tag('button', 'Dar de baja', ['type' => 'submit', 'class' => 'btn btn-outline-danger btn-sm']);
+            $button .= html_writer::end_tag('form');
             $table->data[] = [s($s->lastname), s($s->firstname), s($s->email), $status, $button];
         }
         echo html_writer::table($table);

@@ -1151,6 +1151,13 @@ class manager {
         return $record ?: null;
     }
 
+    /**
+     * Marker stored in local_ga_edition_enrolments.reason when a manual
+     * (exceptional) enrolment added one extra seat to the edition, so the seat
+     * can be given back if that student is later removed.
+     */
+    public const MANUAL_SEAT_REASON = 'hee_manual_extra_seat';
+
     /** Enrolment statuses that make a student an active member of an edition. */
     public const ACTIVE_ENROLMENT_STATUSES = ['enrolled', 'attended', 'manual'];
 
@@ -1243,7 +1250,7 @@ class manager {
             'userid' => $userid,
             'status' => 'enrolled',
             'source' => $source,
-            'reason' => '',
+            'reason' => ($source === 'manual' && $places > 0) ? self::MANUAL_SEAT_REASON : '',
             'timecreated' => $now,
             'timemodified' => $now,
         ];
@@ -1265,6 +1272,63 @@ class manager {
 
         $result->success = true;
         $result->message = get_string('enrolledok', 'local_gestion_actividades');
+        return $result;
+    }
+
+    /**
+     * Remove (dar de baja) a student from an edition. The record is kept with
+     * status 'cancelled' for traceability; the Moodle group membership is
+     * removed and, if the student had been added manually with an extra seat,
+     * that seat is given back. A student with a certificate for the edition
+     * cannot be removed.
+     */
+    public static function unenrol_user_from_edition(int $editionid, int $userid): \stdClass {
+        global $DB, $CFG;
+        require_once($CFG->dirroot . '/group/lib.php');
+        $result = (object)['success' => false, 'message' => ''];
+
+        $edition = self::get_workshop_edition($editionid);
+        $record = self::get_edition_enrolment($editionid, $userid);
+        if (!self::is_active_enrolment($record)) {
+            $result->message = 'El alumno no tiene una inscripción activa en esta edición.';
+            return $result;
+        }
+        if (self::get_user_certificate_for_edition($editionid, $userid)) {
+            $result->message = 'No se puede dar de baja: el alumno ya tiene certificado de esta edición.';
+            return $result;
+        }
+
+        $wasmanualseat = (string)($record->reason ?? '') === self::MANUAL_SEAT_REASON;
+        $update = (object)[
+            'id' => (int)$record->id,
+            'status' => 'cancelled',
+            'reason' => 'Baja ' . userdate(time(), '%d/%m/%Y %H:%M'),
+            'attended' => 0,
+            'timemodified' => time(),
+        ];
+        $transaction = $DB->start_delegated_transaction();
+        $DB->update_record('local_ga_edition_enrolments', self::filter_record_to_existing_fields('local_ga_edition_enrolments', $update));
+        if ($wasmanualseat) {
+            // Give back the seat created for the exception (atomic, never below 1).
+            $DB->execute("UPDATE {local_ga_workshop_editions}
+                             SET places = places - 1
+                           WHERE id = :editionid AND places > 1", ['editionid' => $editionid]);
+        }
+        $transaction->allow_commit();
+
+        try {
+            if (!empty($edition->groupid) && groups_is_member((int)$edition->groupid, $userid)) {
+                groups_remove_member((int)$edition->groupid, $userid);
+            }
+        } catch (\Throwable $e) {
+            // The HEE enrolment is already cancelled; group cleanup is best effort.
+        }
+        self::invalidate_block_cache_for_user($userid);
+
+        $result->success = true;
+        $result->message = $wasmanualseat
+            ? 'Alumno dado de baja. Se ha devuelto la plaza extra creada al incorporarlo manualmente.'
+            : 'Alumno dado de baja.';
         return $result;
     }
 
