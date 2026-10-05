@@ -2,108 +2,116 @@
 
 Última consolidación: 2026-10-05.
 
-Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyectos Moodle. Revisar HEAD/commits y código vigente antes de cada tarea. Registrar aquí cambios relevantes, validación y pendientes.
+Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyectos Moodle. Revisar `AGENTS.md`, este documento, HEAD/commits y código vigente antes de cada tarea. GitHub es la fuente de verdad.
 
 ## Cambios recientes
 
+### Talleres Tipo A y Tipo B unificados por Ediciones de talleres
+- La unidad organizativa canónica es **Edición de talleres** (`classes/local/workshop_series.php`).
+- Cada edición crea una sección Moodle con título y fechas editables.
+- Dentro de la sección se crea primero **Calendario y resumen de talleres** y después una subsección real por taller, numerada visualmente **Taller 01, Taller 02…**, cuando `mod_subsection` está disponible.
+- Si `mod_subsection` no está disponible se conserva un modo de compatibilidad sin romper el curso.
+- Manual y Excel terminan en los mismos objetos (`manager::save_workshop()` + `manager::save_workshop_edition()`), por lo que no existen dos clases de talleres según su origen.
+- El calendario HTML se reconstruye desde los datos canónicos de los talleres: nombre, fecha, inicio/fin, horas, profesor, plazas y cierre de inscripción. No mantiene una segunda copia editable.
+- Al modificar un taller vinculado a una edición se regenera la estructura/calendario.
+- Una edición finalizada/oculta deja de mostrarse al alumnado junto con sus subsecciones; sigue accesible para gestión y archivo.
+- La vista principal `workshops.php`, la vista rápida del `dashboard.php` y `archive.php` trabajan por Ediciones de talleres y conservan aparte los registros antiguos no vinculados para no perder datos.
+
+### Flujo Tipo A
+- La edición/sección/subsecciones siguen el modelo común anterior.
+- Cada Taller Tipo A puede contener asistencia, apuntes y actividad obligatoria.
+- En la importación Excel puede seleccionarse un **cuestionario Moodle modelo vacío**; se duplica, renombra, restringe al grupo y se coloca en la subsección correspondiente.
+- Las preguntas nunca se fabrican desde Excel: se crean o importan usando las herramientas convencionales de Moodle.
+- La edición manual conserva un cuestionario previamente asociado; editar fecha, profesor, plazas, etc. no lo transforma en tarea.
+- El certificado Tipo A se genera cuando se cumplen los requisitos configurados de asistencia + actividad obligatoria.
+
+### Flujo Tipo B interno — asistencia + Tarea Moodle de reflexión
+- Talleres Tipo B usan la **misma arquitectura de Edición de talleres / sección / calendario / subsecciones / grupo / inscripción** que Tipo A.
+- La diferencia académica es la actividad final: Tipo B no usa cuestionario ni nota numérica.
+- `classes/local/typeb_reflection_activity.php` crea/configura una **Tarea Moodle** de reflexión para cada edición Tipo B.
+- La tarea permite **texto en línea** y **un archivo adjunto opcional**.
+- El enunciado solicita un breve párrafo describiendo cómo ha sido el taller y las impresiones sobre la actividad.
+- La actividad se configura sin calificación numérica y con finalización por entrega.
+- Regla Tipo B interno: **asistencia confirmada + reflexión entregada = Apto**.
+- `classes/local/typeb_certificate_policy.php` aplica esa regla antes de permitir la generación de un certificado Tipo B nuevo.
+- `generate_certificates.php` usa la política específica Tipo B; ya no debe generar certificados Tipo B solo por asistencia.
+- `teacher_view.php` muestra para Tipo B la Tarea Moodle de reflexión, asistencia, estado de entrega, resultado Apto/Pendiente y estado de certificado; no presenta nota numérica.
+- `workshop_view.php` dirige al alumno a la Tarea Moodle de reflexión y muestra el estado de entrega y Apto/Pendiente.
+- La creación manual (`edition_edit.php`) y la importación Excel (`bulk_workshops.php`) aseguran la misma tarea Moodle de reflexión en Tipo B.
+
+### Reconocimiento externo Tipo B — certificado + validación + reflexión
+- El alumno puede solicitar reconocimiento de una formación externa desde `typeb_upload.php`, indicando actividad, fecha, horas, descripción y adjuntando certificado PDF/JPG/PNG.
+- Estado inicial: `pending`.
+- Cuando el gestor valida el certificado, si todavía falta la reflexión el registro pasa a `validated_pending_reflection`.
+- El alumno ve entonces un formulario de reflexión. Al guardarla, el estado pasa a `validated`.
+- **Solo `validated` + reflexión no vacía computa horas Tipo B** (`portfolio_typeb::total_validated_hours()`).
+- `portfolio_typeb::ensure_table()` añade defensivamente `reflectiontext` y `reflectiontime` en instalaciones existentes.
+- `portfolio_admin.php` distingue: pendiente de validar / validado esperando reflexión / validado y completado / rechazado.
+- El certificado externo aportado por el alumno sigue siendo la evidencia original. No se genera por defecto un segundo certificado interno para este reconocimiento externo.
+- El PDF/expediente oficial debe considerar únicamente reconocimientos externos plenamente completados; pendientes de validación, rechazados o todavía pendientes de reflexión no deben aportar horas oficiales.
+
+### Creación manual ↔ Excel ↔ calendario
+- El formulario manual sigue la misma secuencia conceptual que el Excel: edición, código/nombre, tipo, descripción, fecha, inicio, fin, horas, plazas, cierre de inscripción, profesor y contenido Moodle.
+- Inicio y fin se almacenan realmente; el calendario puede mostrar rangos como `12:30–14:30`.
+- Fin debe ser posterior a inicio; cierre de inscripción anterior al inicio; el horario completo debe quedar dentro de la Edición de talleres.
+- Una importación adicional continúa la numeración de la edición existente en lugar de reiniciar en Taller 01.
+- Toda la plantilla se previsualiza/valida antes de crear la edición para evitar ediciones vacías por una fila errónea.
+- La plantilla XLSX incluye ejemplo Tipo A y Tipo B. En Tipo B se ignora cualquier solicitud de cuestionario y se crea automáticamente la Tarea Moodle de reflexión.
+- Opcionalmente puede duplicarse un recurso/carpeta modelo de apuntes.
+
+### Panel de administración y vistas activa/archivo
+- `dashboard.php` describe ya Tipo A y Tipo B según el modelo unificado.
+- Tarjeta **Talleres Tipo A**: edición/sección, calendario, subsecciones, inscripción, asistencia, apuntes, cuestionario y certificados.
+- Tarjeta **Talleres Tipo B**: edición/sección, calendario, subsecciones, inscripción, asistencia, Tarea Moodle de reflexión y certificado.
+- Tarjeta **Validación externa Tipo B** explica que la validación habilita la reflexión y que las horas solo computan después de completarla.
+- La vista general agrupa ediciones activas y sus talleres; no mezcla una lista plana de ediciones individuales.
+- `archive.php` agrupa ediciones finalizadas/ocultas de más reciente a más antigua y mantiene aparte los registros antiguos sin Edición de talleres.
+- Los talleres antiguos vinculados a una edición archivada no reaparecen como “sin edición” en la vista actual, ni los activos en el archivo legado.
+
 ### Gestión de Talleres Tipo A reconstruida por Ediciones de talleres
-- `workshops.php` deja de presentar como vista principal una tabla plana de talleres sueltos y pasa a organizar la gestión por **Ediciones de talleres**.
-- Cada Edición de talleres se muestra como un bloque independiente, ordenado por la fecha de la edición, con curso, rango de fechas y estado visible/oculto.
-- Dentro de cada edición aparecen conjuntamente los talleres creados manualmente y los importados desde Excel, porque ambos comparten el mismo modelo canónico.
-- Cada fila de taller muestra: **orden visible (Taller 01, 02…), nombre, fecha, horario completo, horas, plazas, número de inscritos, estado y acciones**.
-- Desde cada taller se accede a **Editar taller** y, si existe una edición individual configurada, a **Alumnos / asistencia**.
-- Desde cada Edición de talleres se puede **Editar edición**, **Añadir taller manual** o **Abrir en el curso** directamente en la sección Moodle correspondiente.
-- Los talleres antiguos o todavía no vinculados a una Edición de talleres no desaparecen: se mantienen en un bloque separado **Talleres sin Edición de talleres** para poder revisarlos y migrarlos sin pérdida de información.
-- Criterio de edición: los datos estructurales que alimentan calendario, inscripción y organización (nombre, fecha, horario, plazas, profesorado, etc.) se editan desde Gestión HEE; cuestionarios, preguntas, apuntes y asistencia siguen siendo actividades Moodle normales y se pueden gestionar desde la vista del curso.
-- La vista del curso ya dispone del acceso **Gestión HEE** para usuarios autorizados, por lo que puede usarse como entrada desde la plataforma al panel de gestión sin exponerlo al alumnado.
-- Versión elevada a `1.5.90-alpha` (`2026100504`).
-
-### Ediciones de talleres como sección + subsecciones Moodle
-- Añadida la entidad funcional **Edición de talleres** mediante `classes/local/workshop_series.php` y la pantalla `workshop_series.php`.
-- Cada edición tiene curso, título editable, fecha de inicio, fecha de fin y estado activa/finalizada.
-- La edición crea una sección principal Moodle con el título indicado.
-- En Moodle con `mod_subsection` disponible, la sección contiene una primera subsección **Calendario y resumen de talleres** y una subsección real por cada taller, numerada por el orden de la edición: Taller 01, Taller 02, etc.
-- Si `mod_subsection` no está disponible, se mantiene un modo de compatibilidad en el que el calendario se muestra en el resumen HTML de la sección principal sin romper el curso.
-- El calendario HTML se genera siempre a partir de los datos canónicos de talleres/ediciones: nombre, fecha, rango horario completo, horas, profesor, plazas y cierre de inscripción.
-- Al guardar o publicar manualmente un taller asociado a una edición se reconstruyen el calendario y la estructura de la edición automáticamente.
-- Las actividades propias del taller (asistencia, tarea/cuestionario asociado, certificado y apuntes cuando proceda) se mueven a la subsección de ese taller.
-- Una edición marcada como **Finalizada** queda oculta para el alumnado junto con sus subsecciones. También se oculta si se supera su fecha final al regenerar la estructura. Puede reabrirse desde la gestión de ediciones.
-- La creación manual se encauza ahora desde **Ediciones de talleres**: primero se crea/selecciona la edición y después se añade Taller 01, Taller 02, etc.
-- `workshops.php` expone tres accesos coherentes: **Ediciones de talleres**, **Añadir taller manual a una edición** y **Crear edición desde Excel**.
-
-### Coordinación completa manual ↔ Excel ↔ calendario
-- Se auditó la cadena `Edición → creación manual/Excel → validación → taller → grupo → inscripción → actividades Moodle → subsección → calendario → edición posterior → cierre`.
-- La columna **Fin** del Excel ya no es decorativa: se convierte en `sessionenddate`, se valida y queda persistida en `local_ga_series_items`.
-- El formulario manual incluye ahora **Fecha/hora de inicio** y **Fecha/hora de fin**, con las mismas reglas que el Excel: fin posterior al inicio, cierre de inscripción anterior al inicio y horario completo dentro de las fechas de la edición.
-- El calendario muestra rangos completos de horario, por ejemplo `12:30–14:30`.
-- Si una edición ya tiene talleres, una importación adicional continúa el orden existente en lugar de volver a Taller 01.
-- La importación valida todas las filas y el horario completo antes de crear la edición principal; una plantilla errónea no debe dejar una edición vacía creada por adelantado.
-- La previsualización Excel muestra el rango horario completo y bloquea la confirmación si alguna fila no es válida o queda fuera de la edición.
-- Al editar manualmente un taller creado desde Excel con un **cuestionario Moodle asociado**, se conserva la relación con ese cuestionario; editar fecha, profesor, plazas, etc. no lo convierte en tarea.
-- La actividad/cuestionario sigue siendo un módulo Moodle normal. Las preguntas del cuestionario se crean o importan siempre desde las herramientas convencionales de Moodle.
-- `workshop_series::ensure_schema()` añade de forma defensiva el nuevo campo de hora de fin si la tabla de relación ya existía, por lo que las pantallas del nuevo flujo pueden reparar el esquema sin migraciones destructivas.
-
-### Creación masiva de una edición desde Excel
-- `workshop_bulk_import.php` crea una **edición completa**, no una colección suelta de talleres.
-- Antes de subir el Excel se indican: curso, título de la edición, fecha inicial y fecha final.
-- Cada fila válida del Excel se convierte en una subsección siguiendo exactamente el orden de las filas.
-- La importación continúa reutilizando `manager::save_workshop()` y `manager::save_workshop_edition()`, de modo que el taller generado es el mismo tipo de objeto que uno creado manualmente y puede editarse después.
-- Grupo, inscripción/asignación de grupo, asistencia y publicación continúan pasando por la lógica existente del `manager`.
-- Para Talleres Tipo A con cuestionario, se selecciona un **cuestionario Moodle modelo vacío** del mismo curso. La importación lo duplica mediante Moodle, lo renombra, aplica la fecha de cierre y lo restringe al grupo del taller.
-- Las preguntas del cuestionario no se generan desde Excel: se crean o importan después por las herramientas convencionales de Moodle.
-- Opcionalmente puede duplicarse un recurso/carpeta Moodle modelo para **Apuntes**, restringido igualmente al grupo y colocado en la subsección del taller.
-- La plantilla conserva las columnas de código, nombre, tipo A/B, descripción, fecha, inicio, fin, horas, plazas, cierre de inscripción, profesor, apuntes, cuestionario, cierre del cuestionario y código de edición.
-
-### Validación de formación externa como Taller Tipo B
-- Reactivado el flujo existente de certificados Tipo B externos sin migraciones destructivas ni cambios de esquema.
-- El alumno dispone de `typeb_upload.php` con el nombre funcional **Solicitar validación como Taller Tipo B**.
-- Puede indicar nombre de la formación, fecha, horas, descripción/justificación y adjuntar certificado (PDF/JPG/PNG, máximo 20 MB).
-- La solicitud se guarda como `pending`; las horas solo computan como Tipo B cuando un gestor la cambia a `validated`.
-- El alumno puede consultar sus propias solicitudes y ver estado `Pendiente`, `Validado` o `Rechazado`, además del comentario del gestor.
-- El bloque `gestion_hee` muestra el acceso **Solicitar validación Tipo B**.
-- El panel de gestión enlaza directamente a las solicitudes Tipo B pendientes mediante `portfolio_admin.php?status=pending`.
-- Se conserva el flujo de revisión ya existente: ver/descargar certificado, validar o rechazar y añadir comentario.
-- Criterio definitivo: solo las solicitudes externas Tipo B con `status = validated` forman parte del expediente oficial del alumno.
-- El PDF del portafolio incluye una sección **Formaciones externas reconocidas como Tipo B** con actividad, fecha, horas, justificación, comentario de validación y nombre del archivo acreditativo.
-- Las solicitudes `pending` o `rejected` no aparecen en el PDF oficial.
-- `portfolio_package_download.php` incluye físicamente el certificado aportado por el alumno dentro de `02_Tipo_B_Externos_Validados/` únicamente cuando ha sido validado; pendientes y rechazados quedan fuera del ZIP del expediente.
+- `workshops.php` presenta cada Edición de talleres como bloque con curso, rango de fechas y estado.
+- Dentro aparecen conjuntamente talleres creados manualmente e importados desde Excel.
+- Cada fila muestra orden visible, nombre, fecha, horario, horas, plazas, inscritos, estado y acciones.
+- Desde la edición: **Editar edición**, **Añadir taller manual**, **Abrir en el curso**.
+- Desde el taller: **Editar taller**, **Alumnos / asistencia**.
+- Los talleres antiguos/no vinculados se conservan en **Talleres sin Edición de talleres**.
 
 ### Listado personalizado de talleres
-- Añadido `gestion_actividades/workshop_report.php`.
-- El gestor puede seleccionar una edición, varias o todas las ediciones disponibles.
-- El resultado presenta por alumno: **Taller | Edición | Alumno | Horas | Nota de tarea | Asistencia**.
-- Para Talleres Tipo B, la nota de tarea se muestra como `-` porque no corresponde tarea calificable Tipo A.
-- La asistencia se expresa como `Presente`, `Ausente` o `Sin registrar`.
-- El resultado puede descargarse como CSV separado por punto y coma y compatible con Excel.
-- El panel de gestión incluye acceso directo **Listado personalizado de talleres**.
+- `workshop_report.php` permite seleccionar una, varias o todas las ediciones.
+- Resultado por alumno: **Taller | Edición | Alumno | Horas | Nota de tarea | Asistencia**.
+- Tipo B mantiene nota de tarea `-` porque su reflexión no tiene calificación numérica.
+- CSV separado por punto y coma y compatible con Excel.
 
-### Excepcionalidad / acceso de personal PAS sin cuenta UCVNet
-- Se analizó la necesidad de permitir acceso operativo a personal PAS que no puede autenticarse en UCVNet mediante el SSO Microsoft institucional.
-- No se mantiene ningún acceso paralelo dentro del plugin que permita leer o modificar datos HEE sin pasar por un mecanismo de autenticación/integración aprobado para Moodle.
-- Se llegó a prototipar localmente un acceso propio con usuario/contraseña, pero se retiró antes de enlazarlo o consolidarlo porque suponía una vía de autenticación paralela al control institucional.
-- Criterio para la siguiente implementación: resolver **Excepcionalidad** mediante una integración autorizada y limitada, preferentemente un servicio/API específico con permisos HEE mínimos, manteniendo al PAS fuera del resto del Campus Virtual.
-- No se ha alterado el login Microsoft/UCV ni se han creado cuentas Moodle locales ocultas.
+### Reconocimiento institucional, traspasos y expedientes
+- Reconocimiento institucional Tipo A/B desde Excel se conserva separado del flujo de creación de talleres.
+- Traspasos A→B continúan disponibles y conservan su texto obligatorio.
+- El portafolio/expediente combina certificados internos, reconocimientos válidos e historial de horas conforme a la lógica existente.
+
+### Excepcionalidad / PAS sin cuenta UCVNet
+- No se mantiene ningún acceso paralelo que eluda la autenticación institucional de Moodle.
+- El prototipo de login propio fue retirado antes de consolidarlo.
+- Próxima solución, si se retoma: integración autorizada y limitada/API específica con permisos mínimos HEE, sin exponer el resto del Campus Virtual.
+
+## Versión actual
+- `local_gestion_actividades`: **1.5.92-alpha** (`2026100506`).
 
 ## Verificación realizada
-- Revisados `AGENTS.md`, `CURRENT_STATE.md`, HEAD y commits recientes antes de modificar.
-- Se ha mantenido una única estructura de talleres: la creación manual y la importación Excel terminan usando `manager::save_workshop()` y `manager::save_workshop_edition()`.
-- La nueva pantalla `workshops.php` reutiliza `workshop_series`, `list_workshop_editions()` y `get_edition_enrolment_count()`; no introduce una segunda fuente de datos.
-- Los talleres antiguos no vinculados a una Edición de talleres siguen accesibles en la gestión y no se borran ni migran automáticamente.
-- Las ediciones de talleres no cambian autenticación, roles ni permisos.
-- La clase `workshop_series` crea/ajusta su esquema de forma defensiva al entrar en el flujo de ediciones, incluido el nuevo `sessionenddate`.
-- El uso de subsecciones se detecta en tiempo de ejecución y solo se activa si el módulo `subsection` y sus tablas están disponibles; si no, se usa el modo de compatibilidad.
-- El calendario se regenera desde datos almacenados; no se mantiene una segunda copia editable de fechas/nombres/profesores.
-- Se ha corregido la pérdida potencial de la relación con un cuestionario al editar manualmente un taller importado.
-- Confirmado que las horas de certificados Tipo B externos solo se suman cuando `status = validated`.
+- Revisados `AGENTS.md`, `CURRENT_STATE.md`, HEAD y commits recientes durante la implementación.
+- No se han cambiado autenticación, roles ni permisos.
+- No se han eliminado talleres/ediciones existentes ni ejecutado migraciones destructivas.
+- Las nuevas columnas de reflexión externa se crean de forma defensiva al entrar en el flujo de `portfolio_typeb`.
+- La generación normal de certificados Tipo B pasa por `typeb_certificate_policy`, que comprueba asistencia + reflexión.
+- Las vistas docente y alumno Tipo B ya no presentan el antiguo textarea interno como mecanismo canónico: la entrega se realiza mediante la Tarea Moodle estándar.
+- El panel principal ha sido revisado para que sus textos y accesos representen el mismo modelo A/B.
 - No se ha realizado todavía una prueba funcional en el servidor Moodle UCV ni una instalación/actualización real del plugin. No declarar producción validada.
 
-## Pendientes para siguientes cambios
-- Seguir acumulando los cambios solicitados por Julio antes de preparar una descarga o paquete final.
-- Probar en Moodle 5 real la nueva vista agrupada de `workshops.php`, especialmente los enlaces **Abrir en el curso**, **Editar taller** y **Alumnos / asistencia**.
-- Probar en Moodle 5 real la creación mediante `mod_subsection`, el movimiento de módulos a la sección delegada y el orden visual Calendario → Taller 01 → Taller 02…
-- Comparar visualmente el calendario generado con el calendario HTML de referencia mostrado por Julio y ajustar tipografía, distribución, bordes y densidad hasta dejarlo equivalente.
-- Probar en el Moodle real que `duplicate_module()` devuelve el CMID esperado y que las restricciones de grupo quedan visibles exactamente como en el curso actual.
-- Revisar la política de códigos internos para ediciones sucesivas: la numeración visible Taller 01–10 depende de `sortorder`, no del código, por lo que los códigos pueden ser únicos por edición sin cambiar la vista del alumno.
-- Confirmar si el recurso de Apuntes se estandarizará como `folder` o como `resource` PDF para simplificar aún más la plantilla.
-- Diseñar la función **Excepcionalidad** sobre una vía de integración aprobada/limitada que no eluda el SSO institucional.
-- Hacer auditoría final de navegación, permisos, listados/exportaciones, paquetes masivos y consistencia de versiones antes de generar el paquete instalable.
+## Pendientes antes del paquete final
+- Probar en Moodle 5 real la creación de `mod_subsection`, el movimiento de actividades a la subsección y el orden Calendario → Taller 01 → Taller 02…
+- Probar la Tarea Moodle Tipo B: texto en línea, archivo opcional, finalización por entrega, restricción al grupo y visibilidad dentro de la subsección.
+- Probar que el certificado Tipo B solo se genera con asistencia + reflexión y revisar visualmente su plantilla PDF.
+- Probar el reconocimiento externo completo: subir certificado → validar → reflexión → cómputo de horas/portafolio.
+- Auditar por última vez `manager_downloads.php` para sustituir cualquier columna heredada “Texto alumno” de Tipo B interno por el estado de la Tarea Moodle y revisar que ZIP/CSV solo incluyan reconocimientos externos plenamente completados cuando corresponda.
+- Ajustar visualmente el calendario generado hasta igualar la referencia facilitada por Julio.
+- Revisar la política de códigos internos para ediciones sucesivas; la numeración visible depende de `sortorder`, por lo que puede mantenerse Taller 01–10 con códigos internos únicos.
+- Confirmar si Apuntes se estandariza como `folder` o `resource` PDF.
+- Hacer auditoría final de navegación, permisos, listados/exportaciones y versiones antes de generar el paquete instalable.
