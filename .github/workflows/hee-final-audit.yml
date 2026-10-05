@@ -1,0 +1,98 @@
+name: HEE final source audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/hee-final-audit.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Remove residual runtime DDL helper and bump version
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('gestion_actividades/classes/local/institutional_hours.php')
+          text = path.read_text(encoding='utf-8')
+          pattern = r"\n    private static function add_index_if_possible\(.*?\n    \}\n\n    public static function list_for_user"
+          text, count = re.subn(pattern, "\n\n    public static function list_for_user", text, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit('Residual institutional_hours runtime DDL helper was not found exactly once')
+          path.write_text(text, encoding='utf-8')
+
+          version = Path('gestion_actividades/version.php')
+          vtext = version.read_text(encoding='utf-8')
+          vtext = re.sub(r'\$plugin->version\s*=\s*\d+;', '$plugin->version = 2026100514;', vtext)
+          vtext = re.sub(r"\$plugin->release\s*=\s*'[^']+';", "$plugin->release = '1.5.99-alpha';", vtext)
+          version.write_text(vtext, encoding='utf-8')
+          PY
+          git add gestion_actividades/classes/local/institutional_hours.php gestion_actividades/version.php
+          git commit -m "chore: remove residual runtime DDL and bump audited version"
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          find gestion_actividades gestion_hee -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: XML well-formedness
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+          for path in pathlib.Path('.').glob('**/*.xml'):
+              if '.git' not in path.parts:
+                  ET.parse(path)
+                  print('OK', path)
+          PY
+      - name: Reviewer-oriented source assertions
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n -E '->(create_table|add_field|add_index)\(' gestion_actividades/classes gestion_actividades/*.php --include='*.php'; then
+            echo 'Runtime DDL remains outside db/upgrade.php' >&2
+            exit 1
+          fi
+          if grep -R -n -F "'auth' => 'manual'" gestion_actividades --include='*.php'; then
+            echo 'Manual account creation remains' >&2
+            exit 1
+          fi
+          if grep -R -n -E 'badge-(success|warning|danger|secondary)|float-right|btn-block|form-inline|(^|["'"'"' ])mr-[0-9]|(^|["'"'"' ])ml-[0-9]' gestion_actividades gestion_hee --include='*.php' --include='*.css' --include='*.mustache'; then
+            echo 'Bootstrap 4-only classes remain' >&2
+            exit 1
+          fi
+          if grep -R -n -E 'core\\\\event\\\\file_(created|deleted)' gestion_hee --include='*.php'; then
+            echo 'Invalid block file observers remain' >&2
+            exit 1
+          fi
+          if grep -n -F '$_FILES' gestion_actividades/typeb_upload.php; then
+            echo 'Type B upload still uses raw $_FILES' >&2
+            exit 1
+          fi
+          grep -q '2026100513' gestion_actividades/db/upgrade.php
+          grep -q 'NAME="seriesid"' gestion_actividades/db/install.xml
+      - name: Remove temporary workflow and publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/hee-final-audit.yml
+          git add -A
+          git commit -m "chore: remove temporary HEE final audit workflow"
+          git push origin HEAD:main
