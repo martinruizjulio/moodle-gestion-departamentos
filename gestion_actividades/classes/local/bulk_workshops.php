@@ -46,6 +46,7 @@ class bulk_workshops {
             $row['hours'] = self::decimal($row['hours']);
             $row['places'] = max(0, (int)self::decimal($row['places']));
             $row['sessiondate'] = self::parse_datetime(trim($row['date'] . ' ' . $row['start']));
+            $row['sessionenddate'] = self::parse_datetime(trim($row['date'] . ' ' . $row['end']));
             $row['enrolenddate'] = self::parse_datetime($row['enrolend']);
             $row['quizclose'] = self::parse_datetime($row['quizclose']);
             $row['createquiz'] = self::yes($row['createquiz']);
@@ -56,7 +57,9 @@ class bulk_workshops {
             if ($row['name'] === '') $row['errors'][] = 'Falta el nombre del taller.';
             if ($row['hours'] <= 0) $row['errors'][] = 'Las horas deben ser superiores a 0.';
             if ($row['places'] <= 0) $row['errors'][] = 'Las plazas deben ser superiores a 0.';
-            if ($row['sessiondate'] <= 0) $row['errors'][] = 'Fecha/hora del taller no válida.';
+            if ($row['sessiondate'] <= 0) $row['errors'][] = 'Fecha/hora de inicio del taller no válida.';
+            if ($row['sessionenddate'] <= 0) $row['errors'][] = 'Hora de fin del taller no válida.';
+            if ($row['sessiondate'] > 0 && $row['sessionenddate'] > 0 && $row['sessionenddate'] <= $row['sessiondate']) $row['errors'][] = 'La hora de fin debe ser posterior a la hora de inicio.';
             if ($row['enrolenddate'] <= 0) $row['errors'][] = 'Fecha límite de inscripción no válida.';
             if ($row['sessiondate'] > 0 && $row['enrolenddate'] >= $row['sessiondate']) $row['errors'][] = 'La inscripción debe cerrar antes del taller.';
             if ($row['code'] !== '' && isset($seen[$row['code']])) $row['errors'][] = 'Código repetido dentro del Excel.';
@@ -99,15 +102,15 @@ class bulk_workshops {
             if (!empty($row['createquiz']) && $quiztemplatecmid <= 0) {
                 throw new \RuntimeException('Hay talleres que requieren cuestionario. Selecciona un cuestionario Moodle modelo antes de confirmar.');
             }
-            if ($row['sessiondate'] < (int)$series->datefrom || $row['sessiondate'] > (int)$series->dateto) {
-                throw new \RuntimeException($row['code'] . ': la fecha del taller queda fuera de las fechas de la edición.');
+            if ($row['sessiondate'] < (int)$series->datefrom || $row['sessionenddate'] > (int)$series->dateto) {
+                throw new \RuntimeException($row['code'] . ': el horario del taller queda fuera de las fechas de la edición.');
             }
         }
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
         $summary = (object)['created' => 0, 'skipped' => count($rows) - count($validrows), 'quizcreated' => 0, 'notescreated' => 0, 'seriesid' => $seriesid, 'messages' => []];
         $transaction = $DB->start_delegated_transaction();
         try {
-            $order = 1;
+            $order = workshop_series::next_sortorder($seriesid);
             foreach ($validrows as $row) {
                 $workshopid = manager::save_workshop((object)[
                     'id' => 0, 'courseid' => $courseid, 'code' => $row['code'], 'name' => $row['name'],
@@ -149,7 +152,7 @@ class bulk_workshops {
                     $summary->notescreated++;
                 }
                 manager::ensure_workshop_course_visuals_safely($workshopid);
-                workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid);
+                workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid, $row['sessionenddate']);
                 $summary->created++;
                 $summary->messages[] = $row['code'] . ': creado como Taller ' . sprintf('%02d', $order) . ' de ' . $series->title . '.';
                 $order++;
