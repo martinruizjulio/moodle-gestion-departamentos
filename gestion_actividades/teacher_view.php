@@ -112,7 +112,7 @@ if ($editions) {
     echo html_writer::tag('h3', 'Edición que se está gestionando', ['class' => 'h5']);
     echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'd-flex flex-wrap align-items-center gap-2']);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $id]);
-    echo html_writer::label('Edición', 'editionid', false, ['class' => 'mr-2']);
+    echo html_writer::label('Edición', 'editionid', false, ['class' => 'me-2']);
     echo html_writer::start_tag('select', ['name' => 'editionid', 'id' => 'editionid', 'class' => 'form-control me-2 mb-2']);
     foreach ($editions as $availableedition) {
         $label = trim((string)($availableedition->editioncode ?? ''));

@@ -15,40 +15,6 @@ class institutional_hours {
         }
     }
 
-    private static function add_index_if_possible($dbman, string $tablename, string $indexname, array $fields, bool $unique = false): void {
-        global $DB;
-        $table = new \xmldb_table($tablename);
-        if (!$dbman->table_exists($table)) {
-            return;
-        }
-        $columns = $DB->get_columns($tablename);
-        foreach ($fields as $field) {
-            if (!isset($columns[$field])) {
-                return;
-            }
-        }
-        $index = new \xmldb_index($indexname, $unique ? XMLDB_INDEX_UNIQUE : XMLDB_INDEX_NOTUNIQUE, $fields);
-        if ($dbman->index_exists($table, $index)) {
-            return;
-        }
-        if ($unique) {
-            // Older versions could store several rows per user. Adding a UNIQUE
-            // index over duplicates would abort the Moodle upgrade, so skip it
-            // and leave the duplicates for a manual review (no data is deleted).
-            $cols = implode(', ', $fields);
-            $dup = $DB->get_records_sql("SELECT $cols, COUNT(1) AS n FROM {" . $tablename . "} GROUP BY $cols HAVING COUNT(1) > 1", [], 0, 1);
-            if ($dup) {
-                debugging('Gestión HEE: no se crea el índice único ' . $indexname . ' en ' . $tablename
-                    . ' porque existen filas duplicadas. Revísalas manualmente.', DEBUG_DEVELOPER);
-                return;
-            }
-        }
-        try {
-            $dbman->add_index($table, $index);
-        } catch (\Throwable $e) {
-            debugging('Gestión HEE: no se pudo crear el índice ' . $indexname . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
-        }
-    }
 
     public static function list_for_user(int $userid): array {
         global $DB;
@@ -408,7 +374,7 @@ class institutional_hours {
             foreach ($sheetrows as $rowxml) {
                 $rownum = (int)$rowxml['r'];
                 $cells = [];
-                foreach ($rowxml->children('http://schemas.openxmlformats.org/spreadsheetml/2006/main')->c as $cell) {
+                foreach ($rowxms->children('http://schemas.openxmlformats.org/spreadsheetml/2006/main')->c as $cell) {
                     $ref = (string)$cell['r'];
                     $col = self::column_number($ref);
                     $value = self::cell_value($cell, $shared);

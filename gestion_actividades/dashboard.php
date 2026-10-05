@@ -120,7 +120,7 @@ foreach ($serieslist as $series) {
     echo html_writer::start_div('card shadow-sm mb-4');
     echo html_writer::start_div('card-header bg-light');
     echo html_writer::start_div('d-flex flex-wrap justify-content-between align-items-start');
-    echo html_writer::start_div('mr-3');
+    echo html_writer::start_div('me-3');
     echo html_writer::tag('h4', s($series->title), ['class' => 'h5 mb-1']);
     echo html_writer::tag('div', ($course ? format_string($course->fullname) : 'Curso #' . (int)$series->courseid) . ' · ' . userdate((int)$series->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$series->dateto, '%d/%m/%Y'), ['class' => 'text-muted']);
     echo html_writer::end_div();

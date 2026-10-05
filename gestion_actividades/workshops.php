@@ -153,7 +153,7 @@ foreach ($serieslist as $series) {
     echo html_writer::start_div('card shadow-sm mb-4');
     echo html_writer::start_div('card-header bg-light');
     echo html_writer::start_div('d-flex flex-wrap justify-content-between align-items-start');
-    echo html_writer::start_div('mr-3');
+    echo html_writer::start_div('me-3');
     echo html_writer::tag('h3', s($series->title), ['class' => 'h5 mb-1']);
     echo html_writer::tag('div', s($coursetitle) . ' · ' . s($daterange) . ' · ' . local_ga_series_status_label($series), ['class' => 'text-muted']);
     echo html_writer::end_div();

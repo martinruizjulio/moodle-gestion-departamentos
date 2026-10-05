@@ -91,7 +91,7 @@ if (!$courses) {
 
 if (count($courses) > 1) {
     echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'd-flex flex-wrap align-items-center gap-2 mb-3']);
-    echo html_writer::label('Curso', 'courseid', false, ['class' => 'mr-2']);
+    echo html_writer::label('Curso', 'courseid', false, ['class' => 'me-2']);
     echo html_writer::start_tag('select', ['name' => 'courseid', 'id' => 'courseid', 'class' => 'form-control me-2']);
     foreach ($courses as $availablecourse) {
         $attributes = ['value' => (int)$availablecourse->id];
