@@ -2,11 +2,14 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
+use local_gestion_actividades\local\workshop_series;
 
 require_login();
 
 $id = optional_param('id', 0, PARAM_INT);
 $workshopid = required_param('workshopid', PARAM_INT);
+$seriesid = optional_param('seriesid', 0, PARAM_INT);
+$sortorder = optional_param('sortorder', 0, PARAM_INT);
 
 $workshop = manager::get_workshop($workshopid);
 $course = $DB->get_record('course', ['id' => $workshop->courseid], '*', MUST_EXIST);
@@ -19,12 +22,16 @@ $istypebworkshop = manager::is_typeb_workshop($workshop);
 $prefillhours = optional_param('prefillhours', '', PARAM_TEXT);
 $prefilldescription = optional_param('prefilldescription', '', PARAM_TEXT);
 $prefillname = optional_param('prefillname', '', PARAM_TEXT);
-
+$linkedseries = workshop_series::series_for_workshop($workshopid);
+if ($linkedseries) {
+    $seriesid = (int)$linkedseries->id;
+}
 
 $action = optional_param('action', '', PARAM_ALPHA);
 if ($action === 'publish' && $id > 0 && confirm_sesskey()) {
     if (manager::is_workshop_publishable($workshop)) {
         $ok = manager::ensure_workshop_course_visuals_safely((int)$workshop->id);
+        workshop_series::refresh_for_workshop((int)$workshop->id);
         redirect(
             new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']),
             $ok ? 'Taller publicado/actualizado en el curso.' : 'No se pudo publicar el taller en el curso.',
@@ -39,7 +46,6 @@ if ($action === 'publish' && $id > 0 && confirm_sesskey()) {
         \core\output\notification::NOTIFY_WARNING
     );
 }
-
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => $id, 'workshopid' => $workshopid]));
@@ -74,17 +80,25 @@ if (data_submitted() && confirm_sesskey()) {
         'teachers' => $teachers,
     ];
     manager::save_workshop_edition($data);
+    if ($seriesid > 0) {
+        workshop_series::attach_workshop($seriesid, $workshopid, $sortorder);
+    } else {
+        workshop_series::refresh_for_workshop($workshopid);
+    }
     redirect(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']), get_string('changessaved'));
 }
 
 echo $OUTPUT->header();
 echo html_writer::div(
     html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mr-2 mb-3']) .
-    html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver a Talleres Tipo A', ['class' => 'btn btn-outline-secondary mb-3']),
+    html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver a talleres', ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
 
 echo $OUTPUT->heading('Configuración completa del taller: ' . s($workshop->code));
+if ($linkedseries) {
+    echo html_writer::tag('div', '<strong>Edición de talleres:</strong> ' . s($linkedseries->title) . '. Al guardar, el calendario HTML de la edición se actualizará automáticamente.', ['class' => 'alert alert-info']);
+}
 
 $teachers = manager::get_course_teachers($workshop->courseid);
 $selectedteachers = $id ? array_keys(manager::get_edition_teachers($id)) : [];
@@ -93,7 +107,8 @@ echo html_writer::start_tag('form', ['method' => 'post']);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $id]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'workshopid', 'value' => $workshopid]);
-
+echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'seriesid', 'value' => $seriesid]);
+echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sortorder', 'value' => $sortorder]);
 
 echo html_writer::tag('h3', 'Datos generales del taller', ['class' => 'h4 mt-3']);
 
@@ -169,7 +184,6 @@ if ($id) {
 }
 if ($id) { echo ' ' . html_writer::link(new moodle_url('/local/gestion_actividades/edition_delete.php', ['id' => $id]), get_string('deleteedition', 'local_gestion_actividades'), ['class' => 'btn btn-danger']); }
 echo html_writer::end_tag('form');
-
 
 echo html_writer::script("
 (function() {
