@@ -41,7 +41,6 @@ class block_gestion_hee extends block_base {
         try {
             $teachersummary = \block_gestion_hee\local\teacher_workshops_cache::get_summary((int)$USER->id);
             if (!empty($teachersummary['total'])) {
-                // Vista docente exclusiva: no mezclar horas/acciones de alumno con la gestión del profesor.
                 $this->content->text = $this->render_teacher_tools($teachersummary);
             } else {
                 $summary = \block_gestion_hee\local\student_hours_cache::get_summary((int)$USER->id);
@@ -101,8 +100,11 @@ class block_gestion_hee extends block_base {
         );
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/typeb_upload.php'),
-            'Subir Talleres B (antiguos)',
-            ['class' => 'btn btn-sm btn-outline-secondary btn-block mb-1']
+            'Solicitar validación Tipo B',
+            [
+                'class' => 'btn btn-sm btn-outline-secondary btn-block mb-1',
+                'title' => 'Sube un certificado de formación externa para solicitar su reconocimiento como Taller Tipo B.',
+            ]
         );
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/portfolio.php'),
@@ -137,10 +139,8 @@ class block_gestion_hee extends block_base {
 
     private function render_metric(string $label, float $value, string $badgeclass = 'badge-secondary'): string {
         $valueformatted = format_float($value, 2, true) . ' h';
-
         $content = html_writer::span(s($label), 'local-ga-label');
         $content .= html_writer::span($valueformatted, 'badge ' . $badgeclass . ' float-right');
-
         return html_writer::div($content, 'mb-2');
     }
 }
