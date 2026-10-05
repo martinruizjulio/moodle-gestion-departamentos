@@ -29,6 +29,13 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 - El resultado puede descargarse como CSV separado por punto y coma y compatible con Excel.
 - El panel de gestión incluye acceso directo **Listado personalizado de talleres**.
 
+### Excepcionalidad / acceso de personal PAS sin cuenta UCVNet
+- Se analizó la necesidad de permitir acceso operativo a personal PAS que no puede autenticarse en UCVNet mediante el SSO Microsoft institucional.
+- No se mantiene ningún acceso paralelo dentro del plugin que permita leer o modificar datos HEE sin pasar por un mecanismo de autenticación/integración aprobado para Moodle.
+- Se llegó a prototipar localmente un acceso propio con usuario/contraseña, pero se retiró antes de enlazarlo o consolidarlo porque suponía una vía de autenticación paralela al control institucional.
+- Criterio para la siguiente implementación: resolver **Excepcionalidad** mediante una integración autorizada y limitada, preferentemente un servicio/API específico con permisos HEE mínimos, manteniendo al PAS fuera del resto del Campus Virtual.
+- No se ha alterado el login Microsoft/UCV ni se han creado cuentas Moodle locales ocultas.
+
 ## Verificación realizada
 - Revisados `AGENTS.md`, `CURRENT_STATE.md`, HEAD y commits recientes antes de modificar.
 - Confirmado que `local_ga_typeb_certs`, `portfolio_typeb::create_upload()`, `portfolio_typeb::set_status()` y el cómputo de horas validadas ya existían en el código, por lo que no se ha creado una segunda estructura paralela.
@@ -36,8 +43,10 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 - Se detectó y corrigió que el ZIP individual del expediente incluía anteriormente certificados externos Tipo B de cualquier estado; ahora usa exclusivamente certificados validados.
 - El portafolio PDF filtra igualmente los certificados externos a `validated` antes de mostrarlos.
 - Se detectó una actualización concurrente de `portfolio_package_download.php`; se releyó HEAD y el cambio se aplicó sobre la versión más reciente, evitando sobrescribir trabajo ajeno.
+- El prototipo de acceso excepcional paralelo fue eliminado del repositorio antes de quedar integrado; no queda endpoint externo activo de ese tipo.
 - No se ha realizado todavía una prueba funcional en un servidor Moodle real ni una instalación/actualización del plugin. No declarar producción validada.
 
 ## Pendientes para siguientes cambios
 - Seguir acumulando los cambios solicitados por Julio antes de preparar una descarga o paquete final.
+- Diseñar la función **Excepcionalidad** sobre una vía de integración aprobada/limitada que no eluda el SSO institucional.
 - Hacer auditoría final de navegación, permisos, listados/exportaciones, paquetes masivos y consistencia de versiones antes de generar el paquete instalable.
