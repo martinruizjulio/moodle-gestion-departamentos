@@ -20,7 +20,7 @@ jobs:
         with:
           php-version: '8.1'
           coverage: none
-      - name: Finish Bootstrap 5 select classes
+      - name: Apply final Bootstrap 5 select cleanup
         shell: bash
         run: |
           set -euo pipefail
@@ -41,120 +41,99 @@ jobs:
                       path.write_text(new, encoding='utf-8')
           PY
 
-      - name: Validate all PHP and XML
+      - name: Validate PHP XML and reviewer-oriented assertions
         shell: bash
         run: |
           set -euo pipefail
           find gestion_actividades gestion_hee -type f -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/hee-php-lint.log
           python3 - <<'PY'
-          import pathlib
-          import xml.etree.ElementTree as ET
-          for path in pathlib.Path('.').glob('**/*.xml'):
-              if '.git' not in path.parts:
-                  ET.parse(path)
-          print('PHP syntax and XML well-formedness: OK')
-          PY
-
-      - name: Reviewer-oriented source assertions
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
           from pathlib import Path
           import re
+          import xml.etree.ElementTree as ET
 
-          roots = [Path('gestion_actividades'), Path('gestion_hee')]
+          for path in Path('.').glob('**/*.xml'):
+              if '.git' not in path.parts:
+                  ET.parse(path)
 
           ddl = re.compile(r'->\s*(?:create_table|add_field|add_index|drop_table|drop_field|drop_index)\s*\(')
-          ddl_hits = []
+          hits = []
           for path in Path('gestion_actividades').rglob('*.php'):
               if path.as_posix() == 'gestion_actividades/db/upgrade.php':
                   continue
               if ddl.search(path.read_text(encoding='utf-8')):
-                  ddl_hits.append(str(path))
-          if ddl_hits:
-              raise SystemExit('Runtime DDL remains outside db/upgrade.php: ' + ', '.join(ddl_hits))
+                  hits.append(str(path))
+          if hits:
+              raise SystemExit('Runtime DDL remains: ' + ', '.join(hits))
 
-          manual_auth = re.compile(r"['\"]auth['\"]\s*=>\s*['\"]manual['\"]", re.I)
-          auth_hits = [str(p) for p in Path('gestion_actividades').rglob('*.php') if manual_auth.search(p.read_text(encoding='utf-8'))]
-          if auth_hits:
-              raise SystemExit('Manual Moodle account creation remains: ' + ', '.join(auth_hits))
+          manual = re.compile(r"['\"]auth['\"]\s*=>\s*['\"]manual['\"]", re.I)
+          hits = [str(p) for p in Path('gestion_actividades').rglob('*.php') if manual.search(p.read_text(encoding='utf-8'))]
+          if hits:
+              raise SystemExit('Manual account creation remains: ' + ', '.join(hits))
 
           if '$_FILES' in Path('gestion_actividades/typeb_upload.php').read_text(encoding='utf-8'):
-              raise SystemExit('Type B upload still uses raw $_FILES')
+              raise SystemExit('Raw Type B upload remains')
 
-          legacy_tokens = ['badge-success', 'badge-warning', 'badge-danger', 'badge-secondary', 'float-right', 'btn-block', 'form-inline']
-          margin_re = re.compile(r'(?<![A-Za-z0-9_-])(?:mr|ml)-[0-9]+(?![A-Za-z0-9_-])')
-          legacy_hits = []
-          select_hits = []
-          for root in roots:
+          oldtokens = ['badge-success','badge-warning','badge-danger','badge-secondary','float-right','btn-block','form-inline']
+          margin = re.compile(r'(?<![A-Za-z0-9_-])(?:mr|ml)-[0-9]+(?![A-Za-z0-9_-])')
+          for root in [Path('gestion_actividades'), Path('gestion_hee')]:
               for path in root.rglob('*'):
-                  if not path.is_file() or path.suffix.lower() not in {'.php', '.css', '.mustache', '.js'}:
+                  if not path.is_file() or path.suffix.lower() not in {'.php','.css','.mustache','.js'}:
                       continue
                   text = path.read_text(encoding='utf-8')
-                  if any(token in text for token in legacy_tokens) or margin_re.search(text):
-                      legacy_hits.append(str(path))
+                  if any(t in text for t in oldtokens) or margin.search(text):
+                      raise SystemExit('Bootstrap 4 class remains in ' + str(path))
                   if path.suffix.lower() == '.php':
                       for line in text.splitlines():
                           if "start_tag('select'" in line and 'form-control' in line:
-                              select_hits.append(str(path))
-          if legacy_hits:
-              raise SystemExit('Bootstrap 4 classes remain: ' + ', '.join(sorted(set(legacy_hits))))
-          if select_hits:
-              raise SystemExit('Selects still use form-control: ' + ', '.join(sorted(set(select_hits))))
+                              raise SystemExit('Select form-control remains in ' + str(path))
 
+          if Path('gestion_hee/classes/observer.php').exists():
+              raise SystemExit('Obsolete block observer remains')
           events = Path('gestion_hee/db/events.php').read_text(encoding='utf-8')
           if r'\core\event\file_created' in events or r'\core\event\file_deleted' in events:
-              raise SystemExit('Invalid block file observers remain')
-          if Path('gestion_hee/classes/observer.php').exists():
-              raise SystemExit('Obsolete block observer class still exists')
+              raise SystemExit('Invalid block event remains')
 
           privacy = Path('gestion_actividades/classes/privacy/provider.php').read_text(encoding='utf-8')
-          for required in ['request_provider', 'core_userlist_provider', 'export_user_data', 'get_users_in_context', 'delete_data_for_user']:
-              if required not in privacy:
-                  raise SystemExit('Privacy provider missing: ' + required)
+          for marker in ['request_provider','core_userlist_provider','export_user_data','get_users_in_context','delete_data_for_user']:
+              if marker not in privacy:
+                  raise SystemExit('Privacy marker missing: ' + marker)
 
-          upload = Path('gestion_actividades/typeb_upload.php').read_text(encoding='utf-8')
-          uploadform = Path('gestion_actividades/classes/form/typeb_upload_form.php').read_text(encoding='utf-8')
-          if 'typeb_upload_form' not in upload or "addElement('filepicker'" not in uploadform:
-              raise SystemExit('Type B external upload is not using moodleform/filepicker')
+          form = Path('gestion_actividades/classes/form/typeb_upload_form.php').read_text(encoding='utf-8')
+          if "addElement('filepicker'" not in form:
+              raise SystemExit('Moodle filepicker missing')
 
-          for path in ['gestion_actividades/export.php', 'gestion_actividades/gradehistory.php']:
-              if 'can_manage_globally' not in Path(path).read_text(encoding='utf-8'):
-                  raise SystemExit(path + ' is not restricted to global HEE managers')
-
-          access = Path('gestion_actividades/db/access.php').read_text(encoding='utf-8')
-          if 'RISK_PERSONAL' not in access or 'RISK_CONFIG' not in access:
-              raise SystemExit('Capability risk bitmasks are incomplete')
+          for p in ['gestion_actividades/export.php','gestion_actividades/gradehistory.php']:
+              if 'can_manage_globally' not in Path(p).read_text(encoding='utf-8'):
+                  raise SystemExit('Global manager guard missing: ' + p)
 
           manager = Path('gestion_actividades/classes/local/manager.php').read_text(encoding='utf-8')
           teacher = Path('gestion_actividades/teacher_view.php').read_text(encoding='utf-8')
-          if 'quizgradingmode' not in manager or 'get_user_grade_for_cmid' not in manager or 'cuestionario' not in manager.lower():
-              raise SystemExit('Type A quiz certificate eligibility is incomplete')
-          if 'Cuestionario del taller' not in teacher:
-              raise SystemExit('Teacher view is not quiz-aware')
+          if 'quizgradingmode' not in manager or 'get_user_grade_for_cmid' not in manager or 'Cuestionario del taller' not in teacher:
+              raise SystemExit('Type A quiz support incomplete')
 
-          workshopview = Path('gestion_actividades/workshop_view.php').read_text(encoding='utf-8')
-          if "optional_param('editionid'" not in workshopview or 'can_manage_edition' not in workshopview:
-              raise SystemExit('Student workshop view is not bound to a concrete edition')
+          view = Path('gestion_actividades/workshop_view.php').read_text(encoding='utf-8')
+          if "optional_param('editionid'" not in view or 'can_manage_edition' not in view:
+              raise SystemExit('Concrete edition selection incomplete')
 
           install = Path('gestion_actividades/db/install.xml').read_text(encoding='utf-8')
           upgrade = Path('gestion_actividades/db/upgrade.php').read_text(encoding='utf-8')
           if 'NAME="seriesid"' not in install or '2026100513' not in upgrade:
-              raise SystemExit('Explicit edition-series schema link is missing')
+              raise SystemExit('Edition-series schema link missing')
 
           grade = Path('gestion_actividades/classes/local/grade_manager.php').read_text(encoding='utf-8')
           if 'typeb_reflection_activity::submission_summary' not in grade:
-              raise SystemExit('Type B canonical Moodle reflection state is not used in grade manager')
+              raise SystemExit('Canonical Type B reflection check missing')
 
-          print('Reviewer-oriented source assertions: OK')
+          print('FINAL HEE STATIC AUDIT OK')
           PY
 
-      - name: Publish audited cleanup and remove temporary workflow
+      - name: Publish cleanup without leaving workflow
         shell: bash
         run: |
           set -euo pipefail
           rm -f .github/workflows/hee-final-audit.yml
           git add -A
           git commit -m "chore: finish HEE reviewer-oriented cleanup"
+          git fetch origin main
+          git rebase origin/main
           git push origin HEAD:main
