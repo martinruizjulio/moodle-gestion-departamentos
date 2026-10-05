@@ -45,6 +45,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($courseid <= 0 || $token === '') throw new RuntimeException('La importación ha caducado. Vuelve a subir el Excel.');
             $seriesfrom = strtotime(str_replace('T', ' ', $seriesfromtext)) ?: 0;
             $seriesto = strtotime(str_replace('T', ' ', $seriestotext)) ?: 0;
+            if ($seriesfrom <= 0 || $seriesto <= 0 || $seriesto < $seriesfrom) throw new RuntimeException('Las fechas de la edición no son válidas.');
+            if (trim($seriestitle) === '') throw new RuntimeException('Indica el título de la edición de talleres.');
+
+            // Validate every Excel row before creating the parent edition, so a bad row
+            // never leaves an empty/orphan edition behind.
+            $preview = bulk_workshops::preview($token, $courseid);
+            if (!$preview) throw new RuntimeException('La plantilla no contiene talleres.');
+            foreach ($preview as $row) {
+                if (empty($row['ok'])) {
+                    throw new RuntimeException('Hay filas con errores. Vuelve a la previsualización y corrígelas antes de crear la edición.');
+                }
+                if ((int)$row['sessiondate'] < $seriesfrom || (int)$row['sessionenddate'] > $seriesto) {
+                    throw new RuntimeException($row['code'] . ': el horario completo queda fuera de las fechas de la edición.');
+                }
+            }
+
             $seriesid = workshop_series::save((object)[
                 'id' => 0,
                 'courseid' => $courseid,
@@ -70,7 +86,7 @@ echo $OUTPUT->header();
 echo html_writer::div(
     html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), '← Volver al panel', ['class' => 'btn btn-outline-secondary mr-2 mb-3']) .
     html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php'), 'Ediciones de talleres', ['class' => 'btn btn-outline-secondary mr-2 mb-3']) .
-    html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Creación manual de talleres', ['class' => 'btn btn-outline-secondary mb-3']),
+    html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Talleres', ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
 
@@ -78,7 +94,7 @@ echo $OUTPUT->heading('Crear una edición de talleres desde Excel');
 echo html_writer::tag('p', 'La importación crea una sección para la edición, una primera subsección con el calendario HTML y una subsección por cada taller, en el mismo orden del Excel.', ['class' => 'lead']);
 
 echo html_writer::start_div('alert alert-info');
-echo '<strong>Manual y automático comparten el mismo modelo:</strong> cualquier taller creado desde Excel podrá editarse después de forma individual. Cuando cambies nombre, fecha, horario, profesor, horas o plazas, el calendario de la edición se regenerará desde esos datos.';
+echo '<strong>Manual y automático comparten el mismo modelo:</strong> nombre, descripción, inicio, fin, horas, plazas, cierre de inscripción, profesorado y contenido Moodle. Los cambios posteriores regeneran el calendario desde esos mismos datos.';
 echo html_writer::end_div();
 
 if ($error !== '') echo $OUTPUT->notification(s($error), 'error');
@@ -148,7 +164,7 @@ if ($token !== '' && $courseid > 0) {
     echo html_writer::tag('p', 'Fechas de la edición: ' . ($seriesfrom ? userdate($seriesfrom, '%d/%m/%Y %H:%M') : '-') . ' – ' . ($seriesto ? userdate($seriesto, '%d/%m/%Y %H:%M') : '-'), ['class' => 'text-muted']);
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm';
-    $table->head = ['Orden', 'Taller', 'Tipo', 'Fecha', 'Horas', 'Plazas', 'Cierre inscripción', 'Profesor', 'Apuntes', 'Cuestionario', 'Estado'];
+    $table->head = ['Orden', 'Taller', 'Tipo', 'Fecha y horario', 'Horas', 'Plazas', 'Cierre inscripción', 'Profesor', 'Apuntes', 'Cuestionario', 'Estado'];
     $valid = 0;
     $needsquiz = false;
     $order = 1;
@@ -157,18 +173,25 @@ if ($token !== '' && $courseid > 0) {
         $messages = [];
         foreach ($row['errors'] as $m) $messages[] = html_writer::span(s($m), 'text-danger d-block');
         foreach ($row['warnings'] as $m) $messages[] = html_writer::span(s($m), 'text-warning d-block');
-        if ($rowvalid && $seriesfrom && $seriesto && ((int)$row['sessiondate'] < $seriesfrom || (int)$row['sessiondate'] > $seriesto)) {
+        if ($rowvalid && $seriesfrom && $seriesto && ((int)$row['sessiondate'] < $seriesfrom || (int)$row['sessionenddate'] > $seriesto)) {
             $rowvalid = false;
-            $messages[] = html_writer::span('La fecha queda fuera de la edición.', 'text-danger d-block');
+            $messages[] = html_writer::span('El horario completo queda fuera de la edición.', 'text-danger d-block');
         }
         if ($rowvalid) $valid++;
         if (!empty($row['createquiz'])) $needsquiz = true;
         if (!$messages) $messages[] = html_writer::span('Preparado', 'badge badge-success');
+        $schedule = '-';
+        if (!empty($row['sessiondate'])) {
+            $schedule = userdate((int)$row['sessiondate'], '%d/%m/%Y %H:%M');
+            if (!empty($row['sessionenddate'])) {
+                $schedule .= '–' . userdate((int)$row['sessionenddate'], '%H:%M');
+            }
+        }
         $table->data[] = [
             sprintf('%02d', $order++),
             '<strong>' . s($row['code']) . '</strong><br>' . s($row['name']),
             $row['type'] === 'typeb' ? 'B' : 'A',
-            !empty($row['sessiondate']) ? userdate((int)$row['sessiondate'], '%d/%m/%Y %H:%M') : '-',
+            $schedule,
             format_float((float)$row['hours'], 2, true),
             (int)$row['places'],
             !empty($row['enrolenddate']) ? userdate((int)$row['enrolenddate'], '%d/%m/%Y %H:%M') : '-',
