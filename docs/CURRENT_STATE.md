@@ -6,6 +6,18 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 
 ## Cambios recientes
 
+### Gestión de Talleres Tipo A reconstruida por Ediciones de talleres
+- `workshops.php` deja de presentar como vista principal una tabla plana de talleres sueltos y pasa a organizar la gestión por **Ediciones de talleres**.
+- Cada Edición de talleres se muestra como un bloque independiente, ordenado por la fecha de la edición, con curso, rango de fechas y estado visible/oculto.
+- Dentro de cada edición aparecen conjuntamente los talleres creados manualmente y los importados desde Excel, porque ambos comparten el mismo modelo canónico.
+- Cada fila de taller muestra: **orden visible (Taller 01, 02…), nombre, fecha, horario completo, horas, plazas, número de inscritos, estado y acciones**.
+- Desde cada taller se accede a **Editar taller** y, si existe una edición individual configurada, a **Alumnos / asistencia**.
+- Desde cada Edición de talleres se puede **Editar edición**, **Añadir taller manual** o **Abrir en el curso** directamente en la sección Moodle correspondiente.
+- Los talleres antiguos o todavía no vinculados a una Edición de talleres no desaparecen: se mantienen en un bloque separado **Talleres sin Edición de talleres** para poder revisarlos y migrarlos sin pérdida de información.
+- Criterio de edición: los datos estructurales que alimentan calendario, inscripción y organización (nombre, fecha, horario, plazas, profesorado, etc.) se editan desde Gestión HEE; cuestionarios, preguntas, apuntes y asistencia siguen siendo actividades Moodle normales y se pueden gestionar desde la vista del curso.
+- La vista del curso ya dispone del acceso **Gestión HEE** para usuarios autorizados, por lo que puede usarse como entrada desde la plataforma al panel de gestión sin exponerlo al alumnado.
+- Versión elevada a `1.5.90-alpha` (`2026100504`).
+
 ### Ediciones de talleres como sección + subsecciones Moodle
 - Añadida la entidad funcional **Edición de talleres** mediante `classes/local/workshop_series.php` y la pantalla `workshop_series.php`.
 - Cada edición tiene curso, título editable, fecha de inicio, fecha de fin y estado activa/finalizada.
@@ -18,7 +30,6 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 - Una edición marcada como **Finalizada** queda oculta para el alumnado junto con sus subsecciones. También se oculta si se supera su fecha final al regenerar la estructura. Puede reabrirse desde la gestión de ediciones.
 - La creación manual se encauza ahora desde **Ediciones de talleres**: primero se crea/selecciona la edición y después se añade Taller 01, Taller 02, etc.
 - `workshops.php` expone tres accesos coherentes: **Ediciones de talleres**, **Añadir taller manual a una edición** y **Crear edición desde Excel**.
-- Versión elevada a `1.5.89-alpha` (`2026100503`).
 
 ### Coordinación completa manual ↔ Excel ↔ calendario
 - Se auditó la cadena `Edición → creación manual/Excel → validación → taller → grupo → inscripción → actividades Moodle → subsección → calendario → edición posterior → cierre`.
@@ -76,6 +87,8 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 ## Verificación realizada
 - Revisados `AGENTS.md`, `CURRENT_STATE.md`, HEAD y commits recientes antes de modificar.
 - Se ha mantenido una única estructura de talleres: la creación manual y la importación Excel terminan usando `manager::save_workshop()` y `manager::save_workshop_edition()`.
+- La nueva pantalla `workshops.php` reutiliza `workshop_series`, `list_workshop_editions()` y `get_edition_enrolment_count()`; no introduce una segunda fuente de datos.
+- Los talleres antiguos no vinculados a una Edición de talleres siguen accesibles en la gestión y no se borran ni migran automáticamente.
 - Las ediciones de talleres no cambian autenticación, roles ni permisos.
 - La clase `workshop_series` crea/ajusta su esquema de forma defensiva al entrar en el flujo de ediciones, incluido el nuevo `sessionenddate`.
 - El uso de subsecciones se detecta en tiempo de ejecución y solo se activa si el módulo `subsection` y sus tablas están disponibles; si no, se usa el modo de compatibilidad.
@@ -86,6 +99,7 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 
 ## Pendientes para siguientes cambios
 - Seguir acumulando los cambios solicitados por Julio antes de preparar una descarga o paquete final.
+- Probar en Moodle 5 real la nueva vista agrupada de `workshops.php`, especialmente los enlaces **Abrir en el curso**, **Editar taller** y **Alumnos / asistencia**.
 - Probar en Moodle 5 real la creación mediante `mod_subsection`, el movimiento de módulos a la sección delegada y el orden visual Calendario → Taller 01 → Taller 02…
 - Comparar visualmente el calendario generado con el calendario HTML de referencia mostrado por Julio y ajustar tipografía, distribución, bordes y densidad hasta dejarlo equivalente.
 - Probar en el Moodle real que `duplicate_module()` devuelve el CMID esperado y que las restricciones de grupo quedan visibles exactamente como en el curso actual.
