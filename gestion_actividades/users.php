@@ -30,12 +30,9 @@ echo ' ' . html_writer::link(new moodle_url('/local/gestion_actividades/template
 
 echo html_writer::div(get_string('bulkcreateusersinfo', 'local_gestion_actividades'), 'alert alert-info');
 
-$cancreateusers = has_capability('moodle/user:create', context_system::instance());
-if (!$cancreateusers) {
-    echo $OUTPUT->notification('Crear o actualizar cuentas Moodle requiere el permiso institucional «moodle/user:create». La autorización de Gestión HEE por sí sola no lo concede.', 'warning');
-}
+echo $OUTPUT->notification('Gestión HEE no crea cuentas Moodle. Este CSV solo trabaja con cuentas institucionales ya existentes; los usuarios no encontrados deben provisionarse primero mediante la administración institucional.', 'info');
 
-if ($cancreateusers && ($data = $form->get_data())) {
+if ($data = $form->get_data()) {
     $filepath = $form->save_temp_file('csvfile');
     if (!$filepath) {
         throw new moodle_exception('No se ha podido guardar temporalmente el CSV.');

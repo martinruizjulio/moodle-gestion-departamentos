@@ -38,6 +38,8 @@ class manager {
     public static function process_csv(\stdClass $activity, string $filepath, string $filename, string $gradecolumn, bool $creategroup, bool $createmissingusers = false, string $academicyear = '', bool $savegradehistory = true, bool $updategradebook = false, string $gradeitemname = ''): \stdClass {
         global $DB, $USER;
 
+        // Missing identities are provisioned by institutional Moodle, never here.
+        $createmissingusers = false;
         $now = time();
         if ($academicyear === '') {
             $year = (int)date('Y');
@@ -2744,31 +2746,9 @@ class manager {
                 continue;
             }
 
-            if ($password === '') {
-                $password = generate_password(12);
-            }
-
-            $user = (object)[
-                'auth' => 'manual',
-                'confirmed' => 1,
-                'mnethostid' => $CFG->mnet_localhost_id,
-                'username' => $username,
-                'password' => $password,
-                'firstname' => $firstname,
-                'lastname' => $lastname,
-                'email' => $email,
-                'idnumber' => $idnumber,
-                'city' => ($city !== '') ? $city : '-',
-                'country' => $country,
-                'lang' => current_language(),
-                'timecreated' => time(),
-                'timemodified' => time(),
-            ];
-            $userid = user_create_user($user, true, false);
-            $result->userid = $userid;
-            $result->status = 'created';
-            $result->message = 'Usuario creado.';
-            $summary->created++;
+            $result->status = 'notfound';
+            $result->message = 'No existe una cuenta Moodle institucional coincidente. Gestión HEE no crea cuentas locales; debe provisionarse primero mediante la administración institucional.';
+            $summary->skipped++;
             $summary->rows[] = $result;
         }
 
@@ -2906,65 +2886,7 @@ class manager {
     }
 
     private static function create_missing_user_from_candidate(\stdClass $candidate, string $idfield, string $identifier): ?\stdClass {
-        if (!has_capability('moodle/user:create', \context_system::instance())) {
-            return null;
-        }
-        global $CFG, $DB;
-
-        $email = trim((string)$candidate->email);
-        if ($email === '' && $idfield === 'email') {
-            $email = trim($identifier);
-        }
-        $username = trim((string)$candidate->username);
-        if ($username === '' && $idfield === 'username') {
-            $username = trim($identifier);
-        }
-        if ($username === '' && $email !== '') {
-            $username = preg_replace('/@.*/', '', $email);
-        }
-        $idnumber = trim((string)$candidate->idnumber);
-        if ($idnumber === '' && $idfield === 'idnumber') {
-            $idnumber = trim($identifier);
-        }
-
-        $firstname = trim((string)$candidate->firstname);
-        $lastname = trim((string)$candidate->lastname);
-        if ($email === '' || $firstname === '' || $lastname === '' || $username === '') {
-            return null;
-        }
-
-        $username = \core_text::strtolower(clean_param($username, PARAM_USERNAME));
-        $baseusername = $username;
-        $suffix = 1;
-        while ($DB->record_exists('user', ['username' => $username, 'mnethostid' => $CFG->mnet_localhost_id])) {
-            $username = $baseusername . $suffix;
-            $suffix++;
-        }
-
-        if ($DB->record_exists('user', ['email' => $email, 'deleted' => 0])) {
-            return null;
-        }
-
-        $password = generate_password(16);
-        $user = (object)[
-            'auth' => 'manual',
-            'confirmed' => 1,
-            'mnethostid' => $CFG->mnet_localhost_id,
-            'username' => $username,
-            'password' => $password,
-            'firstname' => $firstname,
-            'lastname' => $lastname,
-            'email' => $email,
-            'idnumber' => $idnumber,
-            'city' => '-',
-            'country' => '',
-            'lang' => current_language(),
-            'timecreated' => time(),
-            'timemodified' => time(),
-        ];
-
-        $userid = user_create_user($user, true, false);
-        return $DB->get_record('user', ['id' => $userid], 'id, firstname, lastname, email, username, idnumber', MUST_EXIST);
+        return null;
     }
 
     private static function find_users_by_field(string $field, string $value): array {
