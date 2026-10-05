@@ -5,11 +5,12 @@ use local_gestion_actividades\local\manager;
 
 require_login();
 $context = context_system::instance();
-require_capability('local/gestion_actividades:view', $context);
+if (!manager::can_manage_globally((int)$USER->id)) {
+    throw new required_capability_exception($context, 'local/gestion_actividades:manage', 'nopermissions', '');
+}
 
 $id = required_param('id', PARAM_INT);
 $activity = manager::get_activity($id);
-$canmanage = \local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id);
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/view.php', ['id' => $id]));
@@ -21,17 +22,14 @@ echo $OUTPUT->heading(format_string($activity->name));
 
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php'), get_string('workshopsandeditions', 'local_gestion_actividades'), ['class' => 'btn btn-primary']) . ' ' . html_writer::link(new moodle_url('/local/gestion_actividades/index.php'), get_string('callsandranking', 'local_gestion_actividades'), ['class' => 'btn btn-secondary']), 'mb-3');
 
-
 $buttons = [];
 $buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/index.php'), get_string('return', 'local_gestion_actividades'), ['class' => 'btn btn-secondary']);
-if ($canmanage) {
-    $buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/upload.php', ['id' => $id]), get_string('upload', 'local_gestion_actividades'), ['class' => 'btn btn-primary']);
-    $buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/export.php', ['id' => $id]), get_string('export', 'local_gestion_actividades'), ['class' => 'btn btn-secondary']);
-    $buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/gradehistory.php', ['id' => $id]), get_string('gradehistory', 'local_gestion_actividades'), ['class' => 'btn btn-secondary']);
-    $buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/workshopgroup.php', ['id' => $id]), get_string('setworkshopgroup', 'local_gestion_actividades'), ['class' => 'btn btn-primary']);
-    $buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/attendance.php', ['id' => $id]), get_string('syncattendance', 'local_gestion_actividades'), ['class' => 'btn btn-success']);
-    $buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/complete.php', ['id' => $id, 'sesskey' => sesskey()]), get_string('markcompleted', 'local_gestion_actividades'), ['class' => 'btn btn-warning']);
-}
+$buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/upload.php', ['id' => $id]), get_string('upload', 'local_gestion_actividades'), ['class' => 'btn btn-primary']);
+$buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/export.php', ['id' => $id]), get_string('export', 'local_gestion_actividades'), ['class' => 'btn btn-secondary']);
+$buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/gradehistory.php', ['id' => $id]), get_string('gradehistory', 'local_gestion_actividades'), ['class' => 'btn btn-secondary']);
+$buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/workshopgroup.php', ['id' => $id]), get_string('setworkshopgroup', 'local_gestion_actividades'), ['class' => 'btn btn-primary']);
+$buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/attendance.php', ['id' => $id]), get_string('syncattendance', 'local_gestion_actividades'), ['class' => 'btn btn-success']);
+$buttons[] = html_writer::link(new moodle_url('/local/gestion_actividades/complete.php', ['id' => $id, 'sesskey' => sesskey()]), get_string('markcompleted', 'local_gestion_actividades'), ['class' => 'btn btn-warning']);
 echo html_writer::div(implode(' ', $buttons), 'mb-3');
 
 $info = new html_table();
@@ -93,4 +91,5 @@ foreach ($candidates as $c) {
     ];
 }
 echo html_writer::table($table);
+
 echo $OUTPUT->footer();
