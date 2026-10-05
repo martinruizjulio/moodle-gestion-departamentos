@@ -6,13 +6,13 @@ use local_gestion_actividades\local\portfolio_typeb;
 
 require_login();
 $context = context_system::instance();
-if (!\local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id)) {
-    throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
+if (!manager::can_manage_globally((int)$USER->id)) {
+    throw new required_capability_exception($context, 'local/gestion_actividades:manage', 'nopermissions', '');
 }
 
 $q = optional_param('q', '', PARAM_TEXT);
 $userid = optional_param('userid', 0, PARAM_INT);
-$status = optional_param('status', '', PARAM_ALPHA);
+$status = optional_param('status', '', PARAM_ALPHANUMEXT);
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['q' => $q, 'userid' => $userid, 'status' => $status]));
@@ -26,10 +26,13 @@ function local_ga_btn_icon(string $pix, string $label): string {
 
 function local_ga_admin_badge(string $status): string {
     if ($status === 'generated' || $status === 'validated') {
-        return html_writer::span($status === 'generated' ? 'Generado' : 'Validado', 'badge badge-success', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+        return html_writer::span($status === 'generated' ? 'Generado' : 'Validado y completado', 'badge badge-success', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+    }
+    if ($status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) {
+        return html_writer::span('Validado · falta reflexión', 'badge badge-warning', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
     }
     if ($status === 'pending') {
-        return html_writer::span('Pendiente', 'badge badge-warning', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
+        return html_writer::span('Pendiente de validar', 'badge badge-warning', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
     }
     if ($status === 'rejected') {
         return html_writer::span('Rechazado', 'badge badge-danger', ['style' => 'font-size:0.85rem;padding:6px 9px;']);
@@ -49,8 +52,8 @@ function local_ga_admin_typea_hours_from_certificates(array $certificates): floa
 
 echo $OUTPUT->header();
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
-
 echo $OUTPUT->heading('Portafolio de certificados - gestor');
+echo html_writer::tag('p', 'En los reconocimientos externos Tipo B hay dos pasos: el gestor valida el certificado aportado y, después, el alumno entrega una breve reflexión. Las horas solo computan cuando ambos pasos están completados.', ['class' => 'alert alert-info']);
 
 $pendingcount = 0;
 try {
@@ -63,7 +66,6 @@ if ($pendingcount > 0) {
 }
 
 echo html_writer::start_div('mb-3');
-echo ' ';
 echo html_writer::link(new moodle_url('/local/gestion_actividades/manager_downloads.php'), local_ga_btn_icon('t/download', 'Listados y descargas'), ['class' => 'btn btn-primary']);
 echo ' ';
 echo html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_cover_template.php'), local_ga_btn_icon('t/edit', 'Editar portada PDF'), ['class' => 'btn btn-secondary']);
@@ -74,7 +76,13 @@ echo html_writer::end_div();
 echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'mb-3']);
 echo html_writer::start_div('input-group');
 echo html_writer::empty_tag('input', ['type' => 'text', 'name' => 'q', 'value' => s($q), 'placeholder' => 'Buscar alumno por nombre o email', 'class' => 'form-control']);
-echo html_writer::select(['' => 'Todos los estados Tipo B', 'pending' => 'Pendientes', 'validated' => 'Validados', 'rejected' => 'Rechazados'], 'status', $status, false, ['class' => 'custom-select']);
+echo html_writer::select([
+    '' => 'Todos los estados Tipo B',
+    'pending' => 'Pendientes de validar',
+    portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION => 'Validados · esperando reflexión',
+    'validated' => 'Validados y completados',
+    'rejected' => 'Rechazados',
+], 'status', $status, false, ['class' => 'custom-select']);
 echo html_writer::empty_tag('input', ['type' => 'submit', 'value' => 'Buscar', 'class' => 'btn btn-primary']);
 echo html_writer::end_div();
 echo html_writer::end_tag('form');
@@ -112,7 +120,7 @@ if ($selecteduser) {
         $typeahours = $certtypeahours;
     }
     $typebvalidated = portfolio_typeb::total_validated_hours((int)$selecteduser->id);
-    echo html_writer::tag('p', 'Horas Tipo A: ' . round((float)$typeahours, 2) . ' h · Horas Tipo B validadas: ' . round((float)$typebvalidated, 2) . ' h · Total reconocido: ' . round((float)$typeahours + (float)$typebvalidated, 2) . ' h', ['class' => 'alert alert-info']);
+    echo html_writer::tag('p', 'Horas Tipo A: ' . round((float)$typeahours, 2) . ' h · Horas Tipo B externas completadas: ' . round((float)$typebvalidated, 2) . ' h · Total reconocido: ' . round((float)$typeahours + (float)$typebvalidated, 2) . ' h', ['class' => 'alert alert-info']);
     echo html_writer::start_div('mb-3');
     echo html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_download.php', ['userid' => $selecteduser->id]), local_ga_btn_icon('t/download', 'Descargar portafolio PDF de este alumno'), ['class' => 'btn btn-primary']);
     echo ' ';
@@ -135,34 +143,41 @@ if ($selecteduser) {
         echo $OUTPUT->notification('Este alumno no tiene certificados Tipo A generados.', 'info');
     }
 
-    echo html_writer::tag('h3', 'Talleres Tipo B');
+    echo html_writer::tag('h3', 'Reconocimientos externos Tipo B');
     $typebcerts = portfolio_typeb::list_all((int)$selecteduser->id, $status);
 } else {
-    echo html_writer::tag('h2', 'Certificados Tipo B pendientes y revisados');
+    echo html_writer::tag('h2', 'Reconocimientos externos Tipo B');
     $typebcerts = portfolio_typeb::list_all(0, $status);
 }
 
 if (!empty($typebcerts)) {
     $table = new html_table();
-    $table->head = ['Alumno', 'Actividad', 'Fecha', 'Horas', 'Declaración', 'Estado', 'Comentario', 'PDF', 'Validación'];
+    $table->head = ['Alumno', 'Actividad', 'Fecha', 'Horas', 'Descripción', 'Estado', 'Reflexión', 'Comentario gestor', 'Certificado', 'Acción'];
     foreach ($typebcerts as $c) {
-        $pdfactions = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_view.php', ['id' => $c->id]), local_ga_btn_icon('t/preview', 'Ver PDF'), ['class' => 'btn btn-primary btn-sm', 'target' => '_blank']) . ' ' .
-                      html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id' => $c->id]), local_ga_btn_icon('t/download', 'Descargar PDF'), ['class' => 'btn btn-secondary btn-sm']);
-        $reviewactions = html_writer::start_tag('form', ['method' => 'post', 'action' => new moodle_url('/local/gestion_actividades/typeb_review.php'), 'style' => 'display:inline-block;min-width:240px;']);
-        $reviewactions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
-        $reviewactions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $c->id]);
-        $reviewactions .= html_writer::empty_tag('input', ['type' => 'text', 'name' => 'comment', 'placeholder' => 'Comentario opcional', 'class' => 'form-control form-control-sm mb-1']);
-        $reviewactions .= html_writer::tag('button', 'Validar', ['type' => 'submit', 'name' => 'action', 'value' => 'validate', 'class' => 'btn btn-success btn-sm']);
-        $reviewactions .= ' ' . html_writer::tag('button', 'Rechazar', ['type' => 'submit', 'name' => 'action', 'value' => 'reject', 'class' => 'btn btn-danger btn-sm']);
-        $reviewactions .= html_writer::end_tag('form');
+        $pdfactions = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_view.php', ['id' => $c->id]), local_ga_btn_icon('t/preview', 'Ver'), ['class' => 'btn btn-primary btn-sm', 'target' => '_blank']) . ' ' .
+                      html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id' => $c->id]), local_ga_btn_icon('t/download', 'Descargar'), ['class' => 'btn btn-secondary btn-sm']);
+        if ((string)$c->status === 'pending') {
+            $reviewactions = html_writer::start_tag('form', ['method' => 'post', 'action' => new moodle_url('/local/gestion_actividades/typeb_review.php'), 'style' => 'display:inline-block;min-width:240px;']);
+            $reviewactions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+            $reviewactions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $c->id]);
+            $reviewactions .= html_writer::empty_tag('input', ['type' => 'text', 'name' => 'comment', 'placeholder' => 'Comentario opcional', 'class' => 'form-control form-control-sm mb-1']);
+            $reviewactions .= html_writer::tag('button', 'Validar', ['type' => 'submit', 'name' => 'action', 'value' => 'validate', 'class' => 'btn btn-success btn-sm']);
+            $reviewactions .= ' ' . html_writer::tag('button', 'Rechazar', ['type' => 'submit', 'name' => 'action', 'value' => 'reject', 'class' => 'btn btn-danger btn-sm']);
+            $reviewactions .= html_writer::end_tag('form');
+        } else if ((string)$c->status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) {
+            $reviewactions = html_writer::span('Esperando reflexión del alumno', 'text-muted');
+        } else {
+            $reviewactions = '-';
+        }
+        $reflection = trim((string)($c->reflectiontext ?? ''));
         $table->data[] = [
             isset($c->firstname) ? fullname($c) . '<br><small>' . s($c->email) . '</small>' : '-',
             s($c->activityname),
             !empty($c->activitydate) ? userdate((int)$c->activitydate, get_string('strftimedatefullshort', 'langconfig')) : '-',
             round((float)$c->hours, 2) . ' h',
             !empty($c->activitydescription) ? format_text($c->activitydescription, FORMAT_PLAIN) : '-',
-            !empty($c->authorizedconfirm) ? 'Confirmada' : 'No confirmada',
             local_ga_admin_badge((string)$c->status),
+            $reflection !== '' ? s(\core_text::substr($reflection, 0, 220)) : '-',
             !empty($c->reviewcomment) ? s($c->reviewcomment) : '-',
             $pdfactions,
             $reviewactions,
@@ -170,7 +185,7 @@ if (!empty($typebcerts)) {
     }
     echo html_writer::table($table);
 } else {
-    echo $OUTPUT->notification('No hay certificados Tipo B con esos criterios.', 'info');
+    echo $OUTPUT->notification('No hay reconocimientos externos Tipo B con esos criterios.', 'info');
 }
 
 if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
