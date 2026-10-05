@@ -1,13 +1,7 @@
 <?php
 defined('MOODLE_INTERNAL') || die();
 
-$observers = [
-    [
-        'eventname' => '\\core\\event\\file_created',
-        'callback' => '\\block_gestion_hee\\observer::file_changed',
-    ],
-    [
-        'eventname' => '\\core\\event\\file_deleted',
-        'callback' => '\\block_gestion_hee\\observer::file_changed',
-    ],
-];
+// Cache invalidation is triggered explicitly by local_gestion_actividades at the
+// points where certificates, recognised hours and Type B records change. Moodle
+// core does not expose generic file_created/file_deleted events for this purpose.
+$observers = [];
