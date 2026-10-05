@@ -6,6 +6,20 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 
 ## Cambios recientes
 
+### Profesor HEE — gestión limitada a talleres asignados
+- Se formaliza la figura funcional **Profesor HEE** sin crear ni modificar un rol global de Moodle.
+- El profesor mantiene su matrícula y autenticación institucional actuales, incluso cuando Moodle lo tenga como **Profesor sin permiso de edición**.
+- El permiso HEE se concede exclusivamente mediante la relación existente `local_ga_edition_teachers`: profesor ↔ edición concreta de taller.
+- Un Profesor HEE puede gestionar solo sus talleres asignados mediante las pantallas protegidas de Gestión HEE: alumnado, asistencia, materiales y actividad obligatoria/reflexión correspondiente.
+- No obtiene acceso global al panel HEE, no puede administrar otros talleres ni adquiere permiso general para editar el curso Moodle.
+- `authorized_users.php` mantiene separados dos niveles: **Gestor HEE global** y **Profesor HEE por taller/edición**.
+- Desde `Usuarios autorizados` se puede seleccionar el curso y asignar/quitar profesores matriculados a cada edición concreta.
+- La asignación acepta el rol institucional de profesor sin edición porque la detección de candidatos incluye el rol Moodle `teacher`, además de `editingteacher` y `manager`.
+- `my_workshops.php` pasa a presentarse explícitamente como **Profesor HEE · Mis talleres**, con talleres vigentes y finalizados.
+- El bloque `block_gestion_hee` muestra **Profesor HEE** y acceso directo a sus talleres cuando el usuario tiene al menos una edición asignada.
+- El bloque revalida la tabla canónica de asignaciones cuando la caché docente aún contiene un cero antiguo, de modo que una nueva asignación debe aparecer sin esperar los 5 minutos de TTL.
+- No se crea una cuenta alternativa, no se cambia autenticación y no se otorgan capacidades Moodle generales de edición.
+
 ### Talleres Tipo A y Tipo B unificados por Ediciones de talleres
 - La unidad organizativa canónica es **Edición de talleres** (`classes/local/workshop_series.php`).
 - Cada edición crea una sección Moodle con título y fechas editables.
@@ -93,11 +107,16 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 - Próxima solución, si se retoma: integración autorizada y limitada/API específica con permisos mínimos HEE, sin exponer el resto del Campus Virtual.
 
 ## Versión actual
-- `local_gestion_actividades`: **1.5.92-alpha** (`2026100506`).
+- `local_gestion_actividades`: **1.5.93-alpha** (`2026100507`).
+- `block_gestion_hee`: **1.0.17-alpha** (`2026100501`).
 
 ## Verificación realizada
-- Revisados `AGENTS.md`, `CURRENT_STATE.md`, HEAD y commits recientes durante la implementación.
-- No se han cambiado autenticación, roles ni permisos.
+- Revisados `AGENTS.md`, `CURRENT_STATE.md`, HEAD y commits recientes antes del cambio Profesor HEE.
+- El permiso Profesor HEE reutiliza la relación de profesores por edición ya existente; no añade tablas ni migraciones.
+- Las protecciones existentes `can_manage_workshop_instance()` y `can_manage_edition()` ya aceptan a profesores expresamente asignados y siguen protegiendo las URLs directas.
+- `material_edit.php` también utiliza `can_manage_workshop_instance()`, por lo que el Profesor HEE puede gestionar materiales de sus propios talleres desde Gestión HEE sin permiso general de edición del curso.
+- `my_workshops.php` solo lista ediciones asignadas al usuario y vuelve a verificar `can_manage_edition()` en cada fila.
+- No se ha modificado el rol Moodle institucional del profesor ni las capacidades globales de la asignatura.
 - No se han eliminado talleres/ediciones existentes ni ejecutado migraciones destructivas.
 - Las nuevas columnas de reflexión externa se crean de forma defensiva al entrar en el flujo de `portfolio_typeb`.
 - La generación normal de certificados Tipo B pasa por `typeb_certificate_policy`, que comprueba asistencia + reflexión.
@@ -106,6 +125,8 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 - No se ha realizado todavía una prueba funcional en el servidor Moodle UCV ni una instalación/actualización real del plugin. No declarar producción validada.
 
 ## Pendientes antes del paquete final
+- Probar en el Moodle UCV real un usuario matriculado como **Profesor sin permiso de edición**: asignarlo como Profesor HEE, confirmar que el bloque cambia a Profesor HEE y que solo ve/gestiona sus talleres.
+- Probar que un Profesor HEE puede pasar asistencia, gestionar materiales y revisar la actividad/reflexión mediante las pantallas HEE, y que sigue sin poder editar el resto del curso.
 - Probar en Moodle 5 real la creación de `mod_subsection`, el movimiento de actividades a la subsección y el orden Calendario → Taller 01 → Taller 02…
 - Probar la Tarea Moodle Tipo B: texto en línea, archivo opcional, finalización por entrega, restricción al grupo y visibilidad dentro de la subsección.
 - Probar que el certificado Tipo B solo se genera con asistencia + reflexión y revisar visualmente su plantilla PDF.
