@@ -112,49 +112,87 @@ class student_hours_cache {
         }
     }
 
+    /**
+     * Calculate the same academic hours represented by the current HEE model.
+     *
+     * Hour history is the canonical stored result for finished editions. When a
+     * certificate exists for an edition that is not yet represented in history,
+     * it is added once. Internal Type B is classified by workshop type, external
+     * Type B only counts after validation + reflection, and active transfers move
+     * hours from A to B without changing the total.
+     */
     private static function calculate_summary(int $userid): array {
         global $DB;
 
         $schema = self::get_schema();
-        $certificatehours = 0.0;
-        $historyhours = 0.0;
+        $typeahours = 0.0;
         $typebhours = 0.0;
 
-        if (!empty($schema['certificates']) && !empty($schema['workshops'])) {
+        $hashistory = !empty($schema['hour_history']);
+        $hasworkshops = !empty($schema['workshops']);
+
+        if ($hashistory && $hasworkshops) {
+            $sql = "SELECT
+                        COALESCE(SUM(CASE WHEN w.workshoptype = 'typeb' THEN 0 ELSE h.hours END), 0) AS typeahours,
+                        COALESCE(SUM(CASE WHEN w.workshoptype = 'typeb' THEN h.hours ELSE 0 END), 0) AS typebhours
+                      FROM {local_ga_hour_history} h
+                 LEFT JOIN {local_ga_workshops} w ON w.id = h.workshopid
+                     WHERE h.userid = :userid";
+            $history = $DB->get_record_sql($sql, ['userid' => $userid], IGNORE_MISSING);
+            if ($history) {
+                $typeahours += (float)($history->typeahours ?? 0);
+                $typebhours += (float)($history->typebhours ?? 0);
+            }
+        } else if ($hashistory) {
+            // Legacy fallback when the workshop catalogue is not available.
+            $typeahours += (float)$DB->get_field_sql(
+                'SELECT COALESCE(SUM(hours), 0) FROM {local_ga_hour_history} WHERE userid = :userid',
+                ['userid' => $userid]
+            );
+        }
+
+        if (!empty($schema['certificates']) && $hasworkshops) {
             $certcolumns = $DB->get_columns('local_ga_certificates');
-            $typeafilter = isset($certcolumns['certificatetype']) ? " AND (c.certificatetype = 'typea' OR c.certificatetype IS NULL OR c.certificatetype = '')" : '';
+            $historycolumns = $hashistory ? $DB->get_columns('local_ga_hour_history') : [];
+            $candedupe = $hashistory && isset($certcolumns['editionid']) && isset($historycolumns['editionid']);
+            $notexists = $candedupe
+                ? ' AND NOT EXISTS (SELECT 1 FROM {local_ga_hour_history} h WHERE h.userid = c.userid AND h.editionid = c.editionid)'
+                : '';
+            $typeafilter = isset($certcolumns['certificatetype'])
+                ? " AND (c.certificatetype = 'typea' OR c.certificatetype IS NULL OR c.certificatetype = '')"
+                : '';
+
             $sql = "SELECT COALESCE(SUM(COALESCE(w.hours, 0)), 0)
                       FROM {local_ga_certificates} c
-                 LEFT JOIN {local_ga_workshops} w ON w.id = c.workshopid
-                     WHERE c.userid = :userid $typeafilter";
-            $certificatehours = (float)$DB->get_field_sql($sql, ['userid' => $userid]);
+                      JOIN {local_ga_workshops} w ON w.id = c.workshopid
+                     WHERE c.userid = :userid $typeafilter $notexists";
+            $typeahours += (float)$DB->get_field_sql($sql, ['userid' => $userid]);
 
             if (isset($certcolumns['certificatetype'])) {
                 $sql = "SELECT COALESCE(SUM(COALESCE(w.hours, 0)), 0)
                           FROM {local_ga_certificates} c
-                     LEFT JOIN {local_ga_workshops} w ON w.id = c.workshopid
-                         WHERE c.userid = :userid AND c.certificatetype = 'typeb'";
+                          JOIN {local_ga_workshops} w ON w.id = c.workshopid
+                         WHERE c.userid = :userid
+                           AND c.certificatetype = 'typeb'
+                           $notexists";
                 $typebhours += (float)$DB->get_field_sql($sql, ['userid' => $userid]);
             }
         }
 
-        if (!empty($schema['hour_history'])) {
-            $sql = "SELECT COALESCE(SUM(hours), 0)
-                      FROM {local_ga_hour_history}
-                     WHERE userid = :userid";
-            $historyhours = (float)$DB->get_field_sql($sql, ['userid' => $userid]);
-        }
-
-        // Mantiene la lógica histórica del bloque: si el historial supera a los certificados Tipo A,
-        // se usa el historial para no perder horas reconocidas antiguas o importadas.
-        $typeahours = max($certificatehours, $historyhours);
-
         if (!empty($schema['typeb_certs'])) {
+            $columns = $DB->get_columns('local_ga_typeb_certs');
+            $reflectionfilter = isset($columns['reflectiontext'])
+                ? " AND reflectiontext IS NOT NULL AND reflectiontext <> ''"
+                : '';
             $sql = "SELECT COALESCE(SUM(hours), 0)
                       FROM {local_ga_typeb_certs}
                      WHERE userid = :userid
-                       AND status = :status";
-            $typebhours += (float)$DB->get_field_sql($sql, ['userid' => $userid, 'status' => 'validated']);
+                       AND status = :status
+                       $reflectionfilter";
+            $typebhours += (float)$DB->get_field_sql($sql, [
+                'userid' => $userid,
+                'status' => 'validated',
+            ]);
         }
 
         if (!empty($schema['institutional_hours'])) {
