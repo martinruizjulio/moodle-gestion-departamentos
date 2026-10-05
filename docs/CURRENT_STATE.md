@@ -158,6 +158,17 @@ Validación: `php -l` (todos los PHP), XML bien formado, sin llamadas a métodos
 - Las ediciones legacy sin vínculo explícito a serie siguen funcionando mediante su estado propio.
 - No hay cambios de esquema ni de permisos en esta revisión.
 
+## Bloque Gestión HEE y cálculo de horas (revisión Claude, 2026-10-05 22:30)
+- **Cálculo único de horas**: `local_gestion_actividades\local\hours_calculator`. Lo usan el bloque (`student_hours_cache`), portafolio del alumno y del gestor, PDF, ítem de horas del libro de calificaciones (desbloqueo de la autoevaluación a 54 h), informe de horas, `get_student_total_hours()` y la ventana de traspasos.
+  - Talleres: historial de horas + certificados de ediciones aún no archivadas (una vez por alumno y edición). Tipo A/B según el tipo de taller.
+  - Tipo B interno: solo con reflexión Moodle entregada (última entrega `submitted`); las ediciones antiguas sin tarea de reflexión siguen contando.
+  - Tipo B externo: solo `validated` + reflexión.
+  - Reconocimiento institucional A/B y traspasos activos A→B (no cambian el total).
+- Antes había seis cálculos distintos: el portafolio contaba dos veces el Tipo B interno archivado; libro de calificaciones, bloque e informe contaban Tipo B sin reflexión; portafolio del gestor y PDF omitían partes.
+- Caché del bloque: se invalida al entregar/eliminar la reflexión. La caché docente se invalida al cerrar/reabrir una Edición de talleres, archivar o borrar una edición y reasignar profesorado.
+- Profesor HEE: «Cerrado por plazas» (`closed_full`) sigue en vigentes; estados nulos ya no hacen desaparecer ediciones.
+- Prueba unitaria local del calculador (SQLite simulado): A 9 h − traspaso 2 = 7; B = 3 interno + 6 externo + 2 traspaso = 11; reflexión pendiente 2 h no cuenta; externos sin reflexión no cuentan.
+
 ## Versiones actuales
-- `local_gestion_actividades`: **1.5.104-alpha** (`2026100519`). Último savepoint de esquema: **2026100516**.
-- `block_gestion_hee`: **1.0.21-alpha** (`2026100505`).
+- `local_gestion_actividades`: **1.5.105-alpha** (`2026100520`). Último savepoint de esquema: **2026100516**.
+- `block_gestion_hee`: **1.0.22-alpha** (`2026100506`).
