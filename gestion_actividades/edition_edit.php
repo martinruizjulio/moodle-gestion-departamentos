@@ -4,6 +4,7 @@ require_once(__DIR__ . '/../../config.php');
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\workshop_series;
 use local_gestion_actividades\local\typeb_reflection_activity;
+use local_gestion_actividades\local\date_helper;
 
 require_login();
 
@@ -66,9 +67,9 @@ $PAGE->set_heading(get_string('title', 'local_gestion_actividades'));
 
 if (data_submitted() && confirm_sesskey()) {
     $teachers = optional_param_array('teachers', [], PARAM_INT);
-    $sessiondate = strtotime(str_replace('T', ' ', required_param('sessiondate_text', PARAM_TEXT))) ?: 0;
-    $sessionenddate = strtotime(str_replace('T', ' ', required_param('sessionenddate_text', PARAM_TEXT))) ?: 0;
-    $enrolenddate = strtotime(str_replace('T', ' ', required_param('enrolenddate_text', PARAM_TEXT))) ?: 0;
+    $sessiondate = date_helper::parse_user_datetime(required_param('sessiondate_text', PARAM_TEXT));
+    $sessionenddate = date_helper::parse_user_datetime(required_param('sessionenddate_text', PARAM_TEXT));
+    $enrolenddate = date_helper::parse_user_datetime(required_param('enrolenddate_text', PARAM_TEXT));
     if ($sessiondate <= 0 || $sessionenddate <= $sessiondate) {
         throw new moodle_exception('invaliddata', 'error', '', 'La hora de fin debe ser posterior a la hora de inicio.');
     }
@@ -138,7 +139,7 @@ if (data_submitted() && confirm_sesskey()) {
     }
 
     if ($seriesid > 0) {
-        workshop_series::attach_workshop($seriesid, $workshopid, $sortorder, 0, $sessionenddate);
+        workshop_series::attach_workshop($seriesid, $workshopid, $sortorder, 0, $sessionenddate, $savededitionid);
     } else {
         workshop_series::refresh_for_workshop($workshopid);
     }

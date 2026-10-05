@@ -16,49 +16,9 @@ class workshop_series {
 
     public static function ensure_schema(): void {
         global $DB;
-        $dbman = $DB->get_manager();
-
-        $table = new \xmldb_table(self::TABLE);
-        if (!$dbman->table_exists($table)) {
-            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-            $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('title', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
-            $table->add_field('datefrom', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('dateto', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('sectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('calendarcmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('calendarsectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'active');
-            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-            $table->add_index('courseid', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
-            $table->add_index('status', XMLDB_INDEX_NOTUNIQUE, ['status']);
-            $dbman->create_table($table);
-        }
-
-        $items = new \xmldb_table(self::ITEMTABLE);
-        if (!$dbman->table_exists($items)) {
-            $items->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-            $items->add_field('seriesid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $items->add_field('workshopid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $items->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $items->add_field('sessionenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $items->add_field('subsectioncmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $items->add_field('subsectionsectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $items->add_field('notescmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $items->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $items->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $items->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-            $items->add_index('seriesworkshop', XMLDB_INDEX_UNIQUE, ['seriesid', 'workshopid']);
-            $items->add_index('seriesorder', XMLDB_INDEX_NOTUNIQUE, ['seriesid', 'sortorder']);
-            $items->add_index('workshopid', XMLDB_INDEX_NOTUNIQUE, ['workshopid']);
-            $dbman->create_table($items);
-        } else {
-            $endfield = new \xmldb_field('sessionenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'sortorder');
-            if (!$dbman->field_exists($items, $endfield)) {
-                $dbman->add_field($items, $endfield);
-            }
+        if (!$DB->get_manager()->table_exists(new \xmldb_table(self::TABLE))
+                || !$DB->get_manager()->table_exists(new \xmldb_table(self::ITEMTABLE))) {
+            throw new \coding_exception('El esquema de Ediciones de talleres no está instalado. Ejecuta la actualización de Moodle.');
         }
     }
 
@@ -83,8 +43,12 @@ class workshop_series {
         }
         if ($id > 0) {
             $old = self::get($id);
-            if ((int)$old->courseid !== $record->courseid && self::items($id)) {
+            $existingitems = self::items($id);
+            if ((int)$old->courseid !== $record->courseid && $existingitems) {
                 throw new \RuntimeException('No se puede cambiar de curso una edición que ya contiene talleres.');
+            }
+            foreach ($existingitems as $existingitem) {
+                self::assert_no_overlapping_series($id, (int)$existingitem->workshopid, $record->datefrom, $record->dateto);
             }
             $record->id = $id;
             $DB->update_record(self::TABLE, $record);
@@ -151,7 +115,7 @@ class workshop_series {
         return $records ? reset($records) : null;
     }
 
-    public static function attach_workshop(int $seriesid, int $workshopid, int $sortorder = 0, int $notescmid = 0, int $sessionenddate = 0): void {
+    public static function attach_workshop(int $seriesid, int $workshopid, int $sortorder = 0, int $notescmid = 0, int $sessionenddate = 0, int $editionid = 0): void {
         global $DB;
         self::ensure_schema();
         $series = self::get($seriesid);
@@ -164,6 +128,17 @@ class workshop_series {
         }
         if ($sessionenddate > 0 && ($sessionenddate < (int)$series->datefrom || $sessionenddate > (int)$series->dateto)) {
             throw new \RuntimeException('La hora de fin del taller queda fuera de las fechas de la edición.');
+        }
+        self::assert_no_overlapping_series($seriesid, $workshopid, (int)$series->datefrom, (int)$series->dateto);
+        if ($editionid > 0) {
+            $edition = manager::get_workshop_edition($editionid);
+            if ((int)$edition->workshopid !== $workshopid) {
+                throw new \RuntimeException('La edición concreta no pertenece al taller indicado.');
+            }
+            $columns = $DB->get_columns('local_ga_workshop_editions');
+            if (isset($columns['seriesid'])) {
+                $DB->set_field('local_ga_workshop_editions', 'seriesid', $seriesid, ['id' => $editionid]);
+            }
         }
         $existing = $DB->get_record(self::ITEMTABLE, ['seriesid' => $seriesid, 'workshopid' => $workshopid], '*', IGNORE_MISSING);
         $now = time();
@@ -193,6 +168,26 @@ class workshop_series {
         self::ensure_course_structure($seriesid);
     }
 
+    private static function assert_no_overlapping_series(int $seriesid, int $workshopid, int $datefrom, int $dateto): void {
+        global $DB;
+        $sql = "SELECT s.id, s.title
+                  FROM {" . self::TABLE . "} s
+                  JOIN {" . self::ITEMTABLE . "} i ON i.seriesid = s.id
+                 WHERE i.workshopid = :workshopid
+                   AND s.id <> :seriesid
+                   AND s.datefrom <= :dateto
+                   AND s.dateto >= :datefrom";
+        $conflict = $DB->get_record_sql($sql, [
+            'workshopid' => $workshopid,
+            'seriesid' => $seriesid,
+            'datefrom' => $datefrom,
+            'dateto' => $dateto,
+        ], IGNORE_MULTIPLE);
+        if ($conflict) {
+            throw new \RuntimeException('Este taller ya pertenece a otra Edición de talleres cuyo rango de fechas se solapa: ' . $conflict->title . '.');
+        }
+    }
+
     public static function next_sortorder(int $seriesid): int {
         global $DB;
         self::ensure_schema();
@@ -211,6 +206,13 @@ class workshop_series {
         global $DB;
         self::ensure_schema();
         $edition = manager::get_workshop_edition($editionid);
+        if (property_exists($edition, 'seriesid') && (int)$edition->seriesid > 0) {
+            $series = $DB->get_record(self::TABLE, ['id' => (int)$edition->seriesid], '*', IGNORE_MISSING);
+            if ($series) {
+                return $series;
+            }
+        }
+        // Compatibility fallback for historical records created before seriesid.
         $sql = "SELECT s.*
                   FROM {" . self::TABLE . "} s
                   JOIN {" . self::ITEMTABLE . "} i ON i.seriesid = s.id
@@ -218,7 +220,6 @@ class workshop_series {
                    AND s.datefrom <= :sessionfrom
                    AND s.dateto >= :sessionto
               ORDER BY s.datefrom DESC, s.id DESC";
-        // Moodle DML does not accept the same named placeholder twice.
         $records = $DB->get_records_sql($sql, [
             'workshopid' => (int)$edition->workshopid,
             'sessionfrom' => (int)$edition->sessiondate,

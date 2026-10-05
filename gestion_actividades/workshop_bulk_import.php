@@ -2,6 +2,7 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\bulk_workshops;
+use local_gestion_actividades\local\date_helper;
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\workshop_series;
 
@@ -36,15 +37,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'upload') {
             if ($courseid <= 0) throw new RuntimeException('Selecciona el curso antes de subir la plantilla.');
             if (trim($seriestitle) === '') throw new RuntimeException('Indica el título de la edición de talleres.');
-            $seriesfrom = strtotime(str_replace('T', ' ', $seriesfromtext)) ?: 0;
-            $seriesto = strtotime(str_replace('T', ' ', $seriestotext)) ?: 0;
+            $seriesfrom = date_helper::parse_user_datetime($seriesfromtext);
+            $seriesto = date_helper::parse_user_datetime($seriestotext);
             if ($seriesfrom <= 0 || $seriesto <= 0 || $seriesto < $seriesfrom) throw new RuntimeException('Las fechas de la edición no son válidas.');
             $token = bulk_workshops::save_uploaded_file($_FILES['workshopfile'] ?? []);
             $preview = bulk_workshops::preview($token, $courseid);
         } else if ($action === 'confirm') {
             if ($courseid <= 0 || $token === '') throw new RuntimeException('La importación ha caducado. Vuelve a subir el Excel.');
-            $seriesfrom = strtotime(str_replace('T', ' ', $seriesfromtext)) ?: 0;
-            $seriesto = strtotime(str_replace('T', ' ', $seriestotext)) ?: 0;
+            $seriesfrom = date_helper::parse_user_datetime($seriesfromtext);
+            $seriesto = date_helper::parse_user_datetime($seriestotext);
             if ($seriesfrom <= 0 || $seriesto <= 0 || $seriesto < $seriesfrom) throw new RuntimeException('Las fechas de la edición no son válidas.');
             if (trim($seriestitle) === '') throw new RuntimeException('Indica el título de la edición de talleres.');
 
@@ -140,9 +141,9 @@ if ($token === '' && !$result) {
     echo html_writer::label('Título de la edición de talleres', 'seriestitle');
     echo html_writer::empty_tag('input', ['type' => 'text', 'name' => 'seriestitle', 'id' => 'seriestitle', 'class' => 'form-control mb-3', 'required' => 'required', 'value' => $seriestitle, 'placeholder' => 'Edición de Talleres · Octubre 2026']);
     echo html_writer::label('Inicio de la edición', 'seriesfrom_text');
-    echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'seriesfrom_text', 'id' => 'seriesfrom_text', 'class' => 'form-control mb-3', 'required' => 'required', 'value' => $seriesfromtext !== '' ? $seriesfromtext : date('Y-m-d\TH:i', $defaultfrom)]);
+    echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'seriesfrom_text', 'id' => 'seriesfrom_text', 'class' => 'form-control mb-3', 'required' => 'required', 'value' => $seriesfromtext !== '' ? $seriesfromtext : date_helper::input_datetime($defaultfrom)]);
     echo html_writer::label('Fin de la edición', 'seriesto_text');
-    echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'seriesto_text', 'id' => 'seriesto_text', 'class' => 'form-control mb-3', 'required' => 'required', 'value' => $seriestotext !== '' ? $seriestotext : date('Y-m-d\TH:i', $defaultto)]);
+    echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'seriesto_text', 'id' => 'seriesto_text', 'class' => 'form-control mb-3', 'required' => 'required', 'value' => $seriestotext !== '' ? $seriestotext : date_helper::input_datetime($defaultto)]);
     echo html_writer::label('Plantilla XLSX cumplimentada', 'workshopfile');
     echo html_writer::empty_tag('input', ['type' => 'file', 'name' => 'workshopfile', 'id' => 'workshopfile', 'accept' => '.xlsx', 'class' => 'form-control mb-3', 'required' => 'required']);
     echo html_writer::tag('button', 'Previsualizar edición', ['type' => 'submit', 'class' => 'btn btn-primary']);
@@ -157,8 +158,8 @@ if ($token !== '' && $courseid > 0) {
     }
     $quizoptions = bulk_workshops::quiz_templates($courseid);
     $notesoptions = bulk_workshops::notes_templates($courseid);
-    $seriesfrom = strtotime(str_replace('T', ' ', $seriesfromtext)) ?: 0;
-    $seriesto = strtotime(str_replace('T', ' ', $seriestotext)) ?: 0;
+    $seriesfrom = date_helper::parse_user_datetime($seriesfromtext);
+    $seriesto = date_helper::parse_user_datetime($seriestotext);
 
     echo html_writer::tag('h3', '3. Previsualización de ' . s($seriestitle), ['class' => 'h4']);
     echo html_writer::tag('p', 'Fechas de la edición: ' . ($seriesfrom ? userdate($seriesfrom, '%d/%m/%Y %H:%M') : '-') . ' – ' . ($seriesto ? userdate($seriesto, '%d/%m/%Y %H:%M') : '-'), ['class' => 'text-muted']);

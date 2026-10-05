@@ -169,7 +169,7 @@ class bulk_workshops {
                     $summary->notescreated++;
                 }
                 manager::ensure_workshop_course_visuals_safely($workshopid);
-                workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid, $row['sessionenddate']);
+                workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid, $row['sessionenddate'], $editionid);
                 $summary->created++;
                 $summary->messages[] = $row['code'] . ': creado como Taller ' . sprintf('%02d', $order) . ' de ' . $series->title . '.';
                 $order++;
@@ -305,14 +305,11 @@ class bulk_workshops {
         return in_array(self::normalise((string)$value), ['si','yes','1','true','x'], true);
     }
 
-    private static function parse_datetime(string $value): int {
-        $value = trim(str_replace('T', ' ', $value));
-        if ($value === '') return 0;
-        foreach (['d/m/Y H:i','d/m/Y H:i:s','Y-m-d H:i','Y-m-d H:i:s','d/m/Y'] as $format) {
-            $dt = \DateTime::createFromFormat('!' . $format, $value);
-            if ($dt && $dt->format($format) === $value) return $dt->getTimestamp();
+    private static function parse_datetime($value): int {
+        $value = trim((string)$value);
+        if ($value === '') {
+            return 0;
         }
-        $ts = strtotime($value);
-        return $ts ?: 0;
+        return date_helper::parse_user_datetime($value);
     }
 }

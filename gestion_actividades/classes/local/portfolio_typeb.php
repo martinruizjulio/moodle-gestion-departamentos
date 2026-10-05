@@ -8,44 +8,9 @@ class portfolio_typeb {
 
     public static function ensure_table(): void {
         global $DB;
-        $dbman = $DB->get_manager();
-        $table = new \xmldb_table('local_ga_typeb_certs');
-        if ($dbman->table_exists($table)) {
-            $descriptionfield = new \xmldb_field('activitydescription', XMLDB_TYPE_TEXT, null, null, null, null, null, 'hours');
-            if (!$dbman->field_exists($table, $descriptionfield)) {
-                $dbman->add_field($table, $descriptionfield);
-            }
-            $reflectionfield = new \xmldb_field('reflectiontext', XMLDB_TYPE_TEXT, null, null, null, null, null, 'reviewcomment');
-            if (!$dbman->field_exists($table, $reflectionfield)) {
-                $dbman->add_field($table, $reflectionfield);
-            }
-            $reflectiontimefield = new \xmldb_field('reflectiontime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'reflectiontext');
-            if (!$dbman->field_exists($table, $reflectiontimefield)) {
-                $dbman->add_field($table, $reflectiontimefield);
-            }
-            return;
+        if (!$DB->get_manager()->table_exists(new \xmldb_table(self::TABLE))) {
+            throw new \coding_exception('El esquema de certificados Tipo B no está instalado. Ejecuta la actualización de Moodle.');
         }
-
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('activityname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('activitydate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('hours', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('activitydescription', XMLDB_TYPE_TEXT, null, null, null, null, null);
-        $table->add_field('authorizedconfirm', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('filename', XMLDB_TYPE_CHAR, '255', null, null, null, null);
-        $table->add_field('status', XMLDB_TYPE_CHAR, '30', null, XMLDB_NOTNULL, null, 'pending');
-        $table->add_field('reviewcomment', XMLDB_TYPE_TEXT, null, null, null, null, null);
-        $table->add_field('reflectiontext', XMLDB_TYPE_TEXT, null, null, null, null, null);
-        $table->add_field('reflectiontime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('reviewedby', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('timereviewed', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-        $table->add_index('userid', XMLDB_INDEX_NOTUNIQUE, ['userid']);
-        $table->add_index('status', XMLDB_INDEX_NOTUNIQUE, ['status']);
-        $dbman->create_table($table);
     }
 
     public static function create_upload(int $userid, string $activityname, int $activitydate, float $hours, string $activitydescription, string $filename, string $tmpfilepath): int {

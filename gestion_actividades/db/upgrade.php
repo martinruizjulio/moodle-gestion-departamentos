@@ -763,14 +763,85 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             }
         }
 
-        // These helpers use Moodle XMLDB and are idempotent. Running them here
-        // makes the upgrade path authoritative instead of relying on page visits.
-        \local_gestion_actividades\local\portfolio_typeb::ensure_table();
-        \local_gestion_actividades\local\institutional_hours::ensure_table();
-        \local_gestion_actividades\local\workshop_series::ensure_schema();
-
         local_gestion_actividades_add_index_if_possible($dbman, 'local_ga_typeb_certs', 'userstatus', ['userid', 'status']);
         upgrade_plugin_savepoint(true, 2026100510, 'local', 'gestion_actividades');
+    }
+
+    if ($oldversion < 2026100513) {
+        $series = new xmldb_table('local_ga_workshop_series');
+        if (!$dbman->table_exists($series)) {
+            $series->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $series->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('title', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
+            $series->add_field('datefrom', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('dateto', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('sectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('calendarcmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('calendarsectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'active');
+            $series->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $series->add_index('courseid', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
+            $series->add_index('status', XMLDB_INDEX_NOTUNIQUE, ['status']);
+            $dbman->create_table($series);
+        }
+
+        $items = new xmldb_table('local_ga_series_items');
+        if (!$dbman->table_exists($items)) {
+            $items->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $items->add_field('seriesid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('workshopid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('sessionenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('subsectioncmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('subsectionsectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('notescmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $items->add_index('seriesworkshop', XMLDB_INDEX_UNIQUE, ['seriesid', 'workshopid']);
+            $items->add_index('seriesorder', XMLDB_INDEX_NOTUNIQUE, ['seriesid', 'sortorder']);
+            $items->add_index('workshopid', XMLDB_INDEX_NOTUNIQUE, ['workshopid']);
+            $dbman->create_table($items);
+        } else {
+            $endfield = new xmldb_field('sessionenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'sortorder');
+            if (!$dbman->field_exists($items, $endfield)) {
+                $dbman->add_field($items, $endfield);
+            }
+        }
+
+        $editions = new xmldb_table('local_ga_workshop_editions');
+        $seriesfield = new xmldb_field('seriesid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'workshopid');
+        if ($dbman->table_exists($editions) && !$dbman->field_exists($editions, $seriesfield)) {
+            $dbman->add_field($editions, $seriesfield);
+        }
+        if ($dbman->table_exists($editions)) {
+            $seriesindex = new xmldb_index('seriesid', XMLDB_INDEX_NOTUNIQUE, ['seriesid']);
+            if (!$dbman->index_exists($editions, $seriesindex)) {
+                $dbman->add_index($editions, $seriesindex);
+            }
+            $rows = $DB->get_records_select('local_ga_workshop_editions', 'seriesid = 0 OR seriesid IS NULL');
+            foreach ($rows as $edition) {
+                $sql = "SELECT s.id
+                          FROM {local_ga_workshop_series} s
+                          JOIN {local_ga_series_items} i ON i.seriesid = s.id
+                         WHERE i.workshopid = :workshopid
+                           AND s.datefrom <= :sessionfrom
+                           AND s.dateto >= :sessionto
+                      ORDER BY s.datefrom DESC, s.id DESC";
+                $matches = $DB->get_records_sql($sql, [
+                    'workshopid' => (int)$edition->workshopid,
+                    'sessionfrom' => (int)$edition->sessiondate,
+                    'sessionto' => (int)$edition->sessiondate,
+                ], 0, 1);
+                if ($matches) {
+                    $match = reset($matches);
+                    $DB->set_field('local_ga_workshop_editions', 'seriesid', (int)$match->id, ['id' => (int)$edition->id]);
+                }
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026100513, 'local', 'gestion_actividades');
     }
 
     return true;

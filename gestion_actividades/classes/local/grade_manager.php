@@ -44,22 +44,9 @@ class grade_manager {
      */
     public static function ensure_settings_table(): void {
         global $DB;
-
-        $dbman = $DB->get_manager();
-        $table = new \xmldb_table(self::SETTINGS_TABLE);
-        if ($dbman->table_exists($table)) {
-            return;
+        if (!$DB->get_manager()->table_exists(new \xmldb_table(self::SETTINGS_TABLE))) {
+            throw new \coding_exception('El esquema de configuración HEE no está instalado. Ejecuta la actualización de Moodle.');
         }
-
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('selfassessmentcmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-        $table->add_index('courseid', XMLDB_INDEX_UNIQUE, ['courseid']);
-        $dbman->create_table($table);
     }
 
     /**

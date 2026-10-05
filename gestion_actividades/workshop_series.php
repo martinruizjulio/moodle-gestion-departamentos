@@ -3,6 +3,7 @@ require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\workshop_series;
+use local_gestion_actividades\local\date_helper;
 
 require_login();
 $context = context_system::instance();
@@ -21,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_sesskey();
     try {
         if ($action === 'save') {
-            $datefrom = strtotime(str_replace('T', ' ', required_param('datefrom_text', PARAM_TEXT))) ?: 0;
-            $dateto = strtotime(str_replace('T', ' ', required_param('dateto_text', PARAM_TEXT))) ?: 0;
+            $datefrom = date_helper::parse_user_datetime(required_param('datefrom_text', PARAM_TEXT));
+            $dateto = date_helper::parse_user_datetime(required_param('dateto_text', PARAM_TEXT));
             $id = workshop_series::save((object)[
                 'id' => optional_param('id', 0, PARAM_INT),
                 'courseid' => required_param('courseid', PARAM_INT),

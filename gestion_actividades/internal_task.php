@@ -2,6 +2,7 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
+use local_gestion_actividades\local\date_helper;
 
 $id = required_param('id', PARAM_INT);
 require_login();
@@ -19,7 +20,7 @@ if (data_submitted() && confirm_sesskey()) {
     $fileitemid = (int)($edition->taskfileitemid ?? 0);
     $fileitemid = manager::store_named_upload($context->id, $fileitemid, 'taskfile', 'taskfile');
     $duedatetext = optional_param('taskduedate_text', '', PARAM_TEXT);
-    $duedate = $duedatetext !== '' ? (strtotime(str_replace('T', ' ', $duedatetext)) ?: 0) : 0;
+    $duedate = $duedatetext !== '' ? date_helper::parse_user_datetime($duedatetext) : 0;
     manager::save_internal_task_config((int)$edition->id, required_param('taskdescription', PARAM_TEXT), optional_param('taskurl', '', PARAM_RAW_TRIMMED), $duedate, $fileitemid);
     redirect(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), get_string('changessaved'));
 }
@@ -50,7 +51,7 @@ if ($currentfile !== '') {
 echo html_writer::label('Enlace visitable', 'taskurl');
 echo html_writer::empty_tag('input', ['type' => 'url', 'name' => 'taskurl', 'id' => 'taskurl', 'class' => 'form-control mb-3', 'value' => s($edition->taskurl ?? ''), 'placeholder' => 'https://...']);
 
-$duedatevalue = !empty($edition->taskduedate) ? date('Y-m-d\TH:i', (int)$edition->taskduedate) : '';
+$duedatevalue = !empty($edition->taskduedate) ? date_helper::input_datetime((int)$edition->taskduedate) : '';
 echo html_writer::label('Fecha límite de entrega', 'taskduedate_text');
 echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'taskduedate_text', 'id' => 'taskduedate_text', 'class' => 'form-control mb-3', 'value' => $duedatevalue]);
 

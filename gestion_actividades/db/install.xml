@@ -164,6 +164,7 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="workshopid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="seriesid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="activityid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true"/>
         <FIELD NAME="editioncode" TYPE="char" LENGTH="80" NOTNULL="true"/>
@@ -196,6 +197,7 @@
       <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="workshopid" UNIQUE="false" FIELDS="workshopid"/>
+        <INDEX NAME="seriesid" UNIQUE="false" FIELDS="seriesid"/>
         <INDEX NAME="activityid" UNIQUE="false" FIELDS="activityid"/>
         <INDEX NAME="groupid" UNIQUE="false" FIELDS="groupid"/>
       </INDEXES>

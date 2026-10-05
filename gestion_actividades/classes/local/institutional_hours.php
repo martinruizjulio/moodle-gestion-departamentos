@@ -10,60 +10,9 @@ class institutional_hours {
 
     public static function ensure_table(): void {
         global $DB;
-        $dbman = $DB->get_manager();
-        $table = new \xmldb_table(self::TABLE);
-        if (!$dbman->table_exists($table)) {
-            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-            $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('email', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
-            $table->add_field('fullname', XMLDB_TYPE_CHAR, '255', null, null, null, null);
-            $table->add_field('courselevel', XMLDB_TYPE_CHAR, '50', null, null, null, null);
-            $table->add_field('groupname', XMLDB_TYPE_CHAR, '100', null, null, null, null);
-            $table->add_field('typeahours', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('typebhours', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('taskgrade', XMLDB_TYPE_NUMBER, '10, 2', null, null, null, null);
-            $table->add_field('typebreflection', XMLDB_TYPE_TEXT, null, null, null, null, null);
-            $table->add_field('typebreflectionmodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('source', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, self::SOURCE);
-            $table->add_field('importid', XMLDB_TYPE_CHAR, '64', null, null, null, null);
-            $table->add_field('originalrow', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('rawdata', XMLDB_TYPE_TEXT, null, null, null, null, null);
-            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-            $table->add_index('userid', XMLDB_INDEX_UNIQUE, ['userid']);
-            $table->add_index('email', XMLDB_INDEX_NOTUNIQUE, ['email']);
-            $dbman->create_table($table);
-            return;
+        if (!$DB->get_manager()->table_exists(new \xmldb_table(self::TABLE))) {
+            throw new \coding_exception('El esquema de reconocimiento institucional HEE no está instalado. Ejecuta la actualización de Moodle.');
         }
-
-        $fields = [
-            new \xmldb_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'id'),
-            new \xmldb_field('email', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '', 'userid'),
-            new \xmldb_field('fullname', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'email'),
-            new \xmldb_field('courselevel', XMLDB_TYPE_CHAR, '50', null, null, null, null, 'fullname'),
-            new \xmldb_field('groupname', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'courselevel'),
-            new \xmldb_field('typeahours', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, '0', 'groupname'),
-            new \xmldb_field('typebhours', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, '0', 'typeahours'),
-            new \xmldb_field('taskgrade', XMLDB_TYPE_NUMBER, '10, 2', null, null, null, null, 'typebhours'),
-            new \xmldb_field('typebreflection', XMLDB_TYPE_TEXT, null, null, null, null, null, 'taskgrade'),
-            new \xmldb_field('typebreflectionmodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'typebreflection'),
-            new \xmldb_field('source', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, self::SOURCE, 'typebreflectionmodified'),
-            new \xmldb_field('importid', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'source'),
-            new \xmldb_field('originalrow', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'importid'),
-            new \xmldb_field('rawdata', XMLDB_TYPE_TEXT, null, null, null, null, null, 'originalrow'),
-            new \xmldb_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'rawdata'),
-            new \xmldb_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timecreated'),
-            new \xmldb_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timemodified'),
-        ];
-        foreach ($fields as $field) {
-            if (!$dbman->field_exists($table, $field)) {
-                $dbman->add_field($table, $field);
-            }
-        }
-        self::add_index_if_possible($dbman, self::TABLE, 'userid', ['userid'], true);
-        self::add_index_if_possible($dbman, self::TABLE, 'email', ['email'], false);
     }
 
     private static function add_index_if_possible($dbman, string $tablename, string $indexname, array $fields, bool $unique = false): void {
