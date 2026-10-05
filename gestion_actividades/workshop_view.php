@@ -97,7 +97,14 @@ echo $OUTPUT->header();
 
 $topbuttons = html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), local_ga_btn_icon('t/left', get_string('backtocourse', 'local_gestion_actividades')), ['class' => 'btn btn-outline-secondary me-2 mb-2']);
 if ($canmanage) {
-    $topbuttons .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid]), local_ga_btn_icon('t/edit', 'Gestionar este taller'), ['class' => 'btn btn-primary mb-2']);
+    $topbuttons .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid]), local_ga_btn_icon('t/edit', 'Gestionar este taller'), ['class' => 'btn btn-primary me-2 mb-2']);
+    if ($editionid > 0) {
+        $topbuttons .= html_writer::link(
+            new moodle_url('/local/gestion_actividades/edition_roster.php', ['id' => $editionid]),
+            local_ga_btn_icon('i/users', 'Listado de apuntados'),
+            ['class' => 'btn btn-outline-primary mb-2']
+        );
+    }
 }
 echo html_writer::div($topbuttons, 'mb-2');
 echo $OUTPUT->heading(format_string($workshop->code . ' - ' . $workshop->name));
