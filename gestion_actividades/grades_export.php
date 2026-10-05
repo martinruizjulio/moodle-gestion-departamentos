@@ -29,7 +29,7 @@ if ($format === 'excel') {
         'lastname' => 'Apellidos',
         'firstname' => 'Nombre',
         'email' => 'Email',
-        'typeagrade' => 'Nota Talleres A',
+        'typeagrade' => 'Nota Seminarios A',
         'portfoliograde' => 'Portafolio',
         'autoevaluationgrade' => 'Autoevaluación',
         'finalgrade' => 'Nota Final',
@@ -79,7 +79,7 @@ if ($format === 'pdf') {
 
     $title = '<h1 style="font-size:16pt;">Notas de alumnos HEE</h1>'
         . '<p><strong>Curso:</strong> ' . s(format_string($course->fullname)) . '</p>'
-        . '<p style="font-size:9pt;">Nota Final = Nota Talleres A × 60% + Portafolio × 30% + Autoevaluación × 10%. Las notas pendientes se muestran con un guion.</p>';
+        . '<p style="font-size:9pt;">Nota Final = Nota Seminarios A × 60% + Portafolio × 30% + Autoevaluación × 10%. Las notas pendientes se muestran con un guion.</p>';
     $pdf->writeHTML($title, true, false, true, false, '');
 
     $html = '<table border="1" cellpadding="4" cellspacing="0" style="font-size:8pt;">';
