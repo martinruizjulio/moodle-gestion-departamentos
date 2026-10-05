@@ -13,15 +13,22 @@ require_login($course);
 $context = context_course::instance($course->id);
 $requestededitionid = optional_param('editionid', 0, PARAM_INT);
 $edition = null;
+$editionclosed = false;
 if ($requestededitionid > 0) {
     $candidate = manager::get_workshop_edition($requestededitionid);
-    if ((int)$candidate->workshopid !== (int)$workshop->id
-            || !empty($candidate->archived) || manager::is_edition_finished($candidate)) {
-        throw new invalid_parameter_exception('La edición solicitada no está disponible para este taller.');
+    if ((int)$candidate->workshopid !== (int)$workshop->id) {
+        throw new invalid_parameter_exception('La edición solicitada no pertenece a este taller.');
     }
     $series = workshop_series::series_for_edition((int)$candidate->id);
-    if ($series && (string)($series->status ?? '') === 'finished') {
-        throw new invalid_parameter_exception('La edición de talleres ya está finalizada.');
+    $editionclosed = !empty($candidate->archived) || manager::is_edition_finished($candidate)
+        || ($series && (string)($series->status ?? '') === 'finished');
+    if ($editionclosed) {
+        // A finished edition stays readable for its own students (materials,
+        // reflection, certificate) and its staff; it is closed to everyone else.
+        $ownenrolment = manager::get_edition_enrolment((int)$candidate->id, (int)$USER->id);
+        if (!$ownenrolment && !manager::can_manage_edition((int)$candidate->id, (int)$USER->id)) {
+            throw new invalid_parameter_exception('La edición de talleres ya está finalizada.');
+        }
     }
     $edition = $candidate;
 } else {
@@ -73,7 +80,10 @@ function local_ga_btn_icon(string $pix, string $label): string {
 }
 
 if ($action === 'enrol' && confirm_sesskey()) {
-    if (!$edition) {
+    if ($editionclosed) {
+        $message = 'Esta edición ya está finalizada y no admite inscripciones.';
+        $messagetype = 'warning';
+    } else if (!$edition) {
         $message = get_string('noeditionavailable', 'local_gestion_actividades');
         $messagetype = 'warning';
     } else {
@@ -118,6 +128,8 @@ if (!$edition) {
     $enrolment = manager::get_edition_enrolment((int)$edition->id, (int)$USER->id);
     if ($enrolment && in_array((string)($enrolment->status ?? ''), ['enrolled', 'attended', 'manual'], true)) {
         echo html_writer::div(get_string('enrolledlabel', 'local_gestion_actividades'), 'local-ga-pill local-ga-pill-ok', ['style' => 'display:inline-block;background:#e9f7ef;border:1px solid #badbcc;border-radius:999px;padding:8px 14px;margin:10px 0;color:#0f5132;font-weight:600;']);
+    } else if ($editionclosed) {
+        echo $OUTPUT->notification('Esta edición ya está finalizada.', 'info');
     } else {
         $url = new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id, 'editionid' => $editionid, 'action' => 'enrol', 'sesskey' => sesskey()]);
         echo html_writer::link($url, get_string('enrolme', 'local_gestion_actividades'), ['class' => 'btn btn-primary']);
