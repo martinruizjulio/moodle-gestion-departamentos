@@ -25,7 +25,7 @@ $closed = manager::is_edition_enrolment_closed($edition);
 
 $label = get_string('enrolme', 'local_gestion_actividades');
 $style = 'background:#4b0000;border:1px solid #4b0000;color:#fff;';
-$href = new moodle_url('/local/gestion_actividades/enrol.php', ['id' => $editionid]);
+$href = new moodle_url('/local/gestion_actividades/enrol.php', ['id' => $editionid, 'sesskey' => sesskey()]);
 $disabled = false;
 
 if ($isenrolled) {
