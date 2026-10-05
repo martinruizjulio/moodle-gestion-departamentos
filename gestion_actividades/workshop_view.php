@@ -3,6 +3,7 @@ require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\typeb_certificate_policy;
+use local_gestion_actividades\local\workshop_series;
 
 $id = required_param('id', PARAM_INT);
 $workshop = manager::get_workshop($id);
@@ -10,14 +11,56 @@ $course = $DB->get_record('course', ['id' => $workshop->courseid], '*', MUST_EXI
 
 require_login($course);
 $context = context_course::instance($course->id);
-$canmanage = manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id);
-$edition = manager::get_primary_workshop_edition($id);
+$requestededitionid = optional_param('editionid', 0, PARAM_INT);
+$edition = null;
+if ($requestededitionid > 0) {
+    $candidate = manager::get_workshop_edition($requestededitionid);
+    if ((int)$candidate->workshopid !== (int)$workshop->id
+            || !empty($candidate->archived) || manager::is_edition_finished($candidate)) {
+        throw new invalid_parameter_exception('La edición solicitada no está disponible para este taller.');
+    }
+    $series = workshop_series::series_for_edition((int)$candidate->id);
+    if ($series && (string)($series->status ?? '') === 'finished') {
+        throw new invalid_parameter_exception('La edición de talleres ya está finalizada.');
+    }
+    $edition = $candidate;
+} else {
+    $activeeditions = manager::get_active_editions_for_workshop((int)$workshop->id);
+    $now = time();
+    foreach ($activeeditions as $candidate) {
+        $series = workshop_series::series_for_edition((int)$candidate->id);
+        if ($series && (string)($series->status ?? '') === 'active'
+                && (int)$series->datefrom <= $now && (int)$series->dateto >= $now) {
+            $edition = $candidate;
+            break;
+        }
+    }
+    if (!$edition && $activeeditions) {
+        $future = array_values(array_filter($activeeditions, static function($candidate) use ($now): bool {
+            return (int)($candidate->sessiondate ?? 0) >= $now;
+        }));
+        usort($future, static function($a, $b): int {
+            return ((int)$a->sessiondate <=> (int)$b->sessiondate) ?: ((int)$a->id <=> (int)$b->id);
+        });
+        if ($future) {
+            $edition = reset($future);
+        } else {
+            $ordered = array_values($activeeditions);
+            usort($ordered, static function($a, $b): int {
+                return ((int)$b->sessiondate <=> (int)$a->sessiondate) ?: ((int)$b->id <=> (int)$a->id);
+            });
+            $edition = reset($ordered);
+        }
+    }
+}
+$editionid = $edition ? (int)$edition->id : 0;
+$canmanage = $edition ? manager::can_manage_edition($editionid, (int)$USER->id) : manager::can_manage_globally((int)$USER->id);
 $action = optional_param('action', '', PARAM_ALPHANUMEXT);
 $istypeb = manager::is_typeb_workshop($workshop);
 
 $PAGE->set_context($context);
 $PAGE->set_course($course);
-$PAGE->set_url(new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id]));
+$PAGE->set_url(new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id, 'editionid' => $editionid]));
 $PAGE->set_title(format_string($workshop->name));
 $PAGE->set_heading(format_string($course->fullname));
 
@@ -44,7 +87,7 @@ echo $OUTPUT->header();
 
 $topbuttons = html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), local_ga_btn_icon('t/left', get_string('backtocourse', 'local_gestion_actividades')), ['class' => 'btn btn-outline-secondary mr-2 mb-2']);
 if ($canmanage) {
-    $topbuttons .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id]), local_ga_btn_icon('t/edit', 'Gestionar este taller'), ['class' => 'btn btn-primary mb-2']);
+    $topbuttons .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid]), local_ga_btn_icon('t/edit', 'Gestionar este taller'), ['class' => 'btn btn-primary mb-2']);
 }
 echo html_writer::div($topbuttons, 'mb-2');
 echo $OUTPUT->heading(format_string($workshop->code . ' - ' . $workshop->name));
@@ -76,7 +119,7 @@ if (!$edition) {
     if ($enrolment && in_array((string)($enrolment->status ?? ''), ['enrolled', 'attended', 'manual'], true)) {
         echo html_writer::div(get_string('enrolledlabel', 'local_gestion_actividades'), 'local-ga-pill local-ga-pill-ok', ['style' => 'display:inline-block;background:#e9f7ef;border:1px solid #badbcc;border-radius:999px;padding:8px 14px;margin:10px 0;color:#0f5132;font-weight:600;']);
     } else {
-        $url = new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id, 'action' => 'enrol', 'sesskey' => sesskey()]);
+        $url = new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id, 'editionid' => $editionid, 'action' => 'enrol', 'sesskey' => sesskey()]);
         echo html_writer::link($url, get_string('enrolme', 'local_gestion_actividades'), ['class' => 'btn btn-primary']);
     }
 }

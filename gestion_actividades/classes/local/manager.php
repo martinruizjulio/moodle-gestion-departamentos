@@ -937,7 +937,7 @@ class manager {
             if (!$edition) {
                 continue;
             }
-            $viewurl = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => (int)$workshop->id]);
+            $viewurl = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => (int)$workshop->id, 'editionid' => (int)$edition->id]);
             $enrolurl = new \moodle_url('/local/gestion_actividades/enrol.php', ['id' => (int)$edition->id]);
             $date = !empty($edition->sessiondate) ? self::format_workshop_date((int)$edition->sessiondate) : '-';
             $hours = isset($workshop->hours) && $workshop->hours !== null ? round((float)$workshop->hours, 2) . ' h' : '-';
@@ -1250,7 +1250,7 @@ class manager {
                 : '-';
             $entryname = trim($workshop->code . ' - ' . $workshop->name);
 
-            $viewurl = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id]);
+            $viewurl = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id, 'editionid' => $edition ? (int)$edition->id : 0]);
             $enrolurl = $edition ? new \moodle_url('/local/gestion_actividades/enrol.php', ['id' => $edition->id]) : $viewurl;
             $date = $edition ? self::format_workshop_date((int)$edition->sessiondate) : '-';
             $description = trim((string)($workshop->description ?? ''));
@@ -4386,7 +4386,7 @@ class manager {
             return false;
         }
 
-        $url = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id]);
+        $url = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id, 'editionid' => $edition ? (int)$edition->id : 0]);
         $backhtml = \html_writer::div(
             \html_writer::link($url, get_string('backtoworkshopfromactivity', 'local_gestion_actividades'), ['class' => 'btn btn-secondary']),
             'local-ga-backtoworkshop',
@@ -4505,7 +4505,7 @@ class manager {
     public static function render_workshop_course_card(\stdClass $workshop, ?\stdClass $edition = null): string {
         global $DB;
 
-        $url = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id]);
+        $url = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id, 'editionid' => $edition ? (int)$edition->id : 0]);
 
         $hours = !empty($workshop->hours) ? s($workshop->hours) . ' h' : '-';
         $desc = trim((string)($workshop->description ?? ''));
