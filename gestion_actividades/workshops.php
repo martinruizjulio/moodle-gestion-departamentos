@@ -17,21 +17,24 @@ $typetitle = $type === 'typeb' ? 'Talleres Tipo B' : 'Talleres Tipo A';
 $PAGE->set_title($typetitle);
 $PAGE->set_heading(get_string('title', 'local_gestion_actividades'));
 
-
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
     return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
 }
+
 echo $OUTPUT->header();
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 
 echo $OUTPUT->heading($typetitle);
 
 echo html_writer::div(
-    html_writer::link(new moodle_url('/local/gestion_actividades/workshop_edit.php', ['type' => $type]), local_ga_btn_icon('t/add', get_string('newworkshop', 'local_gestion_actividades')), ['class' => 'btn btn-primary']) . ' ' .
+    html_writer::link(new moodle_url('/local/gestion_actividades/workshop_edit.php', ['type' => $type]), local_ga_btn_icon('t/add', 'Crear taller manualmente'), ['class' => 'btn btn-primary mr-1']) . ' ' .
+    html_writer::link(new moodle_url('/local/gestion_actividades/workshop_bulk_import.php'), local_ga_btn_icon('t/upload', 'Crear talleres desde Excel'), ['class' => 'btn btn-success mr-1']) . ' ' .
     html_writer::link(new moodle_url('/local/gestion_actividades/repair_course_visuals.php', ['sesskey' => sesskey()]), local_ga_btn_icon('t/reload', get_string('repaircoursevisuals', 'local_gestion_actividades')), ['class' => 'btn btn-secondary']),
     'mb-3'
 );
+
+echo html_writer::tag('p', 'Puedes crear un taller individualmente o generar en bloque varias ediciones desde una plantilla Excel. Los talleres creados automáticamente se pueden editar después exactamente igual que los manuales.', ['class' => 'text-muted']);
 
 $workshops = manager::list_workshops(0, $type);
 $table = new html_table();
@@ -48,30 +51,27 @@ foreach ($workshops as $w) {
     $course = $DB->get_record('course', ['id' => $w->courseid]);
     $editions = manager::list_workshop_editions($w->id);
     $editioncount = count($editions);
-        if ($editioncount === 1) {
-            $firstedition = reset($editions);
-            $editurl = new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => $firstedition->id, 'workshopid' => $w->id]);
-            $edittitle = get_string('editeditionfull', 'local_gestion_actividades');
-        } else if ($editioncount === 0) {
-            $editurl = new moodle_url('/local/gestion_actividades/edition_edit.php', ['workshopid' => $w->id]);
-            $edittitle = get_string('createfirsteditionfull', 'local_gestion_actividades');
-        } else {
-            $editurl = new moodle_url('/local/gestion_actividades/editions.php', ['workshopid' => $w->id]);
-            $edittitle = get_string('selecteditiontoedit', 'local_gestion_actividades');
-        }
+    if ($editioncount === 1) {
+        $firstedition = reset($editions);
+        $editurl = new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => $firstedition->id, 'workshopid' => $w->id]);
+    } else if ($editioncount === 0) {
+        $editurl = new moodle_url('/local/gestion_actividades/edition_edit.php', ['workshopid' => $w->id]);
+    } else {
+        $editurl = new moodle_url('/local/gestion_actividades/editions.php', ['workshopid' => $w->id]);
+    }
 
-        $actions = html_writer::link(
-            $editurl,
-            local_ga_btn_icon('t/edit', 'Configurar taller'),
-            ['class' => 'btn btn-primary btn-sm']
-        ) . ' ' .
-        html_writer::link(
-            new moodle_url('/local/gestion_actividades/workshop_delete.php', ['id' => $w->id]),
-            local_ga_btn_icon('t/delete', get_string('deleteworkshop', 'local_gestion_actividades')),
-            ['class' => 'btn btn-danger btn-sm', 'title' => get_string('deleteworkshop', 'local_gestion_actividades'), 'aria-label' => get_string('deleteworkshop', 'local_gestion_actividades')]
-        );
+    $actions = html_writer::link(
+        $editurl,
+        local_ga_btn_icon('t/edit', 'Configurar taller'),
+        ['class' => 'btn btn-primary btn-sm']
+    ) . ' ' .
+    html_writer::link(
+        new moodle_url('/local/gestion_actividades/workshop_delete.php', ['id' => $w->id]),
+        local_ga_btn_icon('t/delete', get_string('deleteworkshop', 'local_gestion_actividades')),
+        ['class' => 'btn btn-danger btn-sm', 'title' => get_string('deleteworkshop', 'local_gestion_actividades'), 'aria-label' => get_string('deleteworkshop', 'local_gestion_actividades')]
+    );
 
-        $table->data[] = [
+    $table->data[] = [
         $course ? format_string($course->fullname) : $w->courseid,
         s($w->code),
         format_string($w->name),
