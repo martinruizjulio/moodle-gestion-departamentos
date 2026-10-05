@@ -188,7 +188,7 @@ Se cerró una revisión estática adicional del plugin principal y del bloque la
 Correcciones confirmadas en esta ronda:
 - política de finalización unificada: las fechas no archivan/finalizan automáticamente; solo el estado explícito `finished`;
 - `workshops.php` y `archive.php` priorizan `edition.seriesid` y usan fechas solo como fallback legacy;
-- `manager_downloads.php` evita asociar una edición concreta con series históricas distintas del mismo seminario base cuando existe `edition.seriesid`;
+- `manager_downloads.php` evita asociar una edición concreta con series históricas distintas del mismo seminario base cuando existe `edition.seriesid`, en todos los listados que reutilizan esa unión;
 - el ítem visible del libro de calificaciones y sus informes se denomina **Nota Seminarios A**;
 - la prórroga de reflexión Tipo B exige una inscripción válida actual (`enrolled`, `attended` o `manual`);
 - el acceso directo a una edición cerrada ya filtraba previamente estados de inscripción válidos en `workshop_view.php`; ese hallazgo preliminar queda descartado;
@@ -240,5 +240,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.114-alpha** (`2026100529`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.115-alpha** (`2026100530`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.24-alpha** (`2026100508`).
