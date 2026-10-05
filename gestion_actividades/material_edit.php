@@ -45,6 +45,10 @@ if ($editionid > 0) {
     if (!manager::can_manage_edition($editionid, (int)$USER->id)) {
         throw new required_capability_exception($coursecontext, 'moodle/course:update', 'nopermissions', '');
     }
+} else if (!manager::can_manage_globally((int)$USER->id)) {
+    // A material without edition is shared by the whole workshop base, potentially
+    // across old/new editions. Profesor HEE must not alter that shared structure.
+    throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
 }
 
 if ($id && $delete && confirm_sesskey()) {
@@ -63,6 +67,8 @@ if (data_submitted() && confirm_sesskey() && !$delete) {
                 || !manager::can_manage_edition($postededitionid, (int)$USER->id)) {
             throw new required_capability_exception($coursecontext, 'moodle/course:update', 'nopermissions', '');
         }
+    } else if (!manager::can_manage_globally((int)$USER->id)) {
+        throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
     }
 
     $fileitemid = (int)($material->fileitemid ?? 0);
