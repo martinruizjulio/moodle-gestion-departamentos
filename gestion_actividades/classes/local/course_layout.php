@@ -93,9 +93,12 @@ class course_layout {
             if ((string)$section->name !== $label) {
                 $changes['name'] = $label;
             }
-            $wantedvisible = $finished ? 0 : 1;
-            if ((int)$section->visible !== $wantedvisible) {
-                $changes['visible'] = $wantedvisible;
+            $access = workshop_series::section_access_state((int)$series->id);
+            if ((int)$section->visible !== (int)$access->visible) {
+                $changes['visible'] = (int)$access->visible;
+            }
+            if ((string)($section->availability ?? '') !== (string)($access->availability ?? '')) {
+                $changes['availability'] = $access->availability;
             }
             if ($changes) {
                 course_update_section($courseid, $section, $changes);
