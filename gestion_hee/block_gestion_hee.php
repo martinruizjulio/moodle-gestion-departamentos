@@ -83,12 +83,12 @@ class block_gestion_hee extends block_base {
             $html .= html_writer::tag('p', get_string('nohoursyet', 'block_gestion_hee'), ['class' => 'text-muted']);
         }
 
-        $html .= $this->render_metric(get_string('typeahours', 'block_gestion_hee'), $typeahours, 'badge-success');
-        $html .= $this->render_metric(get_string('typebhours', 'block_gestion_hee'), $typebhours, 'badge-success');
+        $html .= $this->render_metric(get_string('typeahours', 'block_gestion_hee'), $typeahours, 'bg-success');
+        $html .= $this->render_metric(get_string('typebhours', 'block_gestion_hee'), $typebhours, 'bg-success');
         $html .= html_writer::tag('hr', '');
-        $html .= $this->render_metric(get_string('totalhours', 'block_gestion_hee'), $total, 'badge-success');
+        $html .= $this->render_metric(get_string('totalhours', 'block_gestion_hee'), $total, 'bg-success');
 
-        $remainingclass = $remaining <= 0 ? 'badge-success' : 'local-ga-badge-remaining';
+        $remainingclass = $remaining <= 0 ? 'bg-success' : 'local-ga-badge-remaining';
         $html .= $this->render_metric(get_string('remaininghours', 'block_gestion_hee'), $remaining, $remainingclass);
 
         if (!empty($summary['error'])) {
@@ -149,7 +149,7 @@ class block_gestion_hee extends block_base {
         return $html;
     }
 
-    private function render_metric(string $label, float $value, string $badgeclass = 'badge-secondary'): string {
+    private function render_metric(string $label, float $value, string $badgeclass = 'bg-secondary'): string {
         $valueformatted = format_float($value, 2, true) . ' h';
         $content = html_writer::span(s($label), 'local-ga-label');
         $content .= html_writer::span($valueformatted, 'badge ' . $badgeclass . ' float-end');
