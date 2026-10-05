@@ -547,7 +547,19 @@ class workshop_series {
         }
         foreach ($cmids as $cmid) {
             $cm = get_coursemodule_from_id('', $cmid, (int)$target->course, false, IGNORE_MISSING);
-            if (!$cm || (int)$cm->section === (int)$target->id) {
+            if (!$cm) {
+                continue;
+            }
+            if ((int)$cm->section === (int)$target->id) {
+                // Older versions removed required activities from the section
+                // sequence ("hard archive"), leaving them unreachable. If that
+                // happened here, put the module back into its section.
+                $sequence = array_filter(array_map('trim', explode(',', (string)$DB->get_field('course_sections', 'sequence', ['id' => (int)$target->id]))));
+                if (!in_array((string)$cmid, $sequence, true)) {
+                    $sequence[] = (string)$cmid;
+                    $DB->set_field('course_sections', 'sequence', implode(',', $sequence), ['id' => (int)$target->id]);
+                    rebuild_course_cache((int)$target->course, true);
+                }
                 continue;
             }
             if (function_exists('moveto_module')) {

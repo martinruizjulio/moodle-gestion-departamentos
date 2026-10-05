@@ -2046,6 +2046,12 @@ class manager {
                     if (isset($deleted[$cmid])) {
                         continue;
                     }
+                    // Never delete content of an Edición de seminarios (calendar,
+                    // notes pages, other editions reusing the same base seminar):
+                    // this name-based cleanup only targets legacy course cards.
+                    if (self::is_cm_in_series_section($cmid)) {
+                        continue;
+                    }
                     try {
                         course_delete_module($cmid);
                         $deleted[$cmid] = true;
@@ -4563,9 +4569,24 @@ class manager {
             debugging('No se pudo cerrar la entrega de reflexiones: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
 
-        if (!empty($edition->requiredcmid)) {
+        // Activities of this edition inside its Edición de seminarios: hide them
+        // and move them to the bottom of their seminar section. The Type B
+        // reflection stays reachable so a teacher can grant a late submission.
+        $istypeb = self::is_typeb_workshop($workshop);
+        $editioncmids = [];
+        foreach (['requiredcmid', 'requiredassigncmid', 'requiredquizcmid', 'attendancecmid', 'certificatecmid'] as $field) {
+            if (!empty($edition->$field)) {
+                $editioncmids[(int)$edition->$field] = $field;
+            }
+        }
+        foreach ($editioncmids as $cmid => $field) {
             try {
-                self::hard_archive_cmid_from_course_page((int)$edition->requiredcmid);
+                if (self::is_cm_in_series_section($cmid)) {
+                    $keepaccessible = $istypeb && in_array($field, ['requiredcmid', 'requiredassigncmid'], true);
+                    self::archive_activity_to_section_bottom($cmid, $keepaccessible);
+                } else if ($field === 'requiredcmid') {
+                    self::hard_archive_cmid_from_course_page($cmid);
+                }
             } catch (\Throwable $e) {
                 // Non-fatal.
             }
@@ -4750,12 +4771,93 @@ class manager {
         return true;
     }
 
+    /**
+     * Section ids owned by Ediciones de seminarios (parent section, calendar
+     * and seminar subsections). Content there is managed by workshop_series.
+     */
+    public static function series_owned_section_ids(int $courseid): array {
+        global $DB;
+        // No static cache: sections are created/moved during the same request
+        // (series refresh, bulk import) and must be seen immediately.
+        $ids = [];
+        $dbman = $DB->get_manager();
+        if ($dbman->table_exists(new \xmldb_table('local_ga_workshop_series'))) {
+            foreach ($DB->get_records('local_ga_workshop_series', ['courseid' => $courseid], '', 'id, sectionid, calendarsectionid') as $s) {
+                foreach ([(int)$s->sectionid, (int)$s->calendarsectionid] as $sid) {
+                    if ($sid > 0) {
+                        $ids[$sid] = $sid;
+                    }
+                }
+            }
+            if ($dbman->table_exists(new \xmldb_table('local_ga_series_items'))) {
+                $sql = "SELECT i.id, i.subsectionsectionid
+                          FROM {local_ga_series_items} i
+                          JOIN {local_ga_workshop_series} s ON s.id = i.seriesid
+                         WHERE s.courseid = :courseid AND i.subsectionsectionid > 0";
+                foreach ($DB->get_records_sql($sql, ['courseid' => $courseid]) as $i) {
+                    $ids[(int)$i->subsectionsectionid] = (int)$i->subsectionsectionid;
+                }
+            }
+        }
+        return $ids;
+    }
+
+    public static function is_cm_in_series_section(int $cmid): bool {
+        global $DB;
+        $cm = $DB->get_record('course_modules', ['id' => $cmid], 'id, course, section', IGNORE_MISSING);
+        return $cm && isset(self::series_owned_section_ids((int)$cm->course)[(int)$cm->section]);
+    }
+
+    /**
+     * Archive one activity of a finished edition inside an Edición de
+     * seminarios: it stays in its own section (so Moodle can still resolve it,
+     * keep grades and serve direct links) but is moved to the bottom of that
+     * section and hidden from students. With $keepaccessible (Type B
+     * reflection, needed for an individual late permission) it is not hidden:
+     * it becomes "available but not shown on course page" when the site allows
+     * stealth activities, otherwise it simply stays at the bottom.
+     */
+    public static function archive_activity_to_section_bottom(int $cmid, bool $keepaccessible = false): bool {
+        global $DB, $CFG;
+        require_once($CFG->dirroot . '/course/lib.php');
+        $cm = $DB->get_record('course_modules', ['id' => $cmid], 'id, course, section, visible, visibleoncoursepage, deletioninprogress', IGNORE_MISSING);
+        if (!$cm || !empty($cm->deletioninprogress)) {
+            return false;
+        }
+        $section = $DB->get_record('course_sections', ['id' => (int)$cm->section], 'id, sequence', IGNORE_MISSING);
+        if ($section) {
+            $parts = array_values(array_filter(array_map('trim', explode(',', (string)$section->sequence)),
+                static function($value) use ($cmid) {
+                    return $value !== '' && (int)$value !== (int)$cmid;
+                }));
+            $parts[] = (string)$cmid;
+            $newsequence = implode(',', $parts);
+            if ($newsequence !== (string)$section->sequence) {
+                $DB->set_field('course_sections', 'sequence', $newsequence, ['id' => (int)$section->id]);
+            }
+        }
+        if ($keepaccessible) {
+            set_coursemodule_visible($cmid, 1, !empty($CFG->allowstealth) ? 0 : 1);
+        } else {
+            set_coursemodule_visible($cmid, 0);
+        }
+        rebuild_course_cache((int)$cm->course, true);
+        return true;
+    }
+
     public static function hard_archive_cmid_from_course_page(int $cmid): bool {
         global $DB, $CFG;
 
         $changed = false;
         $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', IGNORE_MISSING);
         if (!$cm) {
+            return false;
+        }
+        // Removing a module from its section sequence makes Moodle unable to
+        // resolve it at all (no access, no review). Activities that live inside
+        // an Edición de seminarios are archived with
+        // archive_activity_to_section_bottom() instead and never orphaned here.
+        if (self::is_cm_in_series_section($cmid)) {
             return false;
         }
 
