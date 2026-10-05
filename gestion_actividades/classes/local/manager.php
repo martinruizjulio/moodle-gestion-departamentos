@@ -633,10 +633,12 @@ class manager {
     public static function get_user_quiz_grade_out_of_10(int $userid, int $cmid): ?float {
         $item = self::get_module_grade_item($cmid);
         $grade = self::get_user_grade_for_cmid($userid, $cmid);
-        if (!$item || $grade === null || (float)$item->grademax <= 0) {
+        $min = (float)($item->grademin ?? 0);
+        if (!$item || $grade === null || (float)$item->grademax <= $min) {
             return null;
         }
-        return round($grade / (float)$item->grademax * 10.0, 2);
+        // Same normalisation as grade_manager::normalise_to_ten() (gradebook average).
+        return round(($grade - $min) / ((float)$item->grademax - $min) * 10.0, 2);
     }
 
     /**
@@ -659,7 +661,7 @@ class manager {
      */
     private static function get_module_grade_item(int $cmid): ?\stdClass {
         global $DB;
-        $sql = "SELECT gi.id, gi.gradepass, gi.grademax
+        $sql = "SELECT gi.id, gi.gradepass, gi.grademin, gi.grademax
                   FROM {course_modules} cm
                   JOIN {modules} m ON m.id = cm.module
                   JOIN {grade_items} gi ON gi.courseid = cm.course AND gi.itemtype = 'mod'
