@@ -64,7 +64,7 @@ class portfolio_pdf {
 
     public static function get_typeb_certificates(int $userid): array {
         $certs = array_values(array_filter(portfolio_typeb::list_for_user($userid), function($cert) {
-            return (string)($cert->status ?? '') === 'validated';
+            return portfolio_typeb::is_countable($cert);
         }));
         usort($certs, function($a, $b) {
             return ((int)($a->activitydate ?? 0)) <=> ((int)($b->activitydate ?? 0));
@@ -112,7 +112,10 @@ class portfolio_pdf {
 
     public static function typeb_status_label(string $status): string {
         if ($status === 'validated') {
-            return 'Validado';
+            return 'Validado y completado';
+        }
+        if ($status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) {
+            return 'Validado · falta reflexión';
         }
         if ($status === 'pending') {
             return 'Pendiente';
@@ -200,7 +203,8 @@ class portfolio_pdf {
                     'Curso' => $c->coursename ?? '-',
                     'Horas' => !empty($c->hours) ? self::format_hours((float)$c->hours) : '-',
                     'Asistencia' => 'Confirmada',
-                    'Texto alumno' => !empty($c->reflectiontext) ? (string)$c->reflectiontext : '-',
+                    'Reflexión' => 'Entregada',
+                    'Resultado' => 'Apto',
                     'Fecha de emisión' => !empty($c->timeissued) ? userdate((int)$c->timeissued, get_string('strftimedatefullshort', 'langconfig')) : '-',
                 ]);
             }
@@ -214,14 +218,15 @@ class portfolio_pdf {
                 self::write_certificate_card($pdf, (string)($c->activityname ?? 'Formación externa Tipo B'), [
                     'Fecha de la actividad' => !empty($c->activitydate) ? userdate((int)$c->activitydate, get_string('strftimedatefullshort', 'langconfig')) : '-',
                     'Horas reconocidas' => self::format_hours((float)($c->hours ?? 0)),
-                    'Estado' => 'Validado como Tipo B',
+                    'Estado' => 'Validado y completado como Tipo B',
                     'Justificación del alumno' => !empty($c->activitydescription) ? (string)$c->activitydescription : '-',
+                    'Reflexión' => !empty($c->reflectiontext) ? (string)$c->reflectiontext : '-',
                     'Comentario de validación' => !empty($c->reviewcomment) ? (string)$c->reviewcomment : '-',
                     'Archivo acreditativo' => !empty($c->filename) ? (string)$c->filename : '-',
                 ]);
             }
         } else {
-            $pdf->writeHTML('<p>No constan formaciones externas validadas como Tipo B.</p>', true, false, true, false, '');
+            $pdf->writeHTML('<p>No constan formaciones externas validadas y completadas como Tipo B.</p>', true, false, true, false, '');
         }
 
         self::add_ucv_page($pdf);
