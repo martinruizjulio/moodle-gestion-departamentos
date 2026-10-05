@@ -95,6 +95,17 @@ Reglas:
 - se incluyen reconocimientos institucionales;
 - los traspasos activos restan de A y suman a B sin alterar el total.
 
+## Portafolio del alumno
+
+- `portfolio.php` usa `hours_calculator` para que las cifras de Tipo A, Tipo B y total coincidan con bloque, informes y libro de calificaciones.
+- La pantalla queda organizada como: resumen de horas → calificaciones HEE → Seminarios Tipo A → Seminarios Tipo B internos → Formación externa Tipo B → reconocimiento institucional → traspasos A→B → descargas PDF/ZIP.
+- Tipo A ya no se describe como tarea por defecto: la interfaz indica que el **Cuestionario Moodle** es la actividad predeterminada de los seminarios nuevos, manteniendo compatibilidad con actividades históricas.
+- La formación externa Tipo B vuelve a mostrarse en el portafolio del alumno con todos sus estados: pendiente de validar, validado pendiente de reflexión, validado y completado, o rechazado.
+- Cuando falta la reflexión de una formación externa ya validada, el portafolio muestra **Completar reflexión** y enlaza al flujo canónico `typeb_upload.php`.
+- El alumno puede abrir el certificado externo aportado y consultar el comentario del gestor desde su propio portafolio.
+- El reconocimiento institucional usa terminología neutra de **actividad evaluada** para no confundir datos históricos con el nuevo cuestionario Tipo A predeterminado.
+- Las descargas del portafolio se mantienen al final de la pantalla y el PDF/ZIP siguen usando las fuentes canónicas existentes.
+
 ## Autoevaluación final HEE
 
 - Umbral: **54 horas reconocidas**, calculadas por `hours_calculator`.
@@ -148,7 +159,7 @@ Reglas:
 - La migración 2026100513 añadió el vínculo explícito `seriesid`.
 - La migración 2026100516 reconcilia campos/tablas/índices que falten sin eliminar datos.
 - El DDL se mantiene en instalación/upgrade, no en páginas de ejecución.
-- La jerarquía A/B, la ordenación del curso, el listado imprimible, la ayuda emergente de alumnado y el cambio de valor predeterminado de Tipo A **no requieren cambio de esquema**.
+- La jerarquía A/B, la ordenación del curso, el listado imprimible, la ayuda emergente de alumnado, el cambio de valor predeterminado de Tipo A y la actualización visual del portafolio **no requieren cambio de esquema**.
 
 ## Privacidad
 
@@ -160,7 +171,7 @@ Reglas:
 
 Las rondas anteriores de ChatGPT/Claude dejaron comprobados estáticamente PHP/XML y corrigieron, entre otros, permisos por edición, rutas de upgrade, DDL en ejecución, creación `auth=manual`, Bootstrap 5, observers, filepicker Tipo B, reflexión canónica y cálculo único de horas.
 
-La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de instrucciones y el valor predeterminado de cuestionario para Tipo A se han revisado contra el código actual, pero **todavía necesitan la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
+La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de instrucciones, el valor predeterminado de cuestionario para Tipo A y la actualización del portafolio se han revisado contra el código actual, pero **todavía necesitan la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
 
 ## Pruebas Moodle 5 pendientes antes del ZIP final
 
@@ -186,6 +197,8 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Tipo A: cuestionario, nota mínima y certificados.
 - Tipo B interno: reflexión texto/archivo, eliminación/reenvío, prórroga y certificado.
 - Tipo B externo: subida → validación → reflexión → horas.
+- Portafolio alumno: comprobar que A/B/total coinciden con el bloque, que aparecen todos los estados Tipo B externo, que **Completar reflexión** abre el flujo correcto y que tras guardar la reflexión se actualizan horas/estado.
+- Portafolio alumno: comprobar PDF y ZIP desde la nueva zona de descargas y que los documentos mantienen los mismos totales canónicos.
 - Profesor HEE real UCV sin permiso de edición general.
 - Comprobar que **Listado de apuntados** aparece solo a Profesor HEE/Gestor HEE de la edición, muestra exactamente los inscritos actuales y que la impresión en papel oculta la navegación Moodle y deja espacio suficiente para firma/asistencia.
 - Verificar en el bloque del alumno que **INSTRUCCIONES PARA ALUMNOS** abre y cierra correctamente el modal en el tema Moodle 5 real, también en móvil, y que el contenido corresponde a las reglas actuales.
@@ -194,5 +207,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.110-alpha** (`2026100525`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.111-alpha** (`2026100526`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.24-alpha** (`2026100508`).
