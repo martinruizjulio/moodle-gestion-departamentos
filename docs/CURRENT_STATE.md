@@ -114,6 +114,8 @@ Reglas:
 - Los permisos sensibles y ficheros se validan contra la edición concreta.
 - `closed_full` significa lleno, no finalizado, por lo que permanece entre los seminarios vigentes.
 - La caché del bloque se invalida al cerrar/reabrir series, archivar/borrar ediciones, reasignar docentes y cambiar reflexiones relevantes.
+- En la vista visual del seminario, Profesor HEE/Gestor HEE dispone de **Listado de apuntados**. Abre `edition_roster.php`, visible solo para quien puede gestionar esa edición concreta.
+- El listado usa la misma fuente de inscritos que la gestión de asistencia, ordena por apellidos/nombre y ofrece una vista preparada para imprimir en papel con columnas de asistencia/firma y observaciones. No expone el listado al alumnado.
 
 ## Bloque lateral Gestión HEE
 
@@ -129,6 +131,7 @@ Reglas:
 - `pluginfile` valida contexto, propietario, edición y visibilidad.
 - Certificados legacy sin `editionid`: propietario o Gestor HEE global.
 - Exportaciones con datos personales/notas restringidas a gestión global.
+- El listado imprimible de inscritos exige `manager::can_manage_edition()` para la edición concreta y envía cabeceras `no-store` para evitar caché de datos personales.
 - Gestión HEE **no crea cuentas Moodle `auth=manual`**.
 - Las importaciones trabajan con cuentas institucionales ya existentes.
 - No se modifica SSO, autenticación UCV/Microsoft ni roles institucionales.
@@ -140,7 +143,7 @@ Reglas:
 - La migración 2026100513 añadió el vínculo explícito `seriesid`.
 - La migración 2026100516 reconcilia campos/tablas/índices que falten sin eliminar datos.
 - El DDL se mantiene en instalación/upgrade, no en páginas de ejecución.
-- La jerarquía A/B y la ordenación del curso introducidas ahora **no requieren cambio de esquema**.
+- La jerarquía A/B, la ordenación del curso y el listado imprimible introducidos ahora **no requieren cambio de esquema**.
 
 ## Privacidad
 
@@ -176,10 +179,11 @@ La nueva jerarquía A/B de `course_layout` y sus integraciones se ha revisado co
 - Tipo B interno: reflexión texto/archivo, eliminación/reenvío, prórroga y certificado.
 - Tipo B externo: subida → validación → reflexión → horas.
 - Profesor HEE real UCV sin permiso de edición general.
+- Comprobar que **Listado de apuntados** aparece solo a Profesor HEE/Gestor HEE de la edición, muestra exactamente los inscritos actuales y que la impresión en papel oculta la navegación Moodle y deja espacio suficiente para firma/asistencia.
 - Exportación de privacidad.
 - Revisión externa final del ZIP con el servicio de Plugin Reviewer solicitado por la Universidad.
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.108-alpha** (`2026100523`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.109-alpha** (`2026100524`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.22-alpha** (`2026100506`).
