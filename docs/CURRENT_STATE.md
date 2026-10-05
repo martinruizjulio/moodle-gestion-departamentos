@@ -21,7 +21,7 @@ Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es
 - Puede contener asistencia, apuntes y actividad obligatoria.
 - La actividad obligatoria puede ser tarea interna HEE o cuestionario Moodle.
 - Tarea interna: asistencia + entrega + nota mínima 5/10.
-- Cuestionario Moodle: asistencia + cuestionario finalizado; cuando existe criterio de puntos/nota mínima, además debe alcanzarse esa nota.
+- Cuestionario Moodle: asistencia + cuestionario finalizado. Nota mínima: la configurada en HEE si existe; si no, la «Calificación para aprobar» del propio cuestionario Moodle; si tampoco hay, basta con finalizarlo. Regla única en `manager::get_quiz_requirement()` / `quiz_missing_requirement()`.
 - `teacher_view.php` muestra estado, nota, resultado y certificado del cuestionario cuando procede.
 
 ### Tipo B interno
@@ -65,7 +65,8 @@ Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es
 
 ## Base de datos e instalación
 - `db/install.xml` representa la instalación limpia actual, incluyendo `local_ga_workshop_series`, `local_ga_series_items` y `local_ga_workshop_editions.seriesid`.
-- `db/upgrade.php` contiene migración formal no destructiva hasta el savepoint **2026100513**.
+- `db/upgrade.php` contiene migración formal no destructiva hasta el savepoint **2026100516**.
+- El savepoint 2026100516 reconcilia el esquema real con `install.xml` (solo añade tablas, campos e índices que falten; omite índices únicos sobre duplicados). Cubre, entre otros, `local_ga_typeb_certs.reflectiontext/reflectiontime`, que ya no tenían ruta de upgrade tras retirar el DDL en ejecución.
 - La migración 2026100513 crea/normaliza las tablas de series, añade `seriesid` e índice y rellena el vínculo histórico usando la regla anterior por rango de fechas.
 - El DDL de tablas/campos/índices queda en `db/install.xml` / `db/upgrade.php`; los `ensure_*` de ejecución son guardas de solo lectura y piden ejecutar el upgrade si falta el esquema.
 - El índice único de reconocimiento institucional sigue evitando abortar una actualización si existen duplicados históricos: no borra datos y deja aviso para revisión manual.
@@ -115,6 +116,22 @@ No son fallos estáticos confirmados; requieren Moodle real o decisión instituc
 
 No declarar compatibilidad de producción únicamente por las comprobaciones estáticas.
 
+## Segunda revisión de Claude (2026-10-05, noche)
+
+Auditados los commits `c56a2e2..bb4df12` contra el código. Corregido:
+- **Bloqueante**: la reescritura de `portfolio_typeb` eliminó `set_status()`, `total_uploaded_hours()` y los filtros de `list_all()`, todavía usados: `portfolio.php` (portafolio del alumno) y `typeb_review.php` (validar/rechazar Tipo B externo) daban error fatal, y `portfolio_admin.php` mostraba las solicitudes de todos los alumnos. Restaurados, con sincronización de notas tras revisar/reflexionar.
+- **Bloqueante (upgrade)**: sin ruta de upgrade para `reflectiontext/reflectiontime` de `local_ga_typeb_certs` → savepoint 2026100516.
+- **Fechas**: `date_helper::input_datetime()` quitaba el cero del día (valor inválido en `datetime-local`; la fecha límite de tarea se borraba al guardar). `edition_edit.php` y `workshop_series.php` mostraban con `date()` (zona del servidor) y guardaban en la del usuario.
+- **Series**: calendario y movimiento de módulos usan ya `seriesid`; las fechas solo para ediciones sin vínculo.
+- **`workshop_view.php`**: una edición finalizada lanzaba excepción incluso a su alumnado; ahora es de solo lectura para alumnado inscrito y su profesorado, sin inscripciones.
+- **Cuestionario Tipo A**: se respeta la calificación para aprobar del cuestionario Moodle; nota buscada en el ítem principal (`itemnumber = 0`).
+- **Usuarios CSV**: seguía exigiendo `moodle/user:create` aunque ya no crea cuentas; ahora solo `moodle/user:update` para actualizar.
+- **Tipo B externo**: «1,5» horas se guardaba como 15 (`PARAM_FLOAT`); ahora elemento `float` de Moodle.
+- **Privacidad**: la exportación incluye PDFs de certificados, entregas internas y evidencias Tipo B.
+- Últimas clases `badge-*` de Bootstrap 4.
+
+Validación: `php -l` (todos los PHP), XML bien formado, sin llamadas a métodos/funciones inexistentes del plugin, strings en/es completos. APIs de Moodle usadas (XMLDB, eventos de `mod_assign`, `userdate`) contrastadas con el código fuente de Moodle. **Sin ejecución en Moodle real.**
+
 ## Versiones actuales
-- `local_gestion_actividades`: **1.5.99-alpha** (`2026100514`). Último savepoint de esquema: **2026100513**.
+- `local_gestion_actividades`: **1.5.101-alpha** (`2026100516`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.20-alpha** (`2026100504`).
