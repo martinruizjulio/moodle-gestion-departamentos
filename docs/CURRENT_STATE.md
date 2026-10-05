@@ -24,7 +24,7 @@ Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es
 - Misma arquitectura que Tipo A.
 - Actividad final: **Tarea Moodle de reflexión**, sin nota numérica, con texto en línea y un archivo opcional.
 - Regla: **asistencia confirmada + reflexión entregada = Apto**.
-- `typeb_certificate_policy` impide generar un certificado Tipo B nuevo si falta asistencia o reflexión.
+- `typeb_certificate_policy` impide generar o regenerar un certificado Tipo B si falta asistencia o reflexión.
 
 ### Tipo B externo
 - Alumno sube certificado externo → `pending`.
@@ -40,6 +40,7 @@ Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es
 - Profesor HEE puede gestionar alumnado, asistencia, materiales y seguimiento de la actividad/reflexión de sus talleres asignados.
 - No obtiene acceso global al panel HEE ni edición general del curso Moodle.
 - `my_workshops.php` y `block_gestion_hee` muestran sus talleres vigentes/finalizados.
+- La administración estructural de todas las ediciones (`editions.php`) queda reservada a gestores HEE globales; Profesor HEE entra por **Mis talleres**.
 
 ## Auditoría extremo a extremo — 2026-10-05
 
@@ -58,7 +59,9 @@ Se revisaron permisos, mutaciones, creación/edición, asistencia, materiales, c
 - **Navegación Profesor HEE:** `my_workshops.php` deja de usar `$COURSE` en contexto de sistema y vuelve de forma segura a “Mis cursos”.
 - **Reparación de restricciones:** `repair_required_activity.php` ahora exige `sesskey` y permiso sobre la edición concreta; se cerró un vector CSRF.
 - **Gestión de actividad Moodle:** `task_activity.php` valida la edición concreta y separa el permiso Profesor HEE del permiso institucional `moodle/course:manageactivities`; Profesor HEE no adquiere por el plugin capacidad general para crear/reconfigurar actividades Moodle.
+- **Administración estructural de ediciones:** `editions.php` queda reservada a gestores HEE globales, evitando que un Profesor HEE de una edición navegue y administre otras ediciones del mismo taller base.
 - **Privacidad:** se amplió `classes/privacy/provider.php` para declarar las tablas personales incorporadas por talleres, profesorado, certificados, Tipo B, traspasos, tareas y reconocimiento institucional.
+- **Instalación limpia:** `db/install.xml` se alineó con el modelo actual. Incluye campos de asistencia, reflexión externa, reconocimiento institucional actual y las tablas `local_ga_workshop_series` / `local_ga_series_items`.
 
 ### Decisiones de seguridad mantenidas
 - No se modifica la autenticación UCV/Microsoft.
@@ -71,14 +74,15 @@ Se revisaron permisos, mutaciones, creación/edición, asistencia, materiales, c
 
 Estos puntos se han identificado en la auditoría y **no deben darse por validados en producción todavía**:
 
-1. **Esquema de base de datos:** `local_ga_workshop_series` / `local_ga_series_items` y los campos `reflectiontext` / `reflectiontime` del Tipo B externo todavía tienen creación defensiva en tiempo de ejecución. Antes del paquete final deben consolidarse también en `db/install.xml` y `db/upgrade.php` mediante una migración Moodle formal.
+1. **Upgrade formal de base de datos:** la instalación limpia ya está alineada, pero `db/upgrade.php` todavía debe incorporar una migración formal de las nuevas tablas/campos para sustituir como vía principal la creación defensiva en tiempo de ejecución.
 2. **Listados y descargas:** `manager_downloads.php` conserva partes heredadas del Tipo B interno basadas en `local_ga_typeb_reflections`. Debe pasar a leer el estado de la Tarea Moodle de reflexión.
 3. **ZIP Tipo B / expedientes completos:** la descarga masiva debe filtrar explícitamente reconocimientos externos totalmente completados (`validated` + reflexión), igual que el portafolio oficial.
 4. **Orden de listados:** cerrar en todos los listados/CSV la regla acordada: edición/fecha más reciente primero y talleres agrupados por Edición de talleres.
-5. **Ediciones antiguas reutilizando un mismo taller base:** revisar los últimos accesos estructurales heredados para que ningún Profesor HEE asignado a una edición pueda administrar otra edición del mismo taller base por URL directa.
+5. **Últimos accesos heredados por taller base:** revisar `teacher_view.php`, `edition_edit.php` y el servicio de ficheros para que cualquier operación sensible con edición conocida use siempre `can_manage_edition()`.
 6. **Calendario:** ajustar visualmente el HTML hasta aproximarlo a la tabla/calendario de referencia facilitada por Julio.
 7. **Prueba Moodle 5 real:** subsecciones, movimiento de actividades, restricciones por grupo, Tarea Tipo B, certificado, Profesor HEE y flujo completo externo Tipo B.
-8. **Auditoría final de plugin Moodle:** antes de crear ZIP, revisar estándares, seguridad, privacidad, estructura DB, strings y compatibilidad. No añadir al repositorio informes o artefactos específicos del revisor externo.
+8. **Privacidad completa:** el proveedor ya declara metadatos; si se van a implementar borrado/exportación GDPR de los datos del plugin habrá que definir primero la política de conservación porque implica eliminación de información académica.
+9. **Auditoría final de plugin Moodle:** antes de crear ZIP, revisar estándares, seguridad, privacidad, estructura DB, strings y compatibilidad. No añadir al repositorio informes o artefactos específicos del revisor externo.
 
 ## Versión actual
 - `local_gestion_actividades`: **1.5.94-alpha** (`2026100508`).
@@ -86,6 +90,7 @@ Estos puntos se han identificado en la auditoría y **no deben darse por validad
 
 ## Estado de validación
 - Auditoría estática de código y coherencia realizada sobre GitHub actual.
-- Se han corregido los problemas de alcance/CSRF indicados arriba.
+- Se han corregido los problemas de alcance, manipulación de parámetros y CSRF indicados arriba.
+- `db/install.xml` representa ya la estructura esperada para una instalación limpia.
 - No se ha ejecutado todavía una instalación/upgrade real ni una prueba funcional completa en el Moodle UCV.
 - No declarar la versión como producción final hasta cerrar los hallazgos pendientes y ejecutar la prueba real.
