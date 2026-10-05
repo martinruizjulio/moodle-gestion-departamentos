@@ -486,11 +486,7 @@ function local_gestion_actividades_require_card_status_v2(int $courseid): void {
                     (int)$edition->id,
                     (int)$USER->id
                 );
-                $enrolled = $enrolment && in_array(
-                    (string)($enrolment->status ?? ''),
-                    ['enrolled', 'attended'],
-                    true
-                );
+                $enrolled = \local_gestion_actividades\local\manager::is_active_enrolment($enrolment);
                 $closed = \local_gestion_actividades\local\manager::is_edition_enrolment_closed($edition);
                 $statuses[(string)(int)$edition->id] = [
                     'enrolled' => (bool)$enrolled,

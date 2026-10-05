@@ -1151,15 +1151,39 @@ class manager {
         return $record ?: null;
     }
 
+    /** Enrolment statuses that make a student an active member of an edition. */
+    public const ACTIVE_ENROLMENT_STATUSES = ['enrolled', 'attended', 'manual'];
+
+    /**
+     * Whether an edition enrolment record is an active one. Rejected,
+     * cancelled, blocked_repeat, over_places or any other status is not.
+     * Empty/NULL status is legacy data and keeps counting as enrolled, as in
+     * list_edition_enrolled_users_ultrasafe().
+     */
+    public static function is_active_enrolment(?\stdClass $record): bool {
+        if (!$record) {
+            return false;
+        }
+        $status = (string)($record->status ?? '');
+        return $status === '' || in_array($status, self::ACTIVE_ENROLMENT_STATUSES, true);
+    }
+
+    /**
+     * SQL condition equivalent to is_active_enrolment() for the given alias.
+     */
+    public static function active_enrolment_sql(string $alias = 'ee'): string {
+        return "($alias.status IS NULL OR $alias.status = '' OR $alias.status IN ('enrolled', 'attended', 'manual'))";
+    }
+
     public static function get_edition_enrolment_count(int $editionid): int {
         global $DB;
         if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
             return 0;
         }
         $sql = "SELECT COUNT(1)
-                  FROM {local_ga_edition_enrolments}
-                 WHERE editionid = :editionid
-                   AND status IN ('enrolled', 'attended')";
+                  FROM {local_ga_edition_enrolments} ee
+                 WHERE ee.editionid = :editionid
+                   AND " . self::active_enrolment_sql('ee');
         return (int)$DB->count_records_sql($sql, ['editionid' => $editionid]);
     }
 
@@ -1184,7 +1208,9 @@ class manager {
         }
 
         $existing = self::get_edition_enrolment($editionid, $userid);
-        if ($existing && $existing->status === 'enrolled') {
+        // Any active state (enrolled/attended/manual) is kept as is: re-adding
+        // must neither reset 'attended' nor add another manual place.
+        if (self::is_active_enrolment($existing)) {
             $result->success = true;
             $result->message = get_string('alreadyenrolled', 'local_gestion_actividades');
             return $result;
@@ -3763,7 +3789,7 @@ class manager {
         }
 
         $enrolment = self::get_edition_enrolment($editionid, $userid);
-        if (!$enrolment || !in_array((string)($enrolment->status ?? ''), ['enrolled', 'attended'], true)) {
+        if (!self::is_active_enrolment($enrolment)) {
             return false;
         }
 
@@ -4441,7 +4467,8 @@ class manager {
 
     public static function is_user_attended_edition(int $editionid, int $userid): bool {
         $record = self::get_user_edition_enrolment($editionid, $userid);
-        if (!$record) {
+        // An old attendance flag on a cancelled/rejected record does not count.
+        if (!self::is_active_enrolment($record)) {
             return false;
         }
         if (!empty($record->attended)) {

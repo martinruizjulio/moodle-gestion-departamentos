@@ -20,7 +20,7 @@ header('Pragma: no-cache');
 header('X-Frame-Options: SAMEORIGIN');
 
 $enrolment = manager::get_edition_enrolment($editionid, (int)$USER->id);
-$isenrolled = $enrolment && in_array((string)($enrolment->status ?? ''), ['enrolled', 'attended'], true);
+$isenrolled = manager::is_active_enrolment($enrolment);
 $closed = manager::is_edition_enrolment_closed($edition);
 
 $label = get_string('enrolme', 'local_gestion_actividades');

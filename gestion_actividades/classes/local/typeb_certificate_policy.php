@@ -184,7 +184,7 @@ class typeb_certificate_policy {
             return false;
         }
         $enrolment = manager::get_edition_enrolment($editionid, $userid);
-        if (!$enrolment || !in_array((string)($enrolment->status ?? ''), ['enrolled', 'attended', 'manual'], true)) {
+        if (!manager::is_active_enrolment($enrolment)) {
             return false;
         }
         $assign = self::assign_instance($cm);

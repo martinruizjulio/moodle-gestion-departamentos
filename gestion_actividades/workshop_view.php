@@ -133,7 +133,7 @@ if (!$edition) {
     echo $OUTPUT->notification(get_string('noeditionavailable', 'local_gestion_actividades'), 'warning');
 } else {
     $enrolment = manager::get_edition_enrolment((int)$edition->id, (int)$USER->id);
-    if ($enrolment && in_array((string)($enrolment->status ?? ''), ['enrolled', 'attended', 'manual'], true)) {
+    if (manager::is_active_enrolment($enrolment)) {
         echo html_writer::div(get_string('enrolledlabel', 'local_gestion_actividades'), 'local-ga-pill local-ga-pill-ok', ['style' => 'display:inline-block;background:#e9f7ef;border:1px solid #badbcc;border-radius:999px;padding:8px 14px;margin:10px 0;color:#0f5132;font-weight:600;']);
     } else if ($editionclosed) {
         echo $OUTPUT->notification('Esta edición ya está finalizada.', 'info');
@@ -149,7 +149,7 @@ $canaccessresources = !empty($edition) && manager::user_can_access_workshop_reso
 $resourceblockedmessage = '';
 if (!$canaccessresources && !$canmanage) {
     $enrolmentforresources = $edition ? manager::get_edition_enrolment((int)$edition->id, (int)$USER->id) : null;
-    if (!$enrolmentforresources || !in_array((string)($enrolmentforresources->status ?? ''), ['enrolled', 'attended', 'manual'], true)) {
+    if (!manager::is_active_enrolment($enrolmentforresources)) {
         $resourceblockedmessage = 'Los materiales y la actividad estarán disponibles solo para alumnado inscrito.';
     } else if (!empty($edition->sessiondate) && time() < (int)$edition->sessiondate) {
         $resourceblockedmessage = 'Los materiales y la actividad estarán disponibles a partir del día y hora de comienzo del taller.';

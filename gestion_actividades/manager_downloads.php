@@ -175,7 +175,7 @@ function local_ga_dl_workshop_activity_rows(): array {
               FROM {local_ga_workshops} w
          LEFT JOIN {course} c ON c.id = w.courseid
          LEFT JOIN {local_ga_workshop_editions} e ON e.workshopid = w.id
-         LEFT JOIN {local_ga_edition_enrolments} ee ON ee.editionid = e.id
+         LEFT JOIN {local_ga_edition_enrolments} ee ON ee.editionid = e.id AND " . manager::active_enrolment_sql('ee') . "
          LEFT JOIN {user} u ON u.id = ee.userid AND u.deleted = 0
                    $submissionjoin
                    {$series->joins}
@@ -292,7 +292,7 @@ function local_ga_dl_internal_typeb_rows(): array {
               FROM {local_ga_workshops} w
          LEFT JOIN {course} c ON c.id = w.courseid
          LEFT JOIN {local_ga_workshop_editions} e ON e.workshopid = w.id
-         LEFT JOIN {local_ga_edition_enrolments} ee ON ee.editionid = e.id
+         LEFT JOIN {local_ga_edition_enrolments} ee ON ee.editionid = e.id AND " . manager::active_enrolment_sql('ee') . "
          LEFT JOIN {user} u ON u.id = ee.userid AND u.deleted = 0
                    $certjoin {$series->joins}
              WHERE w.workshoptype = 'typeb'

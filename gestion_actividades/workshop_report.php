@@ -130,7 +130,7 @@ if ($selected) {
                    ee.attended
               FROM {local_ga_workshop_editions} e
               JOIN {local_ga_workshops} w ON w.id = e.workshopid
-              JOIN {local_ga_edition_enrolments} ee ON ee.editionid = e.id
+              JOIN {local_ga_edition_enrolments} ee ON ee.editionid = e.id AND " . manager::active_enrolment_sql('ee') . "
               JOIN {user} u ON u.id = ee.userid AND u.deleted = 0
              WHERE e.id $insql
           ORDER BY w.name ASC, e.sessiondate ASC, e.id ASC, u.lastname ASC, u.firstname ASC";

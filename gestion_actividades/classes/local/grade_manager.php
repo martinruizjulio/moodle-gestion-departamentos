@@ -1086,7 +1086,8 @@ class grade_manager {
                       JOIN {local_ga_workshops} w ON w.id = e.workshopid
                      WHERE ee.userid $usersql
                        AND w.workshoptype = 'typeb'
-                       AND $attendancecondition";
+                       AND $attendancecondition
+                       AND " . manager::active_enrolment_sql('ee');
             foreach ($DB->get_records_sql($sql, $params) as $record) {
                 $submitted = false;
                 if (!empty($record->requiredcmid)) {

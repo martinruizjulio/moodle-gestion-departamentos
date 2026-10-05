@@ -93,7 +93,7 @@ if ($istypeb && $edition && in_array($latereflectionaction, ['allow_reflection',
     require_sesskey();
     $targetuserid = required_param('userid', PARAM_INT);
     $targetenrolment = manager::get_edition_enrolment((int)$edition->id, $targetuserid);
-    if (!$targetenrolment || !in_array((string)($targetenrolment->status ?? ''), ['enrolled', 'attended', 'manual'], true)) {
+    if (!manager::is_active_enrolment($targetenrolment)) {
         throw new invalid_parameter_exception('El alumno no pertenece actualmente a esta edición.');
     }
     $until = $latereflectionaction === 'allow_reflection'
