@@ -92,7 +92,7 @@ if (!$courses) {
 if (count($courses) > 1) {
     echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'd-flex flex-wrap align-items-center gap-2 mb-3']);
     echo html_writer::label('Curso', 'courseid', false, ['class' => 'me-2']);
-    echo html_writer::start_tag('select', ['name' => 'courseid', 'id' => 'courseid', 'class' => 'form-control me-2']);
+    echo html_writer::start_tag('select', ['name' => 'courseid', 'id' => 'courseid', 'class' => 'form-select me-2']);
     foreach ($courses as $availablecourse) {
         $attributes = ['value' => (int)$availablecourse->id];
         if ((int)$availablecourse->id === $courseid) {
@@ -125,7 +125,7 @@ echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', '
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'save_quiz']);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
 echo html_writer::label('Cuestionario de autoevaluación HEE', 'selfassessmentcmid');
-echo html_writer::start_tag('select', ['name' => 'selfassessmentcmid', 'id' => 'selfassessmentcmid', 'class' => 'form-control mb-2', 'style' => 'max-width:700px;']);
+echo html_writer::start_tag('select', ['name' => 'selfassessmentcmid', 'id' => 'selfassessmentcmid', 'class' => 'form-select mb-2', 'style' => 'max-width:700px;']);
 echo html_writer::tag('option', '— Sin seleccionar —', ['value' => 0]);
 foreach ($quizzes as $quiz) {
     $range = '';

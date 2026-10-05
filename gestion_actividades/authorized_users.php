@@ -156,7 +156,7 @@ if ($courseid > 0 && $qtrim !== '') {
 
 echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'mb-3']);
 echo html_writer::label(get_string('course'), 'courseid');
-echo html_writer::start_tag('select', ['name' => 'courseid', 'id' => 'courseid', 'class' => 'form-control', 'style' => 'max-width:520px']);
+echo html_writer::start_tag('select', ['name' => 'courseid', 'id' => 'courseid', 'class' => 'form-select', 'style' => 'max-width:520px']);
 foreach ($courses as $c) {
     echo html_writer::tag('option', format_string($c->fullname) . ' [' . s($c->shortname) . '] — ID ' . $c->id, ['value' => $c->id, 'selected' => ((int)$c->id === (int)$courseid) ? 'selected' : null]);
 }

@@ -75,7 +75,7 @@ if (empty($window->cantransfer)) {
 
     echo html_writer::start_div('form-group');
     echo html_writer::tag('label', 'Taller Tipo A que quieres traspasar', ['for' => 'certificateid']);
-    $select = html_writer::start_tag('select', ['name' => 'certificateid', 'id' => 'certificateid', 'class' => 'form-control', 'required' => 'required']);
+    $select = html_writer::start_tag('select', ['name' => 'certificateid', 'id' => 'certificateid', 'class' => 'form-select', 'required' => 'required']);
     foreach ($options as $cert) {
         $label = trim((string)$cert->workshopcode . ' - ' . (string)$cert->workshopname);
         $label .= ' · ' . format_float((float)$cert->hours, 2, true) . ' h';

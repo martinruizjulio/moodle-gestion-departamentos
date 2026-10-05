@@ -204,7 +204,7 @@ echo html_writer::empty_tag('input', ['type' => 'text', 'name' => 'editioncode',
 
 echo html_writer::tag('h3', 'Profesorado y contenido Moodle', ['class' => 'h4 mt-4']);
 echo html_writer::label('Profesores del taller', 'teachers');
-echo html_writer::start_tag('select', ['name' => 'teachers[]', 'multiple' => 'multiple', 'class' => 'form-control mb-3', 'size' => 8]);
+echo html_writer::start_tag('select', ['name' => 'teachers[]', 'multiple' => 'multiple', 'class' => 'form-select mb-3', 'size' => 8]);
 foreach ($teachers as $t) {
     echo html_writer::tag('option', fullname($t) . ' — ' . $t->email, ['value' => $t->id, 'selected' => in_array($t->id, $selectedteachers) ? 'selected' : null]);
 }
