@@ -29,6 +29,21 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 - El resultado puede descargarse como CSV separado por punto y coma y compatible con Excel.
 - El panel de gestión incluye acceso directo **Listado personalizado de talleres**.
 
+### Creación masiva de talleres desde Excel
+- Se mantiene intacta la creación manual de talleres y se añade una segunda vía **Crear talleres desde Excel** en `workshops.php`.
+- Añadido `gestion_actividades/workshop_bulk_import.php` con flujo de cuatro pasos: descargar plantilla XLSX, subir archivo, previsualizar/validar y confirmar creación.
+- Añadida la clase `classes/local/bulk_workshops.php`.
+- La plantilla contiene: código, nombre, tipo A/B, descripción, fecha, inicio, fin, horas, plazas, cierre de inscripción, email del profesor, creación de apuntes, creación de cuestionario, cierre de cuestionario y código de edición.
+- Antes de crear se validan códigos duplicados, talleres ya existentes, fechas, plazas, horas y profesor asociado.
+- La creación masiva reutiliza `manager::save_workshop()` y `manager::save_workshop_edition()`, por lo que el taller resultante usa la misma estructura que uno manual y queda editable posteriormente.
+- Grupo, inscripción/asignación del grupo, asistencia y publicación visual siguen pasando por la lógica existente del `manager`.
+- Para Talleres Tipo A con cuestionario, el gestor selecciona un **cuestionario Moodle modelo vacío** del mismo curso. La importación duplica ese módulo con la API estándar de Moodle, cambia el nombre a `Cuestionario <código>`, aplica la fecha de cierre indicada y restringe el acceso al grupo de la edición.
+- Si la lógica existente acaba de crear una tarea obligatoria para esa nueva edición, la importación elimina únicamente esa tarea recién creada antes de asociar el cuestionario duplicado; no toca tareas o cuestionarios preexistentes.
+- Las preguntas del cuestionario no se generan desde Excel: se crean o importan posteriormente por las vías convencionales de Moodle.
+- Opcionalmente se puede seleccionar un recurso/carpeta Moodle modelo para **Apuntes**; se duplica y se restringe al grupo del taller.
+- La plantilla XLSX se genera desde la propia pantalla mediante PhpSpreadsheet. La lectura de `.xlsx` también usa PhpSpreadsheet.
+- Versión del plugin elevada a `1.5.87-alpha` (`2026100501`).
+
 ### Excepcionalidad / acceso de personal PAS sin cuenta UCVNet
 - Se analizó la necesidad de permitir acceso operativo a personal PAS que no puede autenticarse en UCVNet mediante el SSO Microsoft institucional.
 - No se mantiene ningún acceso paralelo dentro del plugin que permita leer o modificar datos HEE sin pasar por un mecanismo de autenticación/integración aprobado para Moodle.
@@ -44,9 +59,13 @@ Repositorio canónico del proyecto. Mantener aislamiento respecto a otros proyec
 - El portafolio PDF filtra igualmente los certificados externos a `validated` antes de mostrarlos.
 - Se detectó una actualización concurrente de `portfolio_package_download.php`; se releyó HEAD y el cambio se aplicó sobre la versión más reciente, evitando sobrescribir trabajo ajeno.
 - El prototipo de acceso excepcional paralelo fue eliminado del repositorio antes de quedar integrado; no queda endpoint externo activo de ese tipo.
+- Para la importación masiva se ha reutilizado la lógica existente de talleres/ediciones y el soporte Moodle de duplicación de módulos; no se ha creado una segunda estructura de talleres.
+- El cuestionario automático se basa en un cuestionario modelo Moodle y mantiene la edición posterior de preguntas por Moodle.
 - No se ha realizado todavía una prueba funcional en un servidor Moodle real ni una instalación/actualización del plugin. No declarar producción validada.
 
 ## Pendientes para siguientes cambios
 - Seguir acumulando los cambios solicitados por Julio antes de preparar una descarga o paquete final.
+- Probar en el Moodle real que `duplicate_module()` devuelve el CMID esperado y que las restricciones de grupo quedan visibles exactamente como en el curso actual.
+- Confirmar si el recurso de Apuntes se estandarizará como `folder` o como `resource` PDF para simplificar aún más la plantilla.
 - Diseñar la función **Excepcionalidad** sobre una vía de integración aprobada/limitada que no eluda el SSO institucional.
 - Hacer auditoría final de navegación, permisos, listados/exportaciones, paquetes masivos y consistencia de versiones antes de generar el paquete instalable.
