@@ -34,7 +34,6 @@ $sql = "SELECT e.id AS editionid, e.workshopid, e.editioncode, e.name AS edition
       ORDER BY e.sessiondate DESC, w.name ASC, e.id DESC";
 $rows = $DB->get_records_sql($sql, ['userid' => (int)$USER->id]);
 
-// A user reaching this page must actually be assigned to at least one edition.
 $totalassigned = $DB->count_records('local_ga_edition_teachers', ['userid' => (int)$USER->id]);
 if (!$totalassigned && !manager::can_manage_globally((int)$USER->id)) {
     throw new required_capability_exception($context, 'moodle/course:update', 'nopermissions', '');
@@ -42,8 +41,8 @@ if (!$totalassigned && !manager::can_manage_globally((int)$USER->id)) {
 
 echo $OUTPUT->header();
 echo html_writer::div(
-    html_writer::link(new moodle_url('/course/view.php', ['id' => $COURSE->id]),
-        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al curso',
+    html_writer::link(new moodle_url('/my/'),
+        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver a mis cursos',
         ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
@@ -69,7 +68,6 @@ if (!$rows) {
     $table = new html_table();
     $table->head = ['Tipo', 'Código', 'Taller', 'Edición', 'Fecha', 'Curso', 'Acciones'];
     foreach ($rows as $row) {
-        // Defensive permission check per edition, including direct URL protection downstream.
         if (!manager::can_manage_edition((int)$row->editionid, (int)$USER->id)) {
             continue;
         }
