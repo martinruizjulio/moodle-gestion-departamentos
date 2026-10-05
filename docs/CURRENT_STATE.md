@@ -120,6 +120,7 @@ No son fallos estáticos confirmados; requieren Moodle real o decisión instituc
 - Exportación de privacidad desde la herramienta de privacidad de Moodle.
 - Política institucional antes de implementar cualquier borrado GDPR académico.
 - Ajuste visual del calendario si el tema Moodle UCV requiere CSS/HTML adicional.
+- Creación automática del cuestionario final HEE y comprobación real de que su sección permanece invisible hasta 54 horas.
 - Revisión externa final del ZIP con el servicio de Plugin Reviewer solicitado por la Universidad.
 
 No declarar compatibilidad de producción únicamente por las comprobaciones estáticas.
@@ -175,6 +176,14 @@ Validación: `php -l` (todos los PHP), XML bien formado, sin llamadas a métodos
 - El alumno ve en `workshop_view.php` si el plazo está cerrado (y que debe pedir permiso) o hasta cuándo puede entregar.
 - Al entregar, la reflexión cuenta (observer) y el profesor vuelve a «Generar certificados» para emitir el certificado y sumar las horas.
 
+## Autoevaluación final HEE (2026-10-05)
+- `grades_report.php` permite **crear automáticamente** un cuestionario Moodle vacío llamado «Autoevaluación final HEE», además de seguir pudiendo seleccionar cualquier cuestionario existente.
+- La creación usa una sección final exclusiva, enlaza automáticamente el cuestionario como `selfassessmentcmid` y aplica la restricción ya existente de **54 horas** al módulo y a su sección; por tanto el alumnado no debe verlo hasta alcanzar el umbral.
+- El cuestionario se crea con los valores por defecto del módulo Quiz de la instalación y después se edita con las herramientas nativas de Moodle/banco de preguntas. Gestión HEE no crea ni impone las preguntas.
+- Crear la actividad exige la capacidad nativa `moodle/course:manageactivities`; la autorización HEE por sí sola no concede permisos generales de edición Moodle.
+- La creación es idempotente mediante el `cmidnumber` técnico `gestion_hee_selfassessment`, para recuperar una creación previa sin duplicar cuestionarios.
+- No hay cambio de esquema.
+
 ## Versiones actuales
-- `local_gestion_actividades`: **1.5.106-alpha** (`2026100521`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.107-alpha** (`2026100522`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.22-alpha** (`2026100506`).
