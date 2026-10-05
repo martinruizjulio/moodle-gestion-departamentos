@@ -20,6 +20,10 @@ jobs:
         with:
           php-version: '8.1'
           coverage: none
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Apply maintenance
         run: python3 tools/hee_maintenance_final.py
       - name: Validate PHP and XML
@@ -35,8 +39,6 @@ jobs:
           PY
       - name: Remove temporary maintenance files
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           rm -f tools/hee_maintenance_final.py .github/workflows/hee-final-maintenance.yml
           git add -A
           git commit -m "chore: remove temporary HEE maintenance files"
