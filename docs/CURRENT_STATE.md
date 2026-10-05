@@ -1,189 +1,185 @@
 # CURRENT_STATE — Moodle Gestión de Departamentos
 
-Última consolidación: 2026-10-05, tras auditoría de ChatGPT, revisión independiente de Claude y corrección de los riesgos abiertos detectados.
+Última consolidación: 2026-10-05.
 
-Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es la fuente de verdad. Mantener este proyecto aislado de otros Moodle del usuario.
+Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es la fuente de verdad. Este repositorio corresponde exclusivamente a Moodle Gestión de Departamentos / Gestión HEE.
 
-## Arquitectura actual de talleres
+## Jerarquía Moodle acordada para el alumnado
 
-### Ediciones de talleres
-- La unidad organizativa principal es **Edición de talleres** (`classes/local/workshop_series.php`).
-- Una edición tiene título y rango de fechas editables y crea una sección Moodle.
-- Dentro se genera **Calendario y resumen de talleres** y, cuando `mod_subsection` está disponible, una subsección real por taller: Taller 01, Taller 02…
-- Manual y Excel terminan en los mismos objetos y siguen el mismo orden de datos.
-- `local_ga_workshop_editions.seriesid` vincula explícitamente cada edición concreta con su Edición de talleres; la resolución por fechas queda únicamente como compatibilidad para registros históricos todavía no enlazados.
-- Se impiden solapamientos de rango entre Ediciones de talleres que contengan el mismo taller base.
-- Las fechas introducidas desde formularios/Excel se interpretan con la zona horaria del usuario mediante `date_helper`.
-- Una edición finalizada/oculta deja de mostrarse al alumnado pero conserva sus datos para gestión y archivo.
+La presentación HEE del curso queda fijada en este orden:
 
-### Tipo A
-- Arquitectura: Edición → sección → calendario → subsección → grupo/inscripción.
+1. **Seminarios Tipo A**
+   - primera subsección: **Calendario y resumen de seminarios** con la tabla HTML generada desde los datos canónicos;
+   - después: **Seminario 01**, **Seminario 02**, etc., cada uno como subsección Moodle cuando `mod_subsection` está disponible.
+2. **Seminarios Tipo B**
+   - primera subsección: **Calendario y resumen de seminarios**;
+   - después: **Seminario 01**, **Seminario 02**, etc.
+3. **Autoevaluación final HEE**
+   - sección independiente;
+   - el alumnado no debe verla hasta alcanzar **54 horas reconocidas**.
+4. **Ediciones anteriores de seminarios**
+   - se conservan debajo de lo anterior;
+   - permanecen ocultas al alumnado;
+   - se mantienen para histórico, gestión, certificados y trazabilidad.
+
+`classes/local/course_layout.php` centraliza esta jerarquía visual. Solo reordena las secciones propiedad de HEE y no reorganiza contenido ajeno al sistema HEE.
+
+### Separación obligatoria Tipo A / Tipo B
+
+- Una Edición de seminarios es de **un único tipo**: A o B.
+- No se permite añadir manualmente un seminario B a una edición A ni un A a una edición B.
+- La importación Excel rechaza una plantilla que mezcle filas A y B antes de crear la sección padre; deben hacerse dos importaciones.
+- Una edición vacía adquiere su tipo al añadir el primer seminario.
+- Una edición histórica heredada que ya contenga mezcla A/B no se modifica destructivamente; queda identificada como caso legacy y no admite nuevas mezclas.
+
+Internamente se conservan los nombres históricos `workshop`, `workshop_series` y tablas `local_ga_*` para no romper compatibilidad. En la interfaz nueva se prioriza el término **seminario**.
+
+## Ediciones de seminarios
+
+- `classes/local/workshop_series.php` sigue siendo el modelo canónico de una edición: título, rango de fechas, sección padre, calendario y subsecciones.
+- `local_ga_workshop_editions.seriesid` vincula explícitamente cada edición concreta con su Edición de seminarios; la resolución por fechas queda como respaldo legacy.
+- Manual y Excel desembocan en los mismos objetos.
+- Se impiden solapamientos de rango para reutilizaciones incompatibles del mismo seminario base.
+- Las fechas de formularios/Excel se interpretan con la zona horaria del usuario mediante `date_helper`.
+- Al finalizar una Edición de seminarios, la sección completa se oculta y la jerarquía HEE la coloca en el histórico inferior.
+- Al reabrirla vuelve a la zona activa correspondiente A o B.
+
+## Tipo A
+
+- Arquitectura: Edición Tipo A → calendario → subsecciones de seminario → grupo/inscripción.
 - Puede contener asistencia, apuntes y actividad obligatoria.
 - La actividad obligatoria puede ser tarea interna HEE o cuestionario Moodle.
-- Tarea interna: asistencia + entrega + nota mínima 5/10.
-- Cuestionario Moodle: asistencia + cuestionario finalizado con **nota mínima 5 sobre 10** (la nota del cuestionario se reescala a 10 según su nota máxima). Regla única en `manager::get_quiz_requirement()` / `quiz_missing_requirement()` (`QUIZ_PASS_MARK`).
-- `teacher_view.php` muestra estado, nota, resultado y certificado del cuestionario cuando procede.
+- Tarea interna: asistencia + entrega + nota mínima **5/10**.
+- Cuestionario Moodle: asistencia + cuestionario finalizado + nota mínima **5/10**, reescalada según la nota máxima real del cuestionario.
+- `teacher_view.php` distingue falta de asistencia, cuestionario no finalizado, pendiente de calificar, nota insuficiente y Apto.
 
-### Tipo B interno
-- Misma arquitectura que Tipo A.
+## Tipo B interno
+
+- Misma arquitectura visual que Tipo A, pero en su sección padre Tipo B.
 - Actividad final: **Tarea Moodle de reflexión**, sin nota numérica, con texto en línea y archivo opcional.
-- Regla: **asistencia confirmada + reflexión entregada = Apto**.
-- La Tarea Moodle es la fuente de verdad.
-- Los observers de `mod_assign` resuelven correctamente al propietario y sincronizan el estado HEE.
-- `local_ga_typeb_reflections` se mantiene como compatibilidad, pero nunca puede convertir en válida una reflexión eliminada de la Tarea Moodle.
-- `typeb_certificate_policy` impide generar o regenerar un certificado si falta asistencia o reflexión real.
+- Regla canónica: **asistencia confirmada + reflexión Moodle realmente entregada = Apto**.
+- La última entrega Moodle en estado `submitted` es la fuente de verdad; la tabla legacy `local_ga_typeb_reflections` no puede rescatar una entrega eliminada.
+- Al finalizar/archivar la edición se cierra la entrega de nuevas reflexiones.
+- Profesor HEE o Gestor HEE puede conceder a un alumno concreto una prórroga de 7 días mediante la extensión nativa de `assign` y retirarla.
+- El certificado solo puede generarse/regenerarse cuando se cumplen asistencia y reflexión.
 
-### Tipo B externo
-- Alumno sube certificado externo → `pending`.
-- Gestor valida → `validated_pending_reflection` si falta reflexión.
-- Alumno completa reflexión → `validated`.
+## Tipo B externo
+
+Flujo canónico:
+
+**certificado externo → validación del gestor → reflexión del alumno → cómputo de horas**.
+
+- Subida mediante `moodleform` + `filepicker`.
+- Formatos aceptados: PDF/JPG/PNG, máximo 20 MB.
+- Tras validar sin reflexión: `validated_pending_reflection`.
 - Solo `validated` + reflexión no vacía computa horas y entra en expediente/ZIP.
-- La subida usa `moodleform` + `filepicker`, acepta PDF/JPG/PNG y limita a 20 MB.
-- El certificado externo es la evidencia original; no se genera un certificado interno duplicado.
+- No se genera un certificado interno duplicado.
+
+## Cálculo de horas
+
+`local_gestion_actividades\local\hours_calculator` es la fuente única de verdad para:
+- bloque lateral del alumno;
+- portafolio del alumno y del gestor;
+- PDF;
+- informe de horas;
+- libro de calificaciones;
+- desbloqueo de autoevaluación;
+- traspasos A→B.
+
+Reglas:
+- historial de horas + certificados no consolidados, una vez por usuario/edición;
+- Tipo B interno solo cuenta con reflexión Moodle entregada cuando la edición la exige;
+- Tipo B externo solo cuenta validado + reflexión;
+- se incluyen reconocimientos institucionales;
+- los traspasos activos restan de A y suman a B sin alterar el total.
+
+## Autoevaluación final HEE
+
+- Umbral: **54 horas reconocidas**, calculadas por `hours_calculator`.
+- `grades_report.php` permite seleccionar un cuestionario Moodle existente o crear automáticamente uno vacío llamado **Autoevaluación final HEE**.
+- El generador está en `classes/local/selfassessment_quiz.php`.
+- El cuestionario generado se vincula automáticamente como `selfassessmentcmid`.
+- La restricción de 54 horas se aplica tanto al módulo como a su sección para que ni siquiera aparezca la sección antes del umbral.
+- Las preguntas se crean/editan exclusivamente con las herramientas nativas de Moodle y el banco de preguntas.
+- Crear una actividad nueva exige la capacidad Moodle `moodle/course:manageactivities`; Gestión HEE no amplía ese permiso.
+- La creación automática es idempotente mediante `cmidnumber = gestion_hee_selfassessment`.
+- `course_layout` coloca la autoevaluación después de las ediciones activas A/B y antes del histórico. También reconoce un cuestionario creado manualmente y después seleccionado en HEE.
 
 ## Profesor HEE
+
 - Figura funcional de Gestión HEE sin cambiar el rol institucional Moodle.
-- La asignación se guarda por edición concreta en `local_ga_edition_teachers`.
-- Profesor HEE gestiona alumnado, asistencia, materiales y seguimiento únicamente de sus ediciones asignadas.
-- No recibe edición general del curso ni acceso global al panel.
-- Las operaciones sensibles, certificados y ficheros comprueban la edición concreta.
-- Los materiales legacy sin edición son estructura compartida y solo los modifica Gestor HEE global.
+- Asignación por edición concreta en `local_ga_edition_teachers`.
+- Gestiona únicamente sus ediciones asignadas: alumnado, asistencia, materiales y seguimiento.
+- No obtiene edición general del curso ni acceso global al panel.
+- Los permisos sensibles y ficheros se validan contra la edición concreta.
+- `closed_full` significa lleno, no finalizado, por lo que permanece entre los seminarios vigentes.
+- La caché del bloque se invalida al cerrar/reabrir series, archivar/borrar ediciones, reasignar docentes y cambiar reflexiones relevantes.
 
 ## Bloque lateral Gestión HEE
-- El resumen de horas del alumno está alineado con el modelo académico actual: `local_ga_hour_history` se clasifica por Tipo A/Tipo B según el taller y los certificados solo se añaden cuando esa edición todavía no está representada en el historial, evitando dobles cómputos.
-- Tipo B externo solo suma en el bloque cuando está `validated` y existe reflexión, igual que en el expediente.
-- Los traspasos activos mueven horas de Tipo A a Tipo B sin alterar el total.
-- El resumen de Profesor HEE considera finalizada una asignación cuando la edición hija está cerrada/archivada o cuando su **Edición de talleres** (`workshop_series`) está finalizada.
-- `my_workshops.php` usa el mismo criterio que el bloque, de modo que los contadores “vigentes/finalizados” coinciden con las listas que abren.
-- Las ediciones históricas todavía sin `seriesid` siguen clasificándose por su propio estado y no desaparecen de las listas.
 
-## Seguridad y permisos
+- Usa el cálculo único de horas.
+- Tipo B externo exige validación + reflexión.
+- Los traspasos no cambian las horas totales.
+- Los contadores de Profesor HEE y `my_workshops.php` comparten criterio de vigente/finalizado.
+- Una Edición de seminarios padre finalizada mueve sus seminarios a finalizados aunque las ediciones hijas conserven datos históricos.
+
+## Seguridad y autenticación
+
 - Acciones mutantes revisadas con `sesskey`/CSRF.
-- `pluginfile` valida contexto, propietario, edición y visibilidad antes de servir ficheros.
-- Certificados legacy sin `editionid`: propietario o Gestor HEE global, sin heredar permisos por taller base.
-- `export.php`, `gradehistory.php`, `index.php` y `view.php` quedan restringidos a `manager::can_manage_globally()` porque exponen información personal/notas.
-- `db/access.php` declara `RISK_PERSONAL` / `RISK_CONFIG` según el tipo de capacidad.
-- El bloque `gestion_hee` ya no registra observers inexistentes `core\event\file_created/file_deleted`; la caché se invalida desde los puntos funcionales que modifican datos.
+- `pluginfile` valida contexto, propietario, edición y visibilidad.
+- Certificados legacy sin `editionid`: propietario o Gestor HEE global.
+- Exportaciones con datos personales/notas restringidas a gestión global.
+- Gestión HEE **no crea cuentas Moodle `auth=manual`**.
+- Las importaciones trabajan con cuentas institucionales ya existentes.
+- No se modifica SSO, autenticación UCV/Microsoft ni roles institucionales.
 
-## Usuarios y autenticación institucional
-- **Gestión HEE no crea cuentas Moodle nuevas.**
-- Se ha deshabilitado la creación automática de usuarios `auth=manual` desde CSV/importación de notas.
-- Las importaciones solo enlazan/actualizan cuentas institucionales ya existentes cuando corresponda; un usuario inexistente queda como `notfound` y debe provisionarse por la administración institucional.
-- No se modifica SSO, autenticación Microsoft/UCV ni roles institucionales.
+## Base de datos / upgrades
 
-## Base de datos e instalación
-- `db/install.xml` representa la instalación limpia actual, incluyendo `local_ga_workshop_series`, `local_ga_series_items` y `local_ga_workshop_editions.seriesid`.
+- `db/install.xml` representa la instalación limpia actual.
 - `db/upgrade.php` contiene migración formal no destructiva hasta el savepoint **2026100516**.
-- El savepoint 2026100516 reconcilia el esquema real con `install.xml` (solo añade tablas, campos e índices que falten; omite índices únicos sobre duplicados). Cubre, entre otros, `local_ga_typeb_certs.reflectiontext/reflectiontime`, que ya no tenían ruta de upgrade tras retirar el DDL en ejecución.
-- La migración 2026100513 crea/normaliza las tablas de series, añade `seriesid` e índice y rellena el vínculo histórico usando la regla anterior por rango de fechas.
-- El DDL de tablas/campos/índices queda en `db/install.xml` / `db/upgrade.php`; los `ensure_*` de ejecución son guardas de solo lectura y piden ejecutar el upgrade si falta el esquema.
-- El índice único de reconocimiento institucional sigue evitando abortar una actualización si existen duplicados históricos: no borra datos y deja aviso para revisión manual.
-
-## Listados, descargas y expediente
-- Tipo B interno se informa desde la Tarea Moodle real.
-- ZIP/expedientes Tipo B externos incluyen únicamente registros realmente computables (`validated` + reflexión).
-- Listados y CSV identifican la Edición de talleres, más reciente primero, manteniendo Taller 01…N dentro de cada edición.
-- Portafolio PDF y paquetes muestran certificados del más reciente al más antiguo.
+- La migración 2026100513 añadió el vínculo explícito `seriesid`.
+- La migración 2026100516 reconcilia campos/tablas/índices que falten sin eliminar datos.
+- El DDL se mantiene en instalación/upgrade, no en páginas de ejecución.
+- La jerarquía A/B y la ordenación del curso introducidas ahora **no requieren cambio de esquema**.
 
 ## Privacidad
+
 - `classes/privacy/provider.php` implementa metadata provider, request provider y `core_userlist_provider`.
-- Exporta datos HEE del usuario en contexto de sistema/curso: inscripciones/asistencia, certificados, Tipo B, reflexiones, traspasos, entregas, horas institucionales e historial aplicable.
-- **No se borran automáticamente datos académicos** en las funciones GDPR de eliminación. Es una decisión deliberada y conservadora hasta que la Universidad defina una política de conservación/borrado.
+- Exporta inscripciones/asistencia, certificados, Tipo B, reflexiones, traspasos, entregas, horas institucionales e historial aplicable, incluyendo evidencias asociadas.
+- No se borran automáticamente datos académicos hasta que la Universidad determine su política de conservación/borrado.
 
-## Compatibilidad Moodle 5 / interfaz
-- Se migraron las clases heredadas relevantes de Bootstrap 4 a Bootstrap 5 (`bg-*`, `me/ms-*`, `float-end`, flex, `form-select`, etc.).
-- `workshop_view.php` acepta/resuelve una edición concreta y evita autoinscribir o mostrar materiales de otra edición reutilizada del mismo taller base.
-- La creación/edición manual, importación masiva y tareas interpretan fechas con zona horaria del usuario.
+## Validaciones realizadas anteriormente
 
-## Validación estática final
+Las rondas anteriores de ChatGPT/Claude dejaron comprobados estáticamente PHP/XML y corrigieron, entre otros, permisos por edición, rutas de upgrade, DDL en ejecución, creación `auth=manual`, Bootstrap 5, observers, filepicker Tipo B, reflexión canónica y cálculo único de horas.
 
-Tras las correcciones anteriores se ejecutó una comprobación automática completa:
-- `php -l` sobre todos los PHP de `gestion_actividades` y `gestion_hee`: **sin errores**.
-- XML del repositorio: **bien formado**.
-- Aserciones específicas: sin DDL en ejecución fuera de upgrade, sin creación `auth=manual`, sin clases Bootstrap 4 auditadas, sin observers inválidos y sin `$_FILES` en la subida externa Tipo B.
-- Se comprobaron además soporte de cuestionario Tipo A, selección de edición concreta, privacidad, filepicker Tipo B, permisos de exportación, vínculo `seriesid` y reflexión Moodle canónica Tipo B.
-- Confirmación de savepoint `2026100513` y `seriesid` en `install.xml`.
-- Los workflows/scripts temporales usados para las comprobaciones no forman parte del árbol final.
+La nueva jerarquía A/B de `course_layout` y sus integraciones se ha revisado contra el código actual, pero **todavía necesita la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
 
-## Riesgos / comprobaciones que siguen abiertas
+## Pruebas Moodle 5 pendientes antes del ZIP final
 
-No son fallos estáticos confirmados; requieren Moodle real o decisión institucional:
-- Instalación limpia en Moodle 5 y upgrade desde una instalación existente.
-- `mod_subsection`: creación, movimiento y orden real de módulos.
-- Restricciones por grupo, inscripción y aforo con usuarios reales.
-- Tipo A: tarea interna y cuestionario Moodle, notas mínimas y generación/descarga de certificado.
-- Tipo B interno: entrega de texto, archivo, eliminación/reenvío y certificado.
-- Tipo B externo: filepicker → validación → reflexión → cómputo de horas.
-- Profesor HEE con un usuario UCV real como “Profesor sin permiso de edición”, verificando que no amplía permisos.
-- Vínculo explícito edición↔serie y migración histórica 2026100513 sobre datos reales.
-- Zona horaria de usuario distinta a la del servidor.
-- Exportación de privacidad desde la herramienta de privacidad de Moodle.
-- Política institucional antes de implementar cualquier borrado GDPR académico.
-- Ajuste visual del calendario si el tema Moodle UCV requiere CSS/HTML adicional.
-- Creación automática del cuestionario final HEE y comprobación real de que su sección permanece invisible hasta 54 horas.
+- Instalación limpia y upgrade desde una instalación existente.
+- Confirmar visualmente el orden exacto:
+  1. sección activa Tipo A;
+  2. calendario HTML A;
+  3. subsecciones Seminario A;
+  4. sección activa Tipo B;
+  5. calendario HTML B;
+  6. subsecciones Seminario B;
+  7. Autoevaluación final HEE solo al alcanzar 54 h;
+  8. ediciones anteriores ocultas debajo.
+- Crear edición A manual e intentar añadir B: debe rechazarse; repetir a la inversa.
+- Importar Excel solo A y solo B; un Excel mixto debe rechazarse antes de crear la sección.
+- Finalizar/reabrir ediciones y comprobar movimiento/visibilidad real con `mod_subsection`.
+- Comprobar que el calendario sigue siendo la primera subsección de cada edición.
+- Verificar con 53,9 h que no aparece autoevaluación y con 54 h que aparece.
+- Verificar cuestionario auto-generado y cuestionario existente seleccionado manualmente.
+- Tipo A: tareas/cuestionarios, nota mínima y certificados.
+- Tipo B interno: reflexión texto/archivo, eliminación/reenvío, prórroga y certificado.
+- Tipo B externo: subida → validación → reflexión → horas.
+- Profesor HEE real UCV sin permiso de edición general.
+- Exportación de privacidad.
 - Revisión externa final del ZIP con el servicio de Plugin Reviewer solicitado por la Universidad.
 
-No declarar compatibilidad de producción únicamente por las comprobaciones estáticas.
-
-## Segunda revisión de Claude (2026-10-05, noche)
-
-Auditados los commits `c56a2e2..bb4df12` contra el código. Corregido:
-- **Bloqueante**: la reescritura de `portfolio_typeb` eliminó `set_status()`, `total_uploaded_hours()` y los filtros de `list_all()`, todavía usados: `portfolio.php` (portafolio del alumno) y `typeb_review.php` (validar/rechazar Tipo B externo) daban error fatal, y `portfolio_admin.php` mostraba las solicitudes de todos los alumnos. Restaurados, con sincronización de notas tras revisar/reflexionar.
-- **Bloqueante (upgrade)**: sin ruta de upgrade para `reflectiontext/reflectiontime` de `local_ga_typeb_certs` → savepoint 2026100516.
-- **Fechas**: `date_helper::input_datetime()` quitaba el cero del día (valor inválido en `datetime-local`; la fecha límite de tarea se borraba al guardar). `edition_edit.php` y `workshop_series.php` mostraban con `date()` (zona del servidor) y guardaban en la del usuario.
-- **Series**: calendario y movimiento de módulos usan ya `seriesid`; las fechas solo para ediciones sin vínculo.
-- **`workshop_view.php`**: una edición finalizada lanzaba excepción incluso a su alumnado; ahora es de solo lectura para alumnado inscrito y su profesorado, sin inscripciones.
-- **Cuestionario Tipo A**: se respeta la calificación para aprobar del cuestionario Moodle; nota buscada en el ítem principal (`itemnumber = 0`).
-- **Usuarios CSV**: seguía exigiendo `moodle/user:create` aunque ya no crea cuentas; ahora solo `moodle/user:update` para actualizar.
-- **Tipo B externo**: «1,5» horas se guardaba como 15 (`PARAM_FLOAT`); ahora elemento `float` de Moodle.
-- **Privacidad**: la exportación incluye PDFs de certificados, entregas internas y evidencias Tipo B.
-- Últimas clases `badge-*` de Bootstrap 4.
-
-Validación: `php -l` (todos los PHP), XML bien formado, sin llamadas a métodos/funciones inexistentes del plugin, strings en/es completos. APIs de Moodle usadas (XMLDB, eventos de `mod_assign`, `userdate`) contrastadas con el código fuente de Moodle. **Sin ejecución en Moodle real.**
-
-## Reglas confirmadas por Julio (2026-10-05)
-- **Cuestionario Tipo A**: se aprueba con **5 sobre 10** (nota reescalada a 10). Constante `manager::QUIZ_PASS_MARK`.
-- **Tipo B**: **asistencia y reflexión son imprescindibles**. La reflexión es la última entrega de la Tarea Moodle en estado `submitted` (`typeb_certificate_policy::has_reflection`); ni la finalización ni una nota la sustituyen. Si el alumno elimina la entrega o se devuelve a borrador, deja de contar (observers `submission_removed` y `submission_status_updated`).
-- Las horas que se guardan al finalizar una edición (`refresh_completed_hours_for_edition`) usan la misma regla que los certificados.
-
-## Auditoría final de Claude (2026-10-05, 22 h)
-- `teacher_view.php` (Tipo A con cuestionario): la columna Resultado distingue falta de asistencia, cuestionario no finalizado, pendiente de calificar, nota < 5/10 y Apto. Antes, un 4/10 con asistencia mostraba «No apto / pendiente asistencia». La asistencia mostrada usa la misma fuente que la regla del certificado.
-- `workshop_view.php` (alumno): Tipo B usa `has_reflection()` (antes podía decir «Reflexión entregada» sin contar). Tipo A con cuestionario muestra ahora el cuestionario y su estado (antes no mostraba nada).
-- La nota de cuestionario se reescala a 10 con la misma fórmula que la media del libro de calificaciones (`grademin`/`grademax`).
-- Comprobación estática: `php -l` en todos los PHP, XML válido, sin llamadas a métodos/funciones inexistentes, strings en/es completos.
-
-## Revisión del bloque lateral (2026-10-05)
-- Corregida la lógica histórica del contador de horas del alumno para que no clasifique todo `hour_history` como Tipo A ni duplique certificados que ya estén consolidados por edición.
-- Tipo B externo en el bloque exige validación + reflexión.
-- Los contadores de Profesor HEE y `my_workshops.php` incorporan el estado de la Edición de talleres padre y `closed_full`.
-- Las ediciones legacy sin vínculo explícito a serie siguen funcionando mediante su estado propio.
-- No hay cambios de esquema ni de permisos en esta revisión.
-
-## Bloque Gestión HEE y cálculo de horas (revisión Claude, 2026-10-05 22:30)
-- **Cálculo único de horas**: `local_gestion_actividades\local\hours_calculator`. Lo usan el bloque (`student_hours_cache`), portafolio del alumno y del gestor, PDF, ítem de horas del libro de calificaciones (desbloqueo de la autoevaluación a 54 h), informe de horas, `get_student_total_hours()` y la ventana de traspasos.
-  - Talleres: historial de horas + certificados de ediciones aún no archivadas (una vez por alumno y edición). Tipo A/B según el tipo de taller.
-  - Tipo B interno: solo con reflexión Moodle entregada (última entrega `submitted`); las ediciones antiguas sin tarea de reflexión siguen contando.
-  - Tipo B externo: solo `validated` + reflexión.
-  - Reconocimiento institucional A/B y traspasos activos A→B (no cambian el total).
-- Antes había seis cálculos distintos: el portafolio contaba dos veces el Tipo B interno archivado; libro de calificaciones, bloque e informe contaban Tipo B sin reflexión; portafolio del gestor y PDF omitían partes.
-- Caché del bloque: se invalida al entregar/eliminar la reflexión. La caché docente se invalida al cerrar/reabrir una Edición de talleres, archivar o borrar una edición y reasignar profesorado.
-- Profesor HEE: «Cerrado por plazas» (`closed_full`) sigue en vigentes; estados nulos ya no hacen desaparecer ediciones.
-- Prueba unitaria local del calculador (SQLite simulado): A 9 h − traspaso 2 = 7; B = 3 interno + 6 externo + 2 traspaso = 11; reflexión pendiente 2 h no cuenta; externos sin reflexión no cuentan.
-
-## Reflexión Tipo B fuera de plazo (decisión de Julio, 2026-10-05)
-- Al finalizar/archivar una edición Tipo B, o al cerrar su Edición de talleres, se fija la **fecha de corte** de la Tarea Moodle de reflexión: ya no admite entregas nuevas.
-- El profesor de la edición (Profesor HEE o gestor) puede **permitir a un alumno concreto** entregarla durante 7 días (`typeb_certificate_policy::LATE_REFLECTION_DAYS`) desde `teacher_view.php`, y retirar el permiso. Se usa la prórroga nativa de Moodle (`assign_user_flags.extensionduedate`); no hay cambios de esquema ni de roles.
-- El alumno ve en `workshop_view.php` si el plazo está cerrado (y que debe pedir permiso) o hasta cuándo puede entregar.
-- Al entregar, la reflexión cuenta (observer) y el profesor vuelve a «Generar certificados» para emitir el certificado y sumar las horas.
-
-## Autoevaluación final HEE (2026-10-05)
-- `grades_report.php` permite **crear automáticamente** un cuestionario Moodle vacío llamado «Autoevaluación final HEE», además de seguir pudiendo seleccionar cualquier cuestionario existente.
-- La creación usa una sección final exclusiva, enlaza automáticamente el cuestionario como `selfassessmentcmid` y aplica la restricción ya existente de **54 horas** al módulo y a su sección; por tanto el alumnado no debe verlo hasta alcanzar el umbral.
-- El cuestionario se crea con los valores por defecto del módulo Quiz de la instalación y después se edita con las herramientas nativas de Moodle/banco de preguntas. Gestión HEE no crea ni impone las preguntas.
-- Crear la actividad exige la capacidad nativa `moodle/course:manageactivities`; la autorización HEE por sí sola no concede permisos generales de edición Moodle.
-- La creación es idempotente mediante el `cmidnumber` técnico `gestion_hee_selfassessment`, para recuperar una creación previa sin duplicar cuestionarios.
-- No hay cambio de esquema.
-
 ## Versiones actuales
-- `local_gestion_actividades`: **1.5.107-alpha** (`2026100522`). Último savepoint de esquema: **2026100516**.
+
+- `local_gestion_actividades`: **1.5.108-alpha** (`2026100523`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.22-alpha** (`2026100506`).
