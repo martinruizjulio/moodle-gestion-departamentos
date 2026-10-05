@@ -17,3 +17,4 @@ $string['temporarilyunavailable'] = 'Hours temporarily unavailable.';
 $string['cachedstale'] = 'Showing temporarily cached data.';
 
 $string['transfertypeb'] = 'Transfer Type A hours to Type B';
+$string['privacy:metadata'] = 'The Gestión HEE block does not store personal data. It displays hours and workshops managed by the local_gestion_actividades plugin.';
