@@ -2616,6 +2616,14 @@ class manager {
     public static function process_users_csv(string $filepath, string $filename, bool $updateexisting = false): \stdClass {
         global $DB, $CFG;
 
+        // Creating or editing Moodle accounts is a core administrative action:
+        // HEE authorisation alone must never grant it.
+        $syscontext = \context_system::instance();
+        require_capability('moodle/user:create', $syscontext);
+        if ($updateexisting) {
+            require_capability('moodle/user:update', $syscontext);
+        }
+
         $rows = self::read_csv($filepath);
         if (empty($rows)) {
             throw new \moodle_exception('errorcsvempty', 'local_gestion_actividades');
@@ -2709,7 +2717,11 @@ class manager {
             $existing = $existingbyemail ?: $existingbyusername;
             if ($existing) {
                 $result->userid = $existing->id;
-                if ($updateexisting) {
+                if ($updateexisting && is_siteadmin((int)$existing->id)) {
+                    $result->status = 'skipped';
+                    $result->message = 'Administrador del sitio: no se modifica desde Gestión HEE.';
+                    $summary->skipped++;
+                } else if ($updateexisting) {
                     $update = (object)[
                         'id' => $existing->id,
                         'firstname' => $firstname,
@@ -2894,6 +2906,9 @@ class manager {
     }
 
     private static function create_missing_user_from_candidate(\stdClass $candidate, string $idfield, string $identifier): ?\stdClass {
+        if (!has_capability('moodle/user:create', \context_system::instance())) {
+            return null;
+        }
         global $CFG, $DB;
 
         $email = trim((string)$candidate->email);
