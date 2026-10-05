@@ -170,7 +170,6 @@ class typeb_reflection_activity {
             return $summary;
         }
 
-        // Keep the same canonical eligibility criterion used by certificate policy.
         $summary->submitted = manager::user_submitted_required_activity($userid, $cmid)
             || manager::user_completed_required_activity($userid, $cmid);
 
@@ -209,6 +208,81 @@ class typeb_reflection_activity {
         }
 
         return $summary;
+    }
+
+    /**
+     * Keep the old compatibility table in sync after a real Moodle Assignment
+     * submission has been accepted. New UI/report logic never treats that table
+     * as the source of truth; it only supports old grade calculations safely.
+     */
+    public static function sync_legacy_compatibility(int $editionid, int $userid): bool {
+        global $DB;
+
+        $summary = self::submission_summary($editionid, $userid);
+        if (empty($summary->submitted)) {
+            return false;
+        }
+        $table = new \xmldb_table('local_ga_typeb_reflections');
+        if (!$DB->get_manager()->table_exists($table)) {
+            return true;
+        }
+
+        $text = trim(strip_tags((string)($summary->text ?? '')));
+        if ($text === '') {
+            // File-only reflections are valid in the canonical Moodle Assignment.
+            // The marker prevents legacy calculations from treating them as missing.
+            $text = '[Entrega de reflexión registrada en Moodle]';
+        }
+        $now = max(time(), (int)($summary->timemodified ?? 0));
+        $existing = $DB->get_record('local_ga_typeb_reflections', [
+            'editionid' => $editionid,
+            'userid' => $userid,
+        ], '*', IGNORE_MISSING);
+        if ($existing) {
+            $existing->reflectiontext = $text;
+            $existing->timemodified = $now;
+            $DB->update_record('local_ga_typeb_reflections', $existing);
+        } else {
+            $DB->insert_record('local_ga_typeb_reflections', (object)[
+                'editionid' => $editionid,
+                'userid' => $userid,
+                'reflectiontext' => $text,
+                'timecreated' => $now,
+                'timemodified' => $now,
+            ]);
+        }
+        return true;
+    }
+
+    /**
+     * Backfill compatibility rows for existing internal Type B submissions.
+     */
+    public static function backfill_legacy_compatibility(): int {
+        global $DB;
+
+        if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_editions'))
+                || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshops'))
+                || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
+            return 0;
+        }
+        $sql = "SELECT ee.id, ee.editionid, ee.userid
+                  FROM {local_ga_edition_enrolments} ee
+                  JOIN {local_ga_workshop_editions} e ON e.id = ee.editionid
+                  JOIN {local_ga_workshops} w ON w.id = e.workshopid
+                 WHERE w.workshoptype = 'typeb'
+                   AND e.requiredcmid > 0
+                   AND ee.userid > 0";
+        $count = 0;
+        foreach ($DB->get_records_sql($sql) as $record) {
+            try {
+                if (self::sync_legacy_compatibility((int)$record->editionid, (int)$record->userid)) {
+                    $count++;
+                }
+            } catch (\Throwable $e) {
+                // One damaged legacy edition must not stop an upgrade/backfill.
+            }
+        }
+        return $count;
     }
 
     private static function set_plugin_config(int $assignmentid, string $plugin, string $name, string $value): void {
