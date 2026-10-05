@@ -139,6 +139,9 @@ Reglas:
 - `closed_full` se interpreta como seminario completo pero todavía vigente, no como finalizado.
 - `workshop_report.php` se ha actualizado para mostrar **Actividad / Estado actividad / Resultado / Asistencia**: cuestionario Moodle y nota reescalada en Tipo A, reflexión Moodle en Tipo B y compatibilidad con tareas Tipo A históricas.
 - La nomenclatura visible del listado personalizado y del panel se ha cambiado a **seminario** sin renombrar internamente tablas/clases `workshop*`.
+- `manager_downloads.php` se ha limpiado para el modelo actual: en Tipo A ya no muestra columnas heredadas de “tarea” como regla general, sino **Actividad / Estado-calificación / Resultado**. Los seminarios nuevos leen el Cuestionario Moodle real y las ediciones históricas conservan soporte para Tarea Moodle.
+- Los listados/CSV administrativos usan la terminología **seminario**, **reflexión** y **Edición de seminarios**. El PDF del portafolio también usa la nomenclatura actual y el reconocimiento institucional Tipo A se presenta como **actividad evaluada**.
+- La limpieza de informes no cambia el esquema de base de datos ni las reglas académicas; solo alinea lectura y presentación con las fuentes canónicas actuales.
 
 ## Bloque lateral Gestión HEE
 
@@ -169,7 +172,7 @@ Reglas:
 - La migración 2026100513 añadió el vínculo explícito `seriesid`.
 - La migración 2026100516 reconcilia campos/tablas/índices que falten sin eliminar datos.
 - El DDL se mantiene en instalación/upgrade, no en páginas de ejecución.
-- La jerarquía A/B, la ordenación del curso, el listado imprimible, la ayuda emergente de alumnado, el cambio de valor predeterminado de Tipo A, la actualización visual del portafolio y la actualización del panel/listado personalizado **no requieren cambio de esquema**.
+- La jerarquía A/B, la ordenación del curso, el listado imprimible, la ayuda emergente de alumnado, el cambio de valor predeterminado de Tipo A, la actualización visual del portafolio y la actualización del panel/listados **no requieren cambio de esquema**.
 
 ## Privacidad
 
@@ -181,7 +184,7 @@ Reglas:
 
 Las rondas anteriores de ChatGPT/Claude dejaron comprobados estáticamente PHP/XML y corrigieron, entre otros, permisos por edición, rutas de upgrade, DDL en ejecución, creación `auth=manual`, Bootstrap 5, observers, filepicker Tipo B, reflexión canónica y cálculo único de horas.
 
-La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de instrucciones, el valor predeterminado de cuestionario para Tipo A, la actualización del portafolio y la actualización del panel/listado personalizado se han revisado contra el código actual, pero **todavía necesitan la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
+La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de instrucciones, el valor predeterminado de cuestionario para Tipo A, la actualización del portafolio, el panel/listado personalizado y la limpieza de listados/descargas se han revisado contra el código actual, pero **todavía necesitan la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
 
 ## Pruebas Moodle 5 pendientes antes del ZIP final
 
@@ -211,6 +214,8 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Portafolio alumno: comprobar PDF y ZIP desde la nueva zona de descargas y que los documentos mantienen los mismos totales canónicos.
 - Panel: comprobar que todas las opciones abren su destino correcto y que los textos corresponden a las reglas actuales.
 - Listado personalizado: probar Tipo A con cuestionario aprobado/suspenso/pendiente, Tipo B con reflexión entregada/pendiente y una edición Tipo A histórica con tarea.
+- Listados y descargas: comprobar en pantalla y CSV un Tipo A con cuestionario aprobado, suspendido, pendiente de realizar y pendiente de calificar; comprobar además una edición histórica con tarea y un reconocimiento institucional.
+- Listados y descargas: comprobar Tipo B interno, Tipo B externo, traspasos, horas, portafolios y ZIP/PDF con la terminología y cómputo actuales.
 - Profesor HEE real UCV sin permiso de edición general y comprobar actualización inmediata del bloque al asignar/retirar profesor.
 - Comprobar que **Listado de apuntados** aparece solo a Profesor HEE/Gestor HEE de la edición, muestra exactamente los inscritos actuales y que la impresión en papel oculta la navegación Moodle y deja espacio suficiente para firma/asistencia.
 - Verificar en el bloque del alumno que **INSTRUCCIONES PARA ALUMNOS** abre y cierra correctamente el modal en el tema Moodle 5 real, también en móvil, y que el contenido corresponde a las reglas actuales.
@@ -219,5 +224,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.112-alpha** (`2026100527`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.113-alpha** (`2026100528`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.24-alpha** (`2026100508`).
