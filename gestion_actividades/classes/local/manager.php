@@ -5268,7 +5268,9 @@ class manager {
                     $summary->generated++;
                 }
 
-                if ($cert && self::notify_certificate_available($user, $workshop, $edition, $cert)) {
+                // Only notify certificates issued in this run; re-running the
+                // generation must not e-mail students who already had one.
+                if ($cert && !$before && self::notify_certificate_available($user, $workshop, $edition, $cert)) {
                     $summary->studentemails++;
                 }
             } else {
