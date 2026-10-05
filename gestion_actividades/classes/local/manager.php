@@ -2677,12 +2677,11 @@ class manager {
     public static function process_users_csv(string $filepath, string $filename, bool $updateexisting = false): \stdClass {
         global $DB, $CFG;
 
-        // Creating or editing Moodle accounts is a core administrative action:
-        // HEE authorisation alone must never grant it.
-        $syscontext = \context_system::instance();
-        require_capability('moodle/user:create', $syscontext);
+        // The tool only reconciles the CSV with existing institutional accounts
+        // (no account is ever created). Updating existing users is a core
+        // administrative action: HEE authorisation alone must never grant it.
         if ($updateexisting) {
-            require_capability('moodle/user:update', $syscontext);
+            require_capability('moodle/user:update', \context_system::instance());
         }
 
         $rows = self::read_csv($filepath);

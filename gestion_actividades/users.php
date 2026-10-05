@@ -31,7 +31,15 @@ echo ' ' . html_writer::link(new moodle_url('/local/gestion_actividades/template
 
 echo html_writer::div('El CSV se coteja únicamente con cuentas Moodle institucionales ya existentes. Gestión HEE no crea cuentas nuevas. Los usuarios no encontrados deben provisionarse primero mediante la administración institucional de Moodle.', 'alert alert-info');
 
+$canupdateusers = has_capability('moodle/user:update', context_system::instance());
+if (!$canupdateusers) {
+    echo $OUTPUT->notification('Puedes cotejar el CSV con las cuentas existentes. Actualizar datos de usuarios requiere el permiso institucional «moodle/user:update».', 'info');
+}
+
 if ($data = $form->get_data()) {
+    if (!$canupdateusers) {
+        $data->updateexisting = 0;
+    }
     $filepath = $form->save_temp_file('csvfile');
     if (!$filepath) {
         throw new moodle_exception('No se ha podido guardar temporalmente el CSV.');
