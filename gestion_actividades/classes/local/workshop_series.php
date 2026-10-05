@@ -282,7 +282,10 @@ class workshop_series {
             $section = $DB->get_record('course_sections', ['id' => $series->sectionid, 'course' => $series->courseid], '*', IGNORE_MISSING);
         }
         if (!$section) {
-            $section = course_create_section($course, 0, true);
+            // Position 0 = append as last regular section. Do NOT pass
+            // $skipcheck = true: since Moodle 4.4 that makes core insert a
+            // section numbered 0, which collides with the course's section 0.
+            $section = course_create_section($course, 0);
             $series->sectionid = (int)$section->id;
             $DB->set_field(self::TABLE, 'sectionid', $series->sectionid, ['id' => $seriesid]);
         }
