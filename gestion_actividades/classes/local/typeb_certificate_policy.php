@@ -76,6 +76,10 @@ class typeb_certificate_policy {
                 continue;
             }
 
+            // The Moodle Assignment is the source of truth. Synchronise the
+            // compatibility record before the gradebook/portfolio calculation.
+            typeb_reflection_activity::sync_legacy_compatibility($editionid, $userid);
+
             $summary->eligible++;
             $before = manager::get_user_certificate_for_edition($editionid, $userid);
             $certificate = manager::generate_certificate_for_user($editionid, $userid, false);
@@ -88,7 +92,7 @@ class typeb_certificate_policy {
             }
         }
 
-        if ($summary->generated > 0 && class_exists(grade_manager::class)) {
+        if ($summary->eligible > 0 && class_exists(grade_manager::class)) {
             grade_manager::sync_course_safely((int)$workshop->courseid);
         }
         return $summary;
