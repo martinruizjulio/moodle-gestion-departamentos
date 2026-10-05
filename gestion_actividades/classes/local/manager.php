@@ -1615,7 +1615,14 @@ class manager {
             if (!empty($edition->requiredcmid) && $checkpoints) {
                 $row->requiredcompleted = ($row->activitygrade !== null && $row->activitygrade >= (float)$minimumgrade) ? 1 : 0;
             }
-            $row->certificateeligible = ($row->attended && $row->requiredcompleted) ? 1 : 0;
+            // Hours are stored with the same rule as certificates (Type A task
+            // >= 5, quiz >= 5/10, Type B attendance + reflection), never with the
+            // legacy completion-only check above.
+            try {
+                $row->certificateeligible = self::user_is_certificate_eligible($editionid, (int)$row->userid) ? 1 : 0;
+            } catch (\Throwable $e) {
+                $row->certificateeligible = 0;
+            }
             $row->certificatependingstore = $row->certificateeligible;
         }
 
