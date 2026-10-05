@@ -27,6 +27,12 @@ function local_ga_archive_type_badge(?string $type): string {
 function local_ga_archive_series_edition(stdClass $series, int $workshopid): ?stdClass {
     $editions = manager::list_workshop_editions($workshopid);
     if (!$editions) { return null; }
+    foreach ($editions as $edition) {
+        if (isset($edition->seriesid) && (int)$edition->seriesid === (int)$series->id) {
+            return $edition;
+        }
+    }
+
     $matching = [];
     foreach ($editions as $edition) {
         $date = (int)($edition->sessiondate ?? 0);
@@ -60,8 +66,7 @@ if (optional_param('archive_due', 0, PARAM_BOOL) && confirm_sesskey()) {
 echo $OUTPUT->header();
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo $OUTPUT->heading(get_string('workshoparchive', 'local_gestion_actividades'));
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/archive.php', ['archive_due' => 1, 'sesskey' => sesskey()]), get_string('archivedueworkshops', 'local_gestion_actividades'), ['class' => 'btn btn-primary']), 'mb-3');
-echo html_writer::tag('p', 'Las Ediciones de talleres finalizadas o cuya fecha final ya ha pasado se muestran agrupadas de la más reciente a la más antigua. Los talleres del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
+echo html_writer::tag('p', 'Las Ediciones de seminarios finalizadas expresamente se muestran agrupadas de la más reciente a la más antigua. Los seminarios del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
 
 $serieslist = workshop_series::list_for_course(0);
 $alllinkedworkshops = [];
@@ -71,7 +76,7 @@ foreach ($serieslist as $allseries) {
 
 $archivedseriescount = 0;
 foreach ($serieslist as $series) {
-    $isarchived = ($series->status ?? '') === 'finished' || (!empty($series->dateto) && (int)$series->dateto < time());
+    $isarchived = ($series->status ?? '') === 'finished';
     if (!$isarchived) { continue; }
     $items = workshop_series::items((int)$series->id);
     if (!$items) { continue; }
