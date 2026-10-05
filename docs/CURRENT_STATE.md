@@ -196,6 +196,23 @@ Correcciones confirmadas en esta ronda:
 
 Esta auditoría es estática. Siguen siendo obligatorias las pruebas de runtime Moodle 5 UCV y el Plugin Reviewer antes de declarar el paquete listo para producción.
 
+## Auditoría integral independiente de Claude — 2026-10-06
+
+Punto de partida verificado: `e9ca208`, local 1.5.115-alpha (`2026100530`), bloque 1.0.24-alpha (`2026100508`). Correcciones (un commit por tema):
+
+- **Bloqueante — creación de la sección de una Edición de seminarios**: `workshop_series::ensure_course_structure()` llamaba a `course_create_section($course, 0, true)`. Desde Moodle 4.4 (`sectionactions`) eso inserta una sección con número 0, que choca con la sección 0 del curso (índice único curso+sección): crear una edición nueva fallaba en Moodle 4.4/4.5/5.x. Ahora `course_create_section($course, 0)`.
+- **Subsecciones (`mod_subsection`)**: Moodle mantiene las secciones delegadas al final. `course_layout`, el traslado de la autoevaluación, el generador de autoevaluación y el helper heredado de secciones usaban `MAX(section)` del curso entero, colocando o creando secciones HEE detrás de las delegadas. Ahora se usa la última sección regular (`course_layout::last_regular_section_number()`) y `course_create_section()` devuelve la sección real.
+- **Seguridad — ficheros de alumnado**: `typeb_view.php` mostraba siempre en línea la evidencia Tipo B externa; las subidas anteriores al filepicker no se validaban en servidor (HTML/SVG → XSS almacenado contra gestores). Igual con las entregas internas vía `pluginfile`. Solo PDF/JPEG/PNG/GIF se muestran en línea; el resto se descarga.
+- **Inscripción activa única**: `manager::is_active_enrolment()` / `active_enrolment_sql()` (= `enrolled`, `attended`, `manual`, más estado vacío legacy). Antes: plazas, tarjetas del curso y acceso a materiales ignoraban `manual`; una marca de asistencia antigua en un registro cancelado/rechazado seguía contando; el listado personalizado y los listados/CSV A/B incluían `blocked_repeat`, `over_places` o rechazados; volver a añadir a un alumno ya «attended» le devolvía a «enrolled» y una reincorporación manual repetida sumaba otra plaza.
+- **Finalizar desde el formulario de la edición**: guardar con estado «Finalizada» no cerraba las reflexiones Tipo B ni refrescaba el bloque docente como el botón «Finalizar». Ahora comparten `apply_status_side_effects()`.
+- **Resolución edición↔serie** en `dashboard.php`, `archive.php` y `workshops.php`: el respaldo por fechas (y el respaldo final a la edición principal) podía tomar una edición enlazada explícitamente a otra serie. Ahora solo se usan ediciones de esa serie o sin enlazar.
+- **Bloque — modal de instrucciones**: el modal vivía dentro del cajón de bloques (con `transform`), por lo que quedaba recortado y tapado por su fondo. Se mueve a `<body>` al cargar y se añaden también los atributos de Bootstrap 4.
+- **Terminología**: restos visibles de «Talleres A» → «Seminarios A» (nota final, exportación PDF de notas, informe de horas, portafolio del gestor, traspasos, importación institucional y strings de horas). No se tocan nombres internos ni la plantilla de certificado ya almacenada.
+
+`move_section_to()`: se mantiene. En Moodle 5.2 está deprecada (`#[deprecated]`, MDL-86862) y emite aviso de depuración, pero sigue funcionando como envoltorio de `core_courseformat\local\sectionactions::move_at()`; su retirada está prevista para Moodle 6.0 (MDL-87419). No se ha verificado que `move_at()` exista en Moodle 5.0/5.1, así que migrar ahora podría romper esas versiones: queda para cuando se fije la versión mínima.
+
+Validación: `php -l` en todos los PHP, XML bien formado, sin métodos/funciones inexistentes del plugin, strings en/es completos en ambos plugins. APIs de Moodle contrastadas con el código fuente de Moodle (rama principal). **Sin ejecución en Moodle real.**
+
 ## Validaciones realizadas anteriormente
 
 Las rondas anteriores de ChatGPT/Claude dejaron comprobados estáticamente PHP/XML y corrigieron, entre otros, permisos por edición, rutas de upgrade, DDL en ejecución, creación `auth=manual`, Bootstrap 5, observers, filepicker Tipo B, reflexión canónica y cálculo único de horas.
@@ -240,5 +257,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.115-alpha** (`2026100530`). Último savepoint de esquema: **2026100516**.
-- `block_gestion_hee`: **1.0.24-alpha** (`2026100508`).
+- `local_gestion_actividades`: **1.5.116-alpha** (`2026100531`). Último savepoint de esquema: **2026100516**.
+- `block_gestion_hee`: **1.0.25-alpha** (`2026100509`).
