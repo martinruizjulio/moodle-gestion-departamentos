@@ -1,0 +1,61 @@
+name: HEE postfix check
+on:
+  push:
+    paths:
+      - '.github/workflows/hee-postfix-check.yml'
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          find gestion_actividades gestion_hee -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import xml.etree.ElementTree as ET
+          for p in Path('.').glob('**/*.xml'):
+              if '.git' not in p.parts:
+                  ET.parse(p)
+          ddl = re.compile(r'->\s*(?:create_table|add_field|add_index|drop_table|drop_field|drop_index)\s*\(')
+          hits=[]
+          for p in Path('gestion_actividades').rglob('*.php'):
+              if p.as_posix() == 'gestion_actividades/db/upgrade.php':
+                  continue
+              if ddl.search(p.read_text(encoding='utf-8')):
+                  hits.append(str(p))
+          if hits:
+              raise SystemExit('Runtime DDL outside upgrade: ' + ', '.join(hits))
+          for p in Path('gestion_actividades').rglob('*.php'):
+              if re.search(r"['\"]auth['\"]\s*=>\s*['\"]manual['\"]", p.read_text(encoding='utf-8'), re.I):
+                  raise SystemExit('Manual auth account creation remains in ' + str(p))
+          uploadform = Path('gestion_actividades/classes/form/upload_form.php').read_text(encoding='utf-8')
+          if "addElement('advcheckbox', 'createmissingusers'" in uploadform:
+              raise SystemExit('Create-missing-users option is still visible')
+          if '$_FILES' in Path('gestion_actividades/typeb_upload.php').read_text(encoding='utf-8'):
+              raise SystemExit('Type B upload still uses $_FILES')
+          if '2026100515' not in Path('gestion_actividades/version.php').read_text(encoding='utf-8'):
+              raise SystemExit('Final version mismatch')
+          print('Final postfix checks: OK')
+          PY
+      - name: Remove temporary check
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/hee-postfix-check.yml
+          git add -A
+          git commit -m "chore: remove temporary HEE postfix check"
+          git push origin HEAD:main
