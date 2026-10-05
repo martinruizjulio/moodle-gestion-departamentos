@@ -218,8 +218,7 @@ foreach ($serieslist as $allseries) {
 
 $activecount = 0;
 foreach ($serieslist as $series) {
-    $isactive = ($series->status ?? '') !== 'finished'
-        && ((int)$series->dateto <= 0 || (int)$series->dateto >= time());
+    $isactive = ($series->status ?? '') !== 'finished';
     if (!$isactive) {
         continue;
     }
