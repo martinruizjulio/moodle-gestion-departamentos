@@ -23,10 +23,10 @@ class typeb_upload_form extends \moodleform {
         $mform->addElement('date_selector', 'activitydate', 'Fecha de realización');
         $mform->addRule('activitydate', get_string('required'), 'required', null, 'client');
 
-        $mform->addElement('text', 'hours', 'Horas acreditadas', ['size' => 10]);
-        $mform->setType('hours', PARAM_FLOAT);
+        // The 'float' element accepts the user's decimal separator (1,5 in
+        // Spanish); PARAM_FLOAT would turn "1,5" into 15.
+        $mform->addElement('float', 'hours', 'Horas acreditadas', ['size' => 10]);
         $mform->addRule('hours', get_string('required'), 'required', null, 'client');
-        $mform->addRule('hours', 'Indica un número válido de horas.', 'numeric', null, 'client');
 
         $mform->addElement('textarea', 'activitydescription', 'Descripción o justificación de la formación', ['rows' => 5, 'cols' => 60]);
         $mform->setType('activitydescription', PARAM_TEXT);
@@ -45,7 +45,7 @@ class typeb_upload_form extends \moodleform {
 
     public function validation($data, $files): array {
         $errors = parent::validation($data, $files);
-        $hours = (float)($data['hours'] ?? 0);
+        $hours = (float)unformat_float((string)($data['hours'] ?? '0'));
         if ($hours <= 0 || $hours > 500) {
             $errors['hours'] = 'Las horas deben ser superiores a 0 y no superar 500.';
         }
