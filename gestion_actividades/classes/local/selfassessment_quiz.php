@@ -43,6 +43,7 @@ class selfassessment_quiz {
         $selectedcmid = (int)($settings->selfassessmentcmid ?? 0);
         if ($selectedcmid > 0 && grade_manager::is_valid_quiz_cmid($courseid, $selectedcmid)) {
             grade_manager::ensure_selfassessment_availability($courseid);
+            course_layout::synchronise_course($courseid);
             return $selectedcmid;
         }
 
@@ -65,6 +66,7 @@ class selfassessment_quiz {
             $cmid = (int)$existing;
             grade_manager::save_selfassessment_quiz($courseid, $cmid, $userid);
             grade_manager::ensure_selfassessment_availability($courseid);
+            course_layout::synchronise_course($courseid);
             return $cmid;
         }
 
@@ -152,6 +154,7 @@ class selfassessment_quiz {
 
         grade_manager::save_selfassessment_quiz($courseid, $cmid, $userid);
         grade_manager::ensure_selfassessment_availability($courseid);
+        course_layout::synchronise_course($courseid);
         rebuild_course_cache($courseid, true);
         return $cmid;
     }
