@@ -97,6 +97,10 @@ class block_gestion_hee extends block_base {
             $html .= html_writer::div(get_string('cachedstale', 'block_gestion_hee'), 'text-muted small mt-1');
         }
 
+        // Keep the student help immediately below the hour summary so it is always
+        // easy to find without adding another page to the course navigation.
+        $html .= $this->render_student_help();
+
         $html .= html_writer::start_div('mt-2');
         $transfereligible = $typeahours > 32.0 && $typebhours < 22.0;
         $html .= html_writer::link(
@@ -125,6 +129,73 @@ class block_gestion_hee extends block_base {
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
 
+        return $html;
+    }
+
+    private function render_student_help(): string {
+        $modalid = 'block-gestion-hee-student-help';
+        $html = html_writer::start_div('mt-3 mb-2');
+        $html .= html_writer::tag(
+            'button',
+            get_string('studenthelpbutton', 'block_gestion_hee'),
+            [
+                'type' => 'button',
+                'class' => 'btn btn-warning fw-bold w-100 py-2',
+                'data-bs-toggle' => 'modal',
+                'data-bs-target' => '#' . $modalid,
+                'aria-controls' => $modalid,
+            ]
+        );
+        $html .= html_writer::end_div();
+
+        $body = html_writer::tag('p', get_string('studenthelpintro', 'block_gestion_hee'), ['class' => 'lead fs-6']);
+        $body .= $this->render_help_section('studenthelpjoin_title', 'studenthelpjoin_text');
+        $body .= $this->render_help_section('studenthelpa_title', 'studenthelpa_text');
+        $body .= $this->render_help_section('studenthelpb_title', 'studenthelpb_text');
+        $body .= $this->render_help_section('studenthelpbexternal_title', 'studenthelpbexternal_text');
+        $body .= $this->render_help_section('studenthelpcerts_title', 'studenthelpcerts_text');
+        $body .= $this->render_help_section('studenthelptransfer_title', 'studenthelptransfer_text');
+        $body .= $this->render_help_section('studenthelpselfassessment_title', 'studenthelpselfassessment_text');
+        $body .= html_writer::div(get_string('studenthelpfooter', 'block_gestion_hee'), 'alert alert-info mb-0');
+
+        $html .= html_writer::start_div('modal fade', [
+            'id' => $modalid,
+            'tabindex' => '-1',
+            'aria-labelledby' => $modalid . '-title',
+            'aria-hidden' => 'true',
+        ]);
+        $html .= html_writer::start_div('modal-dialog modal-lg modal-dialog-scrollable');
+        $html .= html_writer::start_div('modal-content');
+        $html .= html_writer::start_div('modal-header');
+        $html .= html_writer::tag('h5', get_string('studenthelptitle', 'block_gestion_hee'), [
+            'class' => 'modal-title',
+            'id' => $modalid . '-title',
+        ]);
+        $html .= html_writer::tag('button', '', [
+            'type' => 'button',
+            'class' => 'btn-close',
+            'data-bs-dismiss' => 'modal',
+            'aria-label' => get_string('close', 'core'),
+        ]);
+        $html .= html_writer::end_div();
+        $html .= html_writer::div($body, 'modal-body');
+        $html .= html_writer::start_div('modal-footer');
+        $html .= html_writer::tag('button', get_string('close', 'core'), [
+            'type' => 'button',
+            'class' => 'btn btn-secondary',
+            'data-bs-dismiss' => 'modal',
+        ]);
+        $html .= html_writer::end_div();
+        $html .= html_writer::end_div();
+        $html .= html_writer::end_div();
+        $html .= html_writer::end_div();
+
+        return $html;
+    }
+
+    private function render_help_section(string $titlekey, string $textkey): string {
+        $html = html_writer::tag('h6', get_string($titlekey, 'block_gestion_hee'), ['class' => 'fw-bold mt-3 mb-1']);
+        $html .= html_writer::tag('p', get_string($textkey, 'block_gestion_hee'), ['class' => 'mb-2']);
         return $html;
     }
 
