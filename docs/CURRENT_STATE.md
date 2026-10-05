@@ -60,6 +60,7 @@ Se revisaron permisos, mutaciones, creación/edición, asistencia, materiales, c
 - **Reparación de restricciones:** `repair_required_activity.php` ahora exige `sesskey` y permiso sobre la edición concreta; se cerró un vector CSRF.
 - **Gestión de actividad Moodle:** `task_activity.php` valida la edición concreta y separa el permiso Profesor HEE del permiso institucional `moodle/course:manageactivities`; Profesor HEE no adquiere por el plugin capacidad general para crear/reconfigurar actividades Moodle.
 - **Administración estructural de ediciones:** `editions.php` queda reservada a gestores HEE globales, evitando que un Profesor HEE de una edición navegue y administre otras ediciones del mismo taller base.
+- **Tabla heredada de ediciones:** se corrigió la correspondencia de columnas; “Horas del taller” muestra las horas reales y “Plazas” muestra plazas e inscritos, en lugar de desplazar esos datos una columna.
 - **Privacidad:** se amplió `classes/privacy/provider.php` para declarar las tablas personales incorporadas por talleres, profesorado, certificados, Tipo B, traspasos, tareas y reconocimiento institucional.
 - **Instalación limpia:** `db/install.xml` se alineó con el modelo actual. Incluye campos de asistencia, reflexión externa, reconocimiento institucional actual y las tablas `local_ga_workshop_series` / `local_ga_series_items`.
 
@@ -90,7 +91,7 @@ Estos puntos se han identificado en la auditoría y **no deben darse por validad
 
 ## Estado de validación
 - Auditoría estática de código y coherencia realizada sobre GitHub actual.
-- Se han corregido los problemas de alcance, manipulación de parámetros y CSRF indicados arriba.
+- Se han corregido los problemas de alcance, manipulación de parámetros, CSRF y coherencia de columnas indicados arriba.
 - `db/install.xml` representa ya la estructura esperada para una instalación limpia.
 - No se ha ejecutado todavía una instalación/upgrade real ni una prueba funcional completa en el Moodle UCV.
 - No declarar la versión como producción final hasta cerrar los hallazgos pendientes y ejecutar la prueba real.
