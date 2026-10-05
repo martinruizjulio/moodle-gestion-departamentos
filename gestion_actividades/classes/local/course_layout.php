@@ -123,7 +123,10 @@ class course_layout {
 
         $sort = static function(array &$entries): void {
             usort($entries, static function($a, $b): int {
-                return [$b->datefrom, $b->seriesid] <=> [$a->datefrom, $a->seriesid];
+                if ($a->datefrom !== $b->datefrom) {
+                    return $b->datefrom <=> $a->datefrom;
+                }
+                return $b->seriesid <=> $a->seriesid;
             });
         };
         $sort($activea);
@@ -165,8 +168,7 @@ class course_layout {
     }
 
     private static function rename_series_subsections(int $seriesid, int $courseid): void {
-        global $DB, $CFG;
-        require_once($CFG->dirroot . '/course/lib.php');
+        global $DB;
         $series = $DB->get_record(workshop_series::TABLE, ['id' => $seriesid], '*', IGNORE_MISSING);
         if (!$series) {
             return;
@@ -199,8 +201,26 @@ class course_layout {
         }
     }
 
+    /**
+     * Resolve the configured self-assessment section. This also supports a quiz
+     * created manually in Moodle and later selected in HEE.
+     */
     private static function selfassessment_section_id(int $courseid): int {
         global $DB;
+        if ($DB->get_manager()->table_exists(new \xmldb_table(grade_manager::SETTINGS_TABLE))) {
+            $cmid = (int)$DB->get_field(grade_manager::SETTINGS_TABLE, 'selfassessmentcmid', ['courseid' => $courseid]);
+            if ($cmid > 0) {
+                $sectionid = (int)$DB->get_field('course_modules', 'section', [
+                    'id' => $cmid,
+                    'course' => $courseid,
+                    'deletioninprogress' => 0,
+                ]);
+                if ($sectionid > 0) {
+                    return $sectionid;
+                }
+            }
+        }
+
         $sql = "SELECT cs.id
                   FROM {course_modules} cm
                   JOIN {course_sections} cs ON cs.id = cm.section
