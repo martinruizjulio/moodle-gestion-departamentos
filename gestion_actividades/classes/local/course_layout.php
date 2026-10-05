@@ -69,7 +69,6 @@ class course_layout {
         require_once($CFG->dirroot . '/course/lib.php');
 
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-        $now = time();
         $activea = [];
         $activeb = [];
         $activeother = [];
@@ -88,8 +87,7 @@ class course_layout {
             }
 
             $type = self::series_type((int)$series->id);
-            $finished = (string)$series->status === 'finished'
-                || ((int)$series->dateto > 0 && (int)$series->dateto < $now);
+            $finished = (string)$series->status === 'finished';
             $label = self::series_label($series, $type, $finished);
             $changes = [];
             if ((string)$section->name !== $label) {
