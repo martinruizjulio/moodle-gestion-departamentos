@@ -25,7 +25,7 @@ $hasseries = $dbman->table_exists(new xmldb_table('local_ga_workshop_series'))
 $seriesjoin = $hasseries
     ? ' LEFT JOIN {local_ga_workshop_series} s ON s.id = e.seriesid'
     : '';
-$seriesfinished = $hasseries ? " OR s.status = 'finished'" : '';
+$seriesfinished = $hasseries ? " OR COALESCE(s.status, '') = 'finished'" : '';
 $finishedsql = "(e.archived = 1 OR e.status IN ('archived','finished','completed','closed_full','closed_finished')$seriesfinished)";
 $condition = $view === 'finished' ? $finishedsql : "NOT " . $finishedsql;
 $sql = "SELECT e.id AS editionid, e.workshopid, e.editioncode, e.name AS editionname,
