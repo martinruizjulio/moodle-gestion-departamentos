@@ -44,6 +44,9 @@ function local_ga_series_workshop_edition(stdClass $series, int $workshopid): ?s
 
     $matching = [];
     foreach ($editions as $edition) {
+        if (!empty($edition->seriesid) && (int)$edition->seriesid !== (int)$series->id) {
+            continue; // Linked to another Edición de seminarios: never borrow it by dates.
+        }
         $date = (int)($edition->sessiondate ?? 0);
         if ($date > 0 && $date >= (int)$series->datefrom && $date <= (int)$series->dateto) {
             $matching[] = $edition;
@@ -56,7 +59,11 @@ function local_ga_series_workshop_edition(stdClass $series, int $workshopid): ?s
         });
         return reset($matching);
     }
-    return manager::get_primary_workshop_edition($workshopid);
+    $primary = manager::get_primary_workshop_edition($workshopid);
+    if ($primary && !empty($primary->seriesid) && (int)$primary->seriesid !== (int)$series->id) {
+        return null;
+    }
+    return $primary;
 }
 
 function local_ga_series_status_label(stdClass $series): string {

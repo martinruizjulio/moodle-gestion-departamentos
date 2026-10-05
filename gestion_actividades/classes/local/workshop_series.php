@@ -41,8 +41,10 @@ class workshop_series {
         if ($record->datefrom <= 0 || $record->dateto <= 0 || $record->dateto < $record->datefrom) {
             throw new \RuntimeException('Las fechas de la edición de talleres no son válidas.');
         }
+        $oldstatus = '';
         if ($id > 0) {
             $old = self::get($id);
+            $oldstatus = (string)$old->status;
             $existingitems = self::items($id);
             if ((int)$old->courseid !== $record->courseid && $existingitems) {
                 throw new \RuntimeException('No se puede cambiar de curso una edición que ya contiene talleres.');
@@ -60,6 +62,11 @@ class workshop_series {
             $id = (int)$DB->insert_record(self::TABLE, $record);
         }
         self::ensure_course_structure($id);
+        // Changing the status from the edit form must have exactly the same
+        // effects as the Finalizar / Reabrir buttons.
+        if ($record->status !== $oldstatus && ($oldstatus !== '' || $record->status === 'finished')) {
+            self::apply_status_side_effects($id, $record->status === 'finished');
+        }
         return $id;
     }
 
@@ -253,6 +260,15 @@ class workshop_series {
             'timemodified' => time(),
         ]);
         self::ensure_course_structure($seriesid);
+        self::apply_status_side_effects($seriesid, $finished);
+    }
+
+    /**
+     * Effects of finishing/reopening a series: teacher block counters and,
+     * when finishing, closing ordinary Type B reflection submissions.
+     */
+    private static function apply_status_side_effects(int $seriesid, bool $finished): void {
+        global $DB;
         // Closing/reopening the Edición de talleres moves its workshops between
         // "vigentes" and "finalizados" in the Profesor HEE block immediately.
         $editionids = self::editions_have_seriesid()
