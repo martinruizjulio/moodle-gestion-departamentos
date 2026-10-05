@@ -195,4 +195,4 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 ## Versiones actuales
 
 - `local_gestion_actividades`: **1.5.110-alpha** (`2026100525`). Último savepoint de esquema: **2026100516**.
-- `block_gestion_hee`: **1.0.23-alpha** (`2026100507`).
+- `block_gestion_hee`: **1.0.24-alpha** (`2026100508`).
