@@ -14,7 +14,10 @@ $PAGE->set_heading('Gestión HEE');
 
 function local_ga_typeb_status_badge(string $status): string {
     if ($status === 'validated') {
-        return html_writer::span('Validado', 'badge badge-success');
+        return html_writer::span('Validado y completado', 'badge badge-success');
+    }
+    if ($status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) {
+        return html_writer::span('Validado · falta reflexión', 'badge badge-warning');
     }
     if ($status === 'rejected') {
         return html_writer::span('Rechazado', 'badge badge-danger');
@@ -40,7 +43,7 @@ if (data_submitted()) {
         grade_manager::sync_user_safely((int)$USER->id);
         redirect(
             new moodle_url('/local/gestion_actividades/typeb_upload.php', $courseid > 0 ? ['courseid' => $courseid] : []),
-            'Reflexión guardada. Las horas de esta formación ya pueden incorporarse al cómputo Tipo B.',
+            'Reflexión guardada. Las horas de esta formación ya se incorporan al cómputo Tipo B.',
             null,
             \core\output\notification::NOTIFY_SUCCESS
         );
@@ -169,35 +172,33 @@ if (!$requests) {
             echo html_writer::tag('p', '<strong>Comentario del gestor:</strong> ' . s($request->reviewcomment), ['class' => 'mt-3 mb-2']);
         }
 
-        if ((string)$request->status === 'validated') {
-            if ($countable) {
-                echo html_writer::div('Reflexión entregada · Apto · Las horas computan como Tipo B.', 'alert alert-success mt-3 mb-0');
-                echo html_writer::tag('p', nl2br(s((string)$request->reflectiontext)), ['class' => 'mt-3 mb-0']);
-            } else {
-                echo html_writer::div('Formación validada. Falta la reflexión para que las horas computen como Tipo B.', 'alert alert-warning mt-3');
-                echo html_writer::start_tag('form', ['method' => 'post']);
-                echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
-                echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'save_reflection']);
-                echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'requestid', 'value' => (int)$request->id]);
-                if ($courseid > 0) {
-                    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
-                }
-                echo html_writer::tag('label', 'Reflexión sobre la actividad', ['for' => 'reflectiontext_' . (int)$request->id]);
-                echo html_writer::tag(
-                    'textarea',
-                    '',
-                    [
-                        'name' => 'reflectiontext',
-                        'id' => 'reflectiontext_' . (int)$request->id,
-                        'class' => 'form-control mb-2',
-                        'rows' => 5,
-                        'required' => 'required',
-                        'placeholder' => 'Describe brevemente cómo ha sido la actividad y tus impresiones sobre ella.',
-                    ]
-                );
-                echo html_writer::tag('button', 'Guardar reflexión y completar reconocimiento', ['type' => 'submit', 'class' => 'btn btn-primary']);
-                echo html_writer::end_tag('form');
+        if ($countable) {
+            echo html_writer::div('Reflexión entregada · Apto · Las horas computan como Tipo B.', 'alert alert-success mt-3 mb-0');
+            echo html_writer::tag('p', nl2br(s((string)$request->reflectiontext)), ['class' => 'mt-3 mb-0']);
+        } else if (in_array((string)$request->status, [portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION, 'validated'], true)) {
+            echo html_writer::div('Formación validada. Falta la reflexión para que las horas computen como Tipo B.', 'alert alert-warning mt-3');
+            echo html_writer::start_tag('form', ['method' => 'post']);
+            echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+            echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'save_reflection']);
+            echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'requestid', 'value' => (int)$request->id]);
+            if ($courseid > 0) {
+                echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
             }
+            echo html_writer::tag('label', 'Reflexión sobre la actividad', ['for' => 'reflectiontext_' . (int)$request->id]);
+            echo html_writer::tag(
+                'textarea',
+                '',
+                [
+                    'name' => 'reflectiontext',
+                    'id' => 'reflectiontext_' . (int)$request->id,
+                    'class' => 'form-control mb-2',
+                    'rows' => 5,
+                    'required' => 'required',
+                    'placeholder' => 'Describe brevemente cómo ha sido la actividad y tus impresiones sobre ella.',
+                ]
+            );
+            echo html_writer::tag('button', 'Guardar reflexión y completar reconocimiento', ['type' => 'submit', 'class' => 'btn btn-primary']);
+            echo html_writer::end_tag('form');
         } else if ((string)$request->status === 'pending') {
             echo html_writer::div('Pendiente de revisión. La reflexión se habilitará cuando la formación sea validada.', 'alert alert-info mt-3 mb-0');
         }
