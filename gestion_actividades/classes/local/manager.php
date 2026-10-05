@@ -3715,9 +3715,10 @@ class manager {
             return false;
         }
         $edition = self::get_workshop_edition($editionid);
-        $workshop = self::get_workshop((int)$edition->workshopid);
 
-        if (self::can_manage_workshop_instance((int)$workshop->id, $userid)) {
+        // Staff access is scoped to the concrete edition: a Profesor HEE assigned
+        // to another edition of the same base workshop must not reach this one.
+        if (self::can_manage_edition($editionid, $userid)) {
             return true;
         }
 
@@ -3739,6 +3740,37 @@ class manager {
         return true;
     }
 
+
+    /**
+     * Shared materials (editionid = 0) belong to the base workshop and are listed
+     * in every edition. A user may open them when they can access resources of
+     * at least one edition of that workshop.
+     */
+    public static function user_can_access_shared_workshop_materials(int $workshopid, int $userid): bool {
+        global $DB;
+        if ($workshopid <= 0 || $userid <= 0) {
+            return false;
+        }
+        if (self::can_manage_workshop_instance($workshopid, $userid)) {
+            return true;
+        }
+        $editionids = $DB->get_fieldset_select(
+            'local_ga_edition_enrolments',
+            'DISTINCT editionid',
+            'workshopid = :workshopid AND userid = :userid',
+            ['workshopid' => $workshopid, 'userid' => $userid]
+        );
+        foreach ($editionids as $editionid) {
+            try {
+                if (self::user_can_access_workshop_resources((int)$editionid, $userid)) {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+        return false;
+    }
 
     public static function count_edition_certificates(int $editionid): int {
         global $DB;

@@ -6,14 +6,16 @@ defined('MOODLE_INTERNAL') || die();
 
 function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
     if (!in_array($filearea, ['material', 'certificate', 'taskfile', 'tasksubmission'], true)) { return false; }
+    if ($context->contextlevel != CONTEXT_COURSE) { return false; }
     require_login($course);
     global $USER, $DB;
     if (empty($args)) { return false; }
     $itemidpeek = (int)$args[0];
+    $courseid = (int)$context->instanceid;
 
     if ($filearea === 'certificate') {
         $cert = $itemidpeek ? $DB->get_record('local_ga_certificates', ['id' => $itemidpeek], '*', IGNORE_MISSING) : false;
-        if (!$cert) { return false; }
+        if (!$cert || (int)$cert->courseid !== $courseid) { return false; }
         $canmanage = \local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id)
             || (!empty($cert->editionid) && \local_gestion_actividades\local\manager::can_manage_edition((int)$cert->editionid, (int)$USER->id));
         if ((int)$cert->userid !== (int)$USER->id && !$canmanage) { return false; }
@@ -23,19 +25,26 @@ function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea,
         $mat = $itemidpeek ? $DB->get_record('local_ga_materials', ['fileitemid' => $itemidpeek], '*', IGNORE_MISSING) : false;
         if (!$mat) { return false; }
         $workshop = $DB->get_record('local_ga_workshops', ['id' => (int)$mat->workshopid], '*', IGNORE_MISSING);
-        if (!$workshop) { return false; }
+        if (!$workshop || (int)$workshop->courseid !== $courseid) { return false; }
         $editionid = !empty($mat->editionid) ? (int)$mat->editionid : 0;
-        $canmanage = $editionid > 0
-            ? \local_gestion_actividades\local\manager::can_manage_edition($editionid, (int)$USER->id)
-            : \local_gestion_actividades\local\manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id);
-        if (!$canmanage && !\local_gestion_actividades\local\manager::user_can_access_workshop_resources($editionid, (int)$USER->id)) {
+        if ($editionid > 0) {
+            if (!\local_gestion_actividades\local\manager::user_can_access_workshop_resources($editionid, (int)$USER->id)) {
+                return false;
+            }
+            if (empty($mat->visible) && !\local_gestion_actividades\local\manager::can_manage_edition($editionid, (int)$USER->id)) {
+                return false;
+            }
+        } else if (empty($mat->visible) && !\local_gestion_actividades\local\manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id)) {
+            return false;
+        } else if (!\local_gestion_actividades\local\manager::user_can_access_shared_workshop_materials((int)$workshop->id, (int)$USER->id)) {
             return false;
         }
     }
 
     if ($filearea === 'taskfile') {
-        $edition = $DB->get_record('local_ga_workshop_editions', ['taskfileitemid' => $itemidpeek], '*', IGNORE_MISSING);
+        $edition = $DB->get_record('local_ga_workshop_editions', ['taskfileitemid' => $itemidpeek], '*', IGNORE_MULTIPLE);
         if (!$edition) { return false; }
+        if ((int)$DB->get_field('local_ga_workshops', 'courseid', ['id' => (int)$edition->workshopid]) !== $courseid) { return false; }
         if (!\local_gestion_actividades\local\manager::can_manage_edition((int)$edition->id, (int)$USER->id)
                 && !\local_gestion_actividades\local\manager::user_can_access_workshop_resources((int)$edition->id, (int)$USER->id)) {
             return false;
@@ -47,6 +56,7 @@ function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea,
         if (!$submission) { return false; }
         $edition = $DB->get_record('local_ga_workshop_editions', ['id' => (int)$submission->editionid], '*', IGNORE_MISSING);
         if (!$edition) { return false; }
+        if ((int)$DB->get_field('local_ga_workshops', 'courseid', ['id' => (int)$edition->workshopid]) !== $courseid) { return false; }
         $canmanage = \local_gestion_actividades\local\manager::can_manage_edition((int)$edition->id, (int)$USER->id);
         if (!$canmanage && (int)$submission->userid !== (int)$USER->id) {
             return false;
