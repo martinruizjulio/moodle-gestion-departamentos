@@ -137,6 +137,12 @@ Validación: `php -l` (todos los PHP), XML bien formado, sin llamadas a métodos
 - **Tipo B**: **asistencia y reflexión son imprescindibles**. La reflexión es la última entrega de la Tarea Moodle en estado `submitted` (`typeb_certificate_policy::has_reflection`); ni la finalización ni una nota la sustituyen. Si el alumno elimina la entrega o se devuelve a borrador, deja de contar (observers `submission_removed` y `submission_status_updated`).
 - Las horas que se guardan al finalizar una edición (`refresh_completed_hours_for_edition`) usan la misma regla que los certificados.
 
+## Auditoría final de Claude (2026-10-05, 22 h)
+- `teacher_view.php` (Tipo A con cuestionario): la columna Resultado distingue falta de asistencia, cuestionario no finalizado, pendiente de calificar, nota < 5/10 y Apto. Antes, un 4/10 con asistencia mostraba «No apto / pendiente asistencia». La asistencia mostrada usa la misma fuente que la regla del certificado.
+- `workshop_view.php` (alumno): Tipo B usa `has_reflection()` (antes podía decir «Reflexión entregada» sin contar). Tipo A con cuestionario muestra ahora el cuestionario y su estado (antes no mostraba nada).
+- La nota de cuestionario se reescala a 10 con la misma fórmula que la media del libro de calificaciones (`grademin`/`grademax`).
+- Comprobación estática: `php -l` en todos los PHP, XML válido, sin llamadas a métodos/funciones inexistentes, strings en/es completos.
+
 ## Versiones actuales
-- `local_gestion_actividades`: **1.5.102-alpha** (`2026100517`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.103-alpha** (`2026100518`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.20-alpha** (`2026100504`).
