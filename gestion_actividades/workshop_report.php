@@ -2,6 +2,7 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
+use local_gestion_actividades\local\typeb_reflection_activity;
 
 require_login();
 $context = context_system::instance();
@@ -11,7 +12,7 @@ if (!manager::can_manage_globally((int)$USER->id)) {
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/workshop_report.php'));
-$PAGE->set_title('Listado personalizado de talleres');
+$PAGE->set_title('Listado personalizado de seminarios');
 $PAGE->set_heading('Gestión HEE');
 
 $selected = optional_param_array('editions', [], PARAM_INT);
@@ -21,16 +22,79 @@ $selected = array_values(array_unique(array_filter(array_map('intval', $selected
 function local_ga_wr_send_csv(array $rows): void {
     \core\session\manager::write_close();
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="listado_talleres_seleccionados.csv"');
+    header('Content-Disposition: attachment; filename="listado_seminarios_seleccionados.csv"');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     echo "\xEF\xBB\xBF";
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['Taller', 'Edición', 'Alumno', 'Horas', 'Nota de tarea', 'Asistencia'], ';');
+    fputcsv($out, ['Seminario', 'Edición', 'Alumno', 'Horas', 'Actividad', 'Estado actividad', 'Resultado', 'Asistencia'], ';');
     foreach ($rows as $row) {
         fputcsv($out, $row, ';');
     }
     fclose($out);
     exit;
+}
+
+function local_ga_wr_activity_status(stdClass $edition, stdClass $workshop, int $userid, $attended): array {
+    global $DB;
+
+    $attendanceok = !empty($attended);
+    $type = manager::normalize_workshop_type((string)($workshop->workshoptype ?? 'typea'));
+
+    if ($type === 'typeb') {
+        $summary = typeb_reflection_activity::submission_summary((int)$edition->id, $userid);
+        $submitted = !empty($summary->submitted);
+        return [
+            'Tarea Moodle de reflexión',
+            $submitted ? 'Reflexión entregada' : 'Reflexión pendiente',
+            ($attendanceok && $submitted) ? 'Apto' : 'Pendiente',
+        ];
+    }
+
+    $requiredtypes = manager::get_required_activity_types($edition);
+    if (in_array('quiz', $requiredtypes, true)) {
+        $requirement = manager::get_quiz_requirement($edition);
+        $cmid = (int)$requirement->cmid;
+        if ($cmid <= 0) {
+            return ['Cuestionario Moodle', 'Pendiente de vincular', 'Pendiente'];
+        }
+        $finished = manager::user_submitted_required_activity($userid, $cmid);
+        $grade = $finished ? manager::get_user_quiz_grade_out_of_10($userid, $cmid) : null;
+        if (!$finished) {
+            $status = 'Cuestionario no finalizado';
+            $result = 'Pendiente';
+        } else if ($grade === null) {
+            $status = 'Finalizado · pendiente de calificación';
+            $result = 'Pendiente';
+        } else {
+            $status = 'Finalizado · ' . format_float((float)$grade, 2, true) . '/10';
+            $result = ($attendanceok && (float)$grade >= (float)$requirement->minimum) ? 'Apto' : 'No apto';
+        }
+        return ['Cuestionario Moodle', $status, $result];
+    }
+
+    // Compatibilidad histórica: algunas ediciones Tipo A antiguas usaban una tarea interna.
+    $submission = null;
+    if ($DB->get_manager()->table_exists(new xmldb_table('local_ga_task_submissions'))) {
+        $submission = $DB->get_record('local_ga_task_submissions', [
+            'editionid' => (int)$edition->id,
+            'userid' => $userid,
+        ], '*', IGNORE_MISSING);
+    }
+    $submitted = $submission && !empty($submission->fileitemid);
+    $grade = ($submission && $submission->grade !== null && $submission->grade !== '')
+        ? (float)$submission->grade
+        : null;
+    if (!$submitted) {
+        return ['Tarea Moodle (histórica)', 'No entregada', 'Pendiente'];
+    }
+    if ($grade === null) {
+        return ['Tarea Moodle (histórica)', 'Entregada · pendiente de nota', 'Pendiente'];
+    }
+    return [
+        'Tarea Moodle (histórica)',
+        'Entregada · ' . format_float($grade, 2, true) . '/10',
+        ($attendanceok && $grade >= 5.0) ? 'Apto' : 'No apto',
+    ];
 }
 
 $editions = $DB->get_records_sql(
@@ -51,15 +115,10 @@ $editions = $DB->get_records_sql(
 $reportrows = [];
 if ($selected) {
     [$insql, $params] = $DB->get_in_or_equal($selected, SQL_PARAMS_NAMED, 'ed');
-    $hassubmissions = $DB->get_manager()->table_exists(new xmldb_table('local_ga_task_submissions'));
-    $submissionjoin = $hassubmissions
-        ? "LEFT JOIN {local_ga_task_submissions} ts ON ts.editionid = e.id AND ts.userid = u.id"
-        : '';
-    $submissionfield = $hassubmissions ? 'ts.grade AS taskgrade' : 'NULL AS taskgrade';
-
     $sql = "SELECT " . $DB->sql_concat('e.id', "'-'", 'u.id') . " AS uniqid,
                    e.id AS editionid,
                    e.name AS editionname,
+                   w.id AS workshopid,
                    w.name AS workshopname,
                    w.code AS workshopcode,
                    w.hours,
@@ -68,22 +127,24 @@ if ($selected) {
                    u.firstname,
                    u.lastname,
                    u.email,
-                   ee.attended,
-                   $submissionfield
+                   ee.attended
               FROM {local_ga_workshop_editions} e
               JOIN {local_ga_workshops} w ON w.id = e.workshopid
               JOIN {local_ga_edition_enrolments} ee ON ee.editionid = e.id
               JOIN {user} u ON u.id = ee.userid AND u.deleted = 0
-                   $submissionjoin
              WHERE e.id $insql
           ORDER BY w.name ASC, e.sessiondate ASC, e.id ASC, u.lastname ASC, u.firstname ASC";
     $records = $DB->get_records_sql($sql, $params);
 
     foreach ($records as $r) {
-        $istypeb = ((string)($r->workshoptype ?? 'typea') === 'typeb');
-        $grade = $istypeb || $r->taskgrade === null || $r->taskgrade === ''
-            ? '-'
-            : format_float((float)$r->taskgrade, 2, true);
+        $edition = manager::get_workshop_edition((int)$r->editionid);
+        $workshop = manager::get_workshop((int)$r->workshopid);
+        [$activity, $activitystatus, $result] = local_ga_wr_activity_status(
+            $edition,
+            $workshop,
+            (int)$r->userid,
+            $r->attended
+        );
         $attendance = $r->attended === null
             ? 'Sin registrar'
             : (!empty($r->attended) ? 'Presente' : 'Ausente');
@@ -92,7 +153,9 @@ if ($selected) {
             (string)($r->editionname ?: '-'),
             fullname($r),
             format_float((float)$r->hours, 2, true),
-            $grade,
+            $activity,
+            $activitystatus,
+            $result,
             $attendance,
         ];
     }
@@ -112,22 +175,22 @@ echo html_writer::div(
     )
 );
 
-echo $OUTPUT->heading('Listado personalizado de talleres');
+echo $OUTPUT->heading('Listado personalizado de seminarios');
 echo html_writer::tag(
     'p',
-    'Selecciona un taller, varios o todos. El listado muestra por alumno: nombre, horas del taller, nota de la tarea y asistencia. En los Talleres Tipo B la nota de tarea aparece como “-”.',
+    'Selecciona uno, varios o todos los seminarios. El listado usa la actividad real de cada edición: cuestionario Moodle en Tipo A nuevo, tarea histórica cuando corresponda y reflexión Moodle en Tipo B.',
     ['class' => 'alert alert-info']
 );
 
 if (!$editions) {
-    echo $OUTPUT->notification('No hay ediciones de talleres disponibles.', 'info');
+    echo $OUTPUT->notification('No hay ediciones de seminarios disponibles.', 'info');
     echo $OUTPUT->footer();
     exit;
 }
 
 echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'card mb-4']);
 echo html_writer::start_div('card-body');
-echo html_writer::tag('h3', 'Seleccionar talleres', ['class' => 'h5']);
+echo html_writer::tag('h3', 'Seleccionar seminarios', ['class' => 'h5']);
 echo html_writer::tag('div',
     html_writer::tag('button', 'Seleccionar todos', ['type' => 'button', 'class' => 'btn btn-outline-secondary btn-sm me-2', 'id' => 'ga-select-all']) .
     html_writer::tag('button', 'Quitar selección', ['type' => 'button', 'class' => 'btn btn-outline-secondary btn-sm', 'id' => 'ga-clear-all']),
@@ -182,11 +245,11 @@ if ($selected) {
     );
 
     if (!$reportrows) {
-        echo $OUTPUT->notification('Los talleres seleccionados no tienen alumnado inscrito.', 'info');
+        echo $OUTPUT->notification('Los seminarios seleccionados no tienen alumnado inscrito.', 'info');
     } else {
         $table = new html_table();
         $table->attributes['class'] = 'generaltable table-sm';
-        $table->head = ['Taller', 'Edición', 'Alumno', 'Horas', 'Nota de tarea', 'Asistencia'];
+        $table->head = ['Seminario', 'Edición', 'Alumno', 'Horas', 'Actividad', 'Estado actividad', 'Resultado', 'Asistencia'];
         foreach ($reportrows as $row) {
             $table->data[] = array_map('s', $row);
         }
