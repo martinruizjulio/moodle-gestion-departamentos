@@ -10,9 +10,12 @@ $cert = $DB->get_record('local_ga_certificates', ['id' => $id], '*', MUST_EXIST)
 $course = $DB->get_record('course', ['id' => (int)$cert->courseid], '*', MUST_EXIST);
 $context = context_course::instance((int)$course->id);
 
+// Certificates linked to an edition inherit that exact edition permission.
+// Legacy certificates without edition cannot be safely attributed to one
+// Profesor HEE assignment, so only the owner or a global HEE manager may read them.
 $canmanage = !empty($cert->editionid)
     ? manager::can_manage_edition((int)$cert->editionid, (int)$USER->id)
-    : manager::can_manage_workshop_instance((int)$cert->workshopid, (int)$USER->id);
+    : manager::can_manage_globally((int)$USER->id);
 if ((int)$cert->userid !== (int)$USER->id && !$canmanage) {
     throw new required_capability_exception($context, 'moodle/course:update', 'nopermissions', '');
 }
