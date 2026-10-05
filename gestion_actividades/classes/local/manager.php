@@ -4534,6 +4534,12 @@ class manager {
         $DB->update_record('local_ga_workshop_editions', self::filter_record_to_existing_fields('local_ga_workshop_editions', $edition));
         // The edition moves from "vigentes" to "finalizados" for its teachers.
         self::invalidate_teacher_block_cache([], [$editionid]);
+        // Type B: no more reflections without the teacher's explicit permission.
+        try {
+            typeb_certificate_policy::close_reflection_submissions($editionid);
+        } catch (\Throwable $e) {
+            debugging('No se pudo cerrar la entrega de reflexiones: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
 
         if (!empty($edition->requiredcmid)) {
             try {

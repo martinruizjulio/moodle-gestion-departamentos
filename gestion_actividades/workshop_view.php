@@ -175,12 +175,20 @@ try {
             if ($cmid > 0) {
                 // Same rule used for Apto/certificate: latest Moodle submission sent.
                 $submitted = typeb_certificate_policy::has_reflection((int)$edition->id, (int)$USER->id);
+                $closed = !$submitted && typeb_certificate_policy::reflection_submissions_closed((int)$edition->id);
+                $until = $closed ? typeb_certificate_policy::late_reflection_until((int)$edition->id, (int)$USER->id) : 0;
                 if ($submitted) {
                     echo html_writer::div('Reflexión entregada', 'alert alert-success');
+                } else if ($closed && $until <= time()) {
+                    echo html_writer::div('La edición está cerrada y el plazo de la reflexión ha terminado. Si todavía necesitas entregarla, pide permiso al profesor del taller.', 'alert alert-warning');
+                } else if ($closed) {
+                    echo html_writer::div('Tu profesor te permite entregar la reflexión hasta el ' . userdate($until, get_string('strftimedatetimeshort', 'langconfig')) . '.', 'alert alert-info');
                 } else {
                     echo html_writer::div('Reflexión pendiente', 'alert alert-warning');
                 }
-                echo html_writer::link(new moodle_url('/mod/assign/view.php', ['id' => $cmid]), $submitted ? 'Ver mi reflexión' : 'Entregar reflexión', ['class' => 'btn btn-primary']);
+                if ($submitted || !$closed || $until > time()) {
+                    echo html_writer::link(new moodle_url('/mod/assign/view.php', ['id' => $cmid]), $submitted ? 'Ver mi reflexión' : 'Entregar reflexión', ['class' => 'btn btn-primary']);
+                }
             } else {
                 echo $OUTPUT->notification('La tarea de reflexión todavía no está disponible.', 'warning');
             }

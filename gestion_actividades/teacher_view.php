@@ -86,6 +86,29 @@ function local_ga_parse_task_grade_input($value): ?float {
     return min(10.0, max(0.0, (float)$value));
 }
 
+// Type B closed edition: the teacher allows (or withdraws) a late reflection
+// for one student. Page access already required can_manage_edition().
+$latereflectionaction = optional_param('action', '', PARAM_ALPHANUMEXT);
+if ($istypeb && $edition && in_array($latereflectionaction, ['allow_reflection', 'revoke_reflection'], true)) {
+    require_sesskey();
+    $targetuserid = required_param('userid', PARAM_INT);
+    if (!manager::get_edition_enrolment((int)$edition->id, $targetuserid)) {
+        throw new invalid_parameter_exception('El alumno no pertenece a esta edición.');
+    }
+    $until = $latereflectionaction === 'allow_reflection'
+        ? time() + typeb_certificate_policy::LATE_REFLECTION_DAYS * DAYSECS
+        : 0;
+    $ok = typeb_certificate_policy::set_late_reflection_permission((int)$edition->id, $targetuserid, $until);
+    redirect(
+        new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid]),
+        !$ok ? 'No se pudo actualizar el permiso de reflexión.'
+            : ($until > 0 ? 'El alumno puede entregar la reflexión hasta el ' . userdate($until, get_string('strftimedatetimeshort', 'langconfig')) . '.'
+                : 'Permiso de reflexión retirado.'),
+        null,
+        $ok ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_ERROR
+    );
+}
+
 if (!$istypeb && $edition && optional_param('action', '', PARAM_ALPHANUMEXT) === 'save_task_grades') {
     require_sesskey();
     $grades = optional_param_array('taskgrade', [], PARAM_RAW);
@@ -202,11 +225,32 @@ if ($edition) {
     if ($enrolledusers) {
         $atable = new html_table();
         if ($istypeb) {
+            $reflectionclosed = typeb_certificate_policy::reflection_submissions_closed((int)$edition->id);
             $atable->head = [get_string('lastname'), get_string('firstname'), get_string('email'), 'Asistencia', 'Reflexión', 'Resultado', 'Certificado'];
+            if ($reflectionclosed) {
+                $atable->head[] = 'Reflexión fuera de plazo';
+            }
             foreach ($enrolledusers as $eu) {
                 $userid = (int)$eu->userid;
                 $attended = manager::is_user_attended_edition((int)$edition->id, $userid);
                 $submitted = typeb_certificate_policy::has_reflection((int)$edition->id, $userid);
+                $permissioncell = '';
+                if ($reflectionclosed) {
+                    if ($submitted) {
+                        $permissioncell = '-';
+                    } else {
+                        $until = typeb_certificate_policy::late_reflection_until((int)$edition->id, $userid);
+                        $active = $until > time();
+                        $permissioncell = ($active ? html_writer::div('Permitido hasta ' . userdate($until, get_string('strftimedatetimeshort', 'langconfig')), 'small mb-1') : '')
+                            . html_writer::start_tag('form', ['method' => 'post', 'action' => new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid]), 'class' => 'd-inline'])
+                            . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()])
+                            . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'userid', 'value' => $userid])
+                            . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => $active ? 'revoke_reflection' : 'allow_reflection'])
+                            . html_writer::tag('button', $active ? 'Retirar permiso' : 'Permitir entregar (' . typeb_certificate_policy::LATE_REFLECTION_DAYS . ' días)',
+                                ['type' => 'submit', 'class' => 'btn btn-sm ' . ($active ? 'btn-outline-secondary' : 'btn-primary')])
+                            . html_writer::end_tag('form');
+                    }
+                }
                 $eligible = typeb_certificate_policy::is_eligible((int)$edition->id, $userid);
                 $certificate = manager::get_user_certificate_for_edition((int)$edition->id, $userid);
                 $atable->data[] = [
@@ -218,9 +262,15 @@ if ($edition) {
                     $eligible ? html_writer::span('Apto', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'),
                     $certificate ? html_writer::span('Generado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-secondary'),
                 ];
+                if ($reflectionclosed) {
+                    $atable->data[count($atable->data) - 1][] = $permissioncell;
+                }
             }
             echo html_writer::table($atable);
             echo html_writer::tag('p', 'Criterio Tipo B: asistencia + entrega de la reflexión = Apto. No existe nota numérica.', ['class' => 'text-muted']);
+            if ($reflectionclosed) {
+                echo html_writer::tag('p', 'La edición está cerrada: un alumno solo puede entregar la reflexión si le das permiso. Cuando la entregue, vuelve a «Generar certificados» para emitir el suyo.', ['class' => 'text-muted']);
+            }
         } else {
             $requiredtypes = manager::get_required_activity_types($edition);
             $hasquiz = in_array('quiz', $requiredtypes, true);

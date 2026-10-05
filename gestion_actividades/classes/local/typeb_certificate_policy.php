@@ -102,4 +102,102 @@ class typeb_certificate_policy {
         }
         return $summary;
     }
+    /** Days a late-reflection permission stays open by default. */
+    public const LATE_REFLECTION_DAYS = 7;
+
+    /**
+     * Moodle course module of the edition's reflection assignment, or null.
+     */
+    private static function reflection_cm(\stdClass $edition): ?\stdClass {
+        $cmid = (int)($edition->requiredcmid ?? 0);
+        if ($cmid <= 0) {
+            return null;
+        }
+        $cm = get_coursemodule_from_id('assign', $cmid, 0, false, IGNORE_MISSING);
+        return $cm ?: null;
+    }
+
+    private static function assign_instance(\stdClass $cm): \assign {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/mod/assign/locallib.php');
+        $course = $DB->get_record('course', ['id' => (int)$cm->course], '*', MUST_EXIST);
+        return new \assign(\context_module::instance((int)$cm->id), $cm, $course);
+    }
+
+    /**
+     * When a Type B edition is closed, stop new reflection submissions by
+     * setting the assignment cut-off date. Students can then submit only with an
+     * individual permission granted by the edition's teacher (Moodle extension).
+     */
+    public static function close_reflection_submissions(int $editionid): void {
+        global $DB;
+        $edition = manager::get_workshop_edition($editionid);
+        $workshop = manager::get_workshop((int)$edition->workshopid);
+        if (!manager::is_typeb_workshop($workshop) || !($cm = self::reflection_cm($edition))) {
+            return;
+        }
+        $assign = $DB->get_record('assign', ['id' => (int)$cm->instance], 'id, cutoffdate', IGNORE_MISSING);
+        $now = time();
+        if ($assign && ((int)$assign->cutoffdate === 0 || (int)$assign->cutoffdate > $now)) {
+            $DB->set_field('assign', 'cutoffdate', $now, ['id' => (int)$assign->id]);
+            \course_modinfo::purge_course_cache((int)$cm->course);
+        }
+    }
+
+    /**
+     * Whether new reflection submissions are closed for this edition.
+     */
+    public static function reflection_submissions_closed(int $editionid): bool {
+        global $DB;
+        $edition = manager::get_workshop_edition($editionid);
+        if (!($cm = self::reflection_cm($edition))) {
+            return false;
+        }
+        $cutoff = (int)$DB->get_field('assign', 'cutoffdate', ['id' => (int)$cm->instance]);
+        return $cutoff > 0 && $cutoff <= time();
+    }
+
+    /**
+     * Timestamp until which the student may still submit the reflection
+     * (Moodle extension date), or 0 when there is no permission.
+     */
+    public static function late_reflection_until(int $editionid, int $userid): int {
+        global $DB;
+        $edition = manager::get_workshop_edition($editionid);
+        if (!($cm = self::reflection_cm($edition))) {
+            return 0;
+        }
+        return (int)$DB->get_field('assign_user_flags', 'extensionduedate',
+            ['assignment' => (int)$cm->instance, 'userid' => $userid], IGNORE_MISSING);
+    }
+
+    /**
+     * Grant (until > 0) or revoke (until = 0) a late reflection permission.
+     * Permission checks are done by the caller (can_manage_edition): Profesor HEE
+     * does not hold mod/assign:grantextension, so the assignment flags are
+     * written through the assign API without that capability check.
+     */
+    public static function set_late_reflection_permission(int $editionid, int $userid, int $until): bool {
+        $edition = manager::get_workshop_edition($editionid);
+        $workshop = manager::get_workshop((int)$edition->workshopid);
+        if (!manager::is_typeb_workshop($workshop) || !($cm = self::reflection_cm($edition))) {
+            return false;
+        }
+        if (!manager::get_edition_enrolment($editionid, $userid)) {
+            return false;
+        }
+        $assign = self::assign_instance($cm);
+        $flags = $assign->get_user_flags($userid, true);
+        if (!$flags) {
+            return false;
+        }
+        $flags->extensionduedate = max(0, $until);
+        if (!$assign->update_user_flags($flags)) {
+            return false;
+        }
+        if ($until > 0) {
+            \mod_assign\event\extension_granted::create_from_assign($assign, $userid)->trigger();
+        }
+        return true;
+    }
 }

@@ -259,6 +259,15 @@ class workshop_series {
             ? $DB->get_fieldset_select('local_ga_workshop_editions', 'id', 'seriesid = :seriesid', ['seriesid' => $seriesid])
             : [];
         manager::invalidate_teacher_block_cache([], $editionids);
+        if ($finished) {
+            foreach ($editionids as $editionid) {
+                try {
+                    typeb_certificate_policy::close_reflection_submissions((int)$editionid);
+                } catch (\Throwable $e) {
+                    debugging('No se pudo cerrar la entrega de reflexiones: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+        }
     }
 
     public static function ensure_course_structure(int $seriesid): void {
