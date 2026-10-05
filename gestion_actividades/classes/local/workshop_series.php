@@ -353,6 +353,115 @@ class workshop_series {
         }
     }
 
+    /**
+     * Visibility/availability for the parent section of a seminar series.
+     *
+     * Finished series stay hidden from students. The only exception is a
+     * finished Type B series with an active individual reflection extension:
+     * Moodle cannot open an activity whose parent section is hidden, so the
+     * parent section is made technically visible but restricted to the
+     * edition group and to the extension deadline. This keeps the finished
+     * series unavailable to the rest of the course while the student can use
+     * Moodle's native assignment extension.
+     */
+    public static function section_access_state(int $seriesid): \stdClass {
+        global $DB;
+        $series = self::get($seriesid);
+        if ((string)$series->status !== 'finished') {
+            return (object)['visible' => 1, 'availability' => null];
+        }
+        if (!self::editions_have_seriesid()) {
+            return (object)['visible' => 0, 'availability' => null];
+        }
+
+        $now = time();
+        $activeenrolment = manager::active_enrolment_sql('ee');
+        $sql = "SELECT e.groupid, MAX(auf.extensionduedate) AS untiltime
+                  FROM {local_ga_workshop_editions} e
+                  JOIN {course_modules} cm ON cm.id = e.requiredcmid
+                  JOIN {modules} m ON m.id = cm.module AND m.name = :assignmod
+                  JOIN {assign_user_flags} auf ON auf.assignment = cm.instance
+                  JOIN {local_ga_edition_enrolments} ee
+                    ON ee.editionid = e.id
+                   AND ee.userid = auf.userid
+                   AND " . $activeenrolment . "
+                 WHERE e.seriesid = :seriesid
+                   AND e.groupid > 0
+                   AND auf.extensionduedate > :now
+              GROUP BY e.groupid";
+        $rows = $DB->get_records_sql($sql, [
+            'assignmod' => 'assign',
+            'seriesid' => $seriesid,
+            'now' => $now,
+        ]);
+        if (!$rows) {
+            return (object)['visible' => 0, 'availability' => null];
+        }
+
+        $branches = [];
+        foreach ($rows as $row) {
+            $groupid = (int)$row->groupid;
+            $until = (int)$row->untiltime;
+            if ($groupid <= 0 || $until <= $now) {
+                continue;
+            }
+            $branches[] = [
+                'op' => '&',
+                'c' => [
+                    ['type' => 'group', 'id' => $groupid],
+                    ['type' => 'date', 'd' => '<', 't' => $until],
+                ],
+                'showc' => [false, false],
+            ];
+        }
+        if (!$branches) {
+            return (object)['visible' => 0, 'availability' => null];
+        }
+
+        $availability = json_encode([
+            'op' => '|',
+            'c' => $branches,
+            'showc' => array_fill(0, count($branches), false),
+        ], JSON_UNESCAPED_SLASHES);
+
+        return (object)[
+            'visible' => 1,
+            'availability' => $availability ?: null,
+        ];
+    }
+
+    /**
+     * Recalculate only the parent-section access after granting/revoking a
+     * late Type B reflection permission.
+     */
+    public static function refresh_section_access(int $seriesid): void {
+        global $DB;
+        $series = self::get($seriesid);
+        if (empty($series->sectionid)) {
+            return;
+        }
+        $section = $DB->get_record('course_sections', [
+            'id' => (int)$series->sectionid,
+            'course' => (int)$series->courseid,
+        ], '*', IGNORE_MISSING);
+        if (!$section) {
+            return;
+        }
+        $access = self::section_access_state($seriesid);
+        $changes = [];
+        if ((int)$section->visible !== (int)$access->visible) {
+            $changes['visible'] = (int)$access->visible;
+        }
+        if ((string)($section->availability ?? '') !== (string)($access->availability ?? '')) {
+            $changes['availability'] = $access->availability;
+        }
+        if ($changes) {
+            require_once($GLOBALS['CFG']->dirroot . '/course/lib.php');
+            course_update_section((int)$series->courseid, $section, $changes);
+            rebuild_course_cache((int)$series->courseid, true);
+        }
+    }
+
     public static function ensure_course_structure(int $seriesid): void {
         global $DB, $CFG;
         self::ensure_schema();
@@ -373,11 +482,12 @@ class workshop_series {
             $DB->set_field(self::TABLE, 'sectionid', $series->sectionid, ['id' => $seriesid]);
         }
 
-        $visible = $series->status === 'finished' ? 0 : 1;
+        $access = self::section_access_state($seriesid);
         $DB->update_record('course_sections', (object)[
             'id' => (int)$section->id,
             'name' => $series->title,
-            'visible' => $visible,
+            'visible' => $access->visible,
+            'availability' => $access->availability,
             'timemodified' => time(),
         ]);
 
