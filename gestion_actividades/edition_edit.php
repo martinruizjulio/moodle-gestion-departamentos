@@ -15,10 +15,17 @@ $sortorder = optional_param('sortorder', 0, PARAM_INT);
 $workshop = manager::get_workshop($workshopid);
 $course = $DB->get_record('course', ['id' => $workshop->courseid], '*', MUST_EXIST);
 $context = context_course::instance((int)$course->id);
-if (!manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id)) {
-    throw new required_capability_exception($context, 'moodle/course:update', 'nopermissions', '');
+
+// Creating/editing the structure of an edition is global HEE administration.
+// Profesor HEE manages only the assigned edition contents from teacher_view.php.
+if (!manager::can_manage_globally((int)$USER->id)) {
+    throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
 }
+
 $record = $id ? manager::get_workshop_edition($id) : null;
+if ($record && (int)$record->workshopid !== $workshopid) {
+    throw new invalid_parameter_exception('La edición seleccionada no pertenece a este taller.');
+}
 $istypebworkshop = manager::is_typeb_workshop($workshop);
 $prefillhours = optional_param('prefillhours', '', PARAM_TEXT);
 $prefilldescription = optional_param('prefilldescription', '', PARAM_TEXT);
