@@ -1,0 +1,57 @@
+name: HEE static checks
+
+on:
+  push:
+    paths:
+      - 'gestion_actividades/**'
+      - 'block_gestion_hee/**'
+      - '.github/workflows/hee-static-checks.yml'
+  pull_request:
+    paths:
+      - 'gestion_actividades/**'
+      - 'block_gestion_hee/**'
+  workflow_dispatch:
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+
+      - name: PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          find gestion_actividades block_gestion_hee -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: XML well-formedness
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+          for path in pathlib.Path('.').glob('**/*.xml'):
+              if '.git' in path.parts:
+                  continue
+              ET.parse(path)
+              print(f'OK {path}')
+          PY
+
+      - name: Basic plugin structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f gestion_actividades/version.php
+          test -f gestion_actividades/db/install.xml
+          test -f gestion_actividades/db/upgrade.php
+          test -f gestion_actividades/db/access.php
+          test -f gestion_actividades/lang/es/local_gestion_actividades.php
+          test -f block_gestion_hee/version.php
