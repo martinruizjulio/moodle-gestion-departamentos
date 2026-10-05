@@ -844,5 +844,74 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026100513, 'local', 'gestion_actividades');
     }
 
+    if ($oldversion < 2026100516) {
+        // Several tables and fields used to be created at runtime by the HEE
+        // classes; that code was removed, so sites that never visited those
+        // pages (or upgrade from 1.5.86) could miss them, e.g.
+        // local_ga_typeb_certs.reflectiontext/reflectiontime. Reconcile the
+        // live schema with install.xml, adding only what is missing.
+        local_gestion_actividades_reconcile_schema_with_install_xml($dbman);
+        upgrade_plugin_savepoint(true, 2026100516, 'local', 'gestion_actividades');
+    }
+
     return true;
+}
+
+/**
+ * Add missing tables, fields and indexes declared in db/install.xml.
+ * Non-destructive: nothing is dropped, renamed or altered.
+ */
+function local_gestion_actividades_reconcile_schema_with_install_xml($dbman): void {
+    global $CFG;
+
+    $xmldbfile = new xmldb_file($CFG->dirroot . '/local/gestion_actividades/db/install.xml');
+    if (!$xmldbfile->fileExists() || !$xmldbfile->loadXMLStructure()) {
+        throw new moodle_exception('Cannot load local_gestion_actividades install.xml');
+    }
+    $structure = $xmldbfile->getStructure();
+
+    foreach ($structure->getTables() as $table) {
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+            continue;
+        }
+        foreach ($table->getFields() as $field) {
+            if ($dbman->field_exists($table, $field)) {
+                continue;
+            }
+            $field->setPrevious(null);
+            if ($field->getNotNull() && $field->getDefault() === null && $field->getType() !== XMLDB_TYPE_TEXT) {
+                // A NOT NULL column without default cannot be added to a table
+                // with rows; give it a neutral default for existing records.
+                $field->setDefault(in_array($field->getType(), [XMLDB_TYPE_CHAR], true) ? '' : '0');
+            }
+            if ($field->getType() === XMLDB_TYPE_TEXT) {
+                $field->setNotNull(false);
+            }
+            $dbman->add_field($table, $field);
+        }
+        foreach ($table->getIndexes() as $index) {
+            if ($dbman->index_exists($table, $index)) {
+                continue;
+            }
+            if ($index->getUnique()) {
+                global $DB;
+                $cols = implode(', ', $index->getFields());
+                $dups = $DB->get_records_sql('SELECT ' . $cols . ', COUNT(1) AS n FROM {' . $table->getName() . '} GROUP BY '
+                    . $cols . ' HAVING COUNT(1) > 1', [], 0, 1);
+                if ($dups) {
+                    debugging('Gestión HEE: índice único ' . $index->getName() . ' omitido en ' . $table->getName()
+                        . ' porque hay filas duplicadas; revísalas manualmente.', DEBUG_DEVELOPER);
+                    continue;
+                }
+            }
+            try {
+                $dbman->add_index($table, $index);
+            } catch (Throwable $e) {
+                // Typically a UNIQUE index over legacy duplicates: keep data, report it.
+                debugging('Gestión HEE: no se pudo crear el índice ' . $index->getName() . ' en '
+                    . $table->getName() . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+    }
 }
