@@ -19,12 +19,15 @@ if (!manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id)) 
     throw new required_capability_exception($coursecontext, 'moodle/course:update', 'nopermissions', '');
 }
 
+$globalmanager = manager::can_manage_globally((int)$USER->id);
 $editions = manager::list_workshop_editions($id);
-if (!manager::can_manage_globally((int)$USER->id)) {
+if (!$globalmanager) {
     $editions = array_filter($editions, static function($candidate) use ($USER): bool {
         return manager::is_teacher_assigned_to_edition((int)$candidate->id, (int)$USER->id);
     });
 }
+
+$edition = null;
 if ($editionid > 0) {
     $edition = manager::get_workshop_edition($editionid);
     if ((int)$edition->workshopid !== $id) {
@@ -33,12 +36,22 @@ if ($editionid > 0) {
     if (!manager::can_manage_edition((int)$edition->id, (int)$USER->id)) {
         throw new required_capability_exception($coursecontext, 'moodle/course:update', 'nopermissions', '');
     }
-} else {
+} else if ($globalmanager) {
     $edition = manager::get_primary_workshop_edition($id);
     if (!$edition && $editions) {
         $edition = end($editions);
     }
+} else if ($editions) {
+    // Never fall back to the workshop's primary edition for Profesor HEE: it may
+    // belong to a different teacher. Use only one of the editions already filtered
+    // by the explicit assignment relation.
+    $edition = reset($editions);
 }
+
+if (!$edition && !$globalmanager) {
+    throw new required_capability_exception($coursecontext, 'moodle/course:update', 'nopermissions', '');
+}
+
 $editionid = $edition ? (int)$edition->id : 0;
 $istypeb = manager::is_typeb_workshop($workshop);
 
