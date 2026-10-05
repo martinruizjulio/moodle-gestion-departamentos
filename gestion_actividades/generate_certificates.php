@@ -2,6 +2,7 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
+use local_gestion_actividades\local\typeb_certificate_policy;
 
 $id = required_param('id', PARAM_INT); // edition id
 require_login();
@@ -16,11 +17,22 @@ if (!manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id)) 
 }
 require_sesskey();
 
-$summary = manager::generate_certificates_for_edition((int)$edition->id);
+if (manager::is_typeb_workshop($workshop)) {
+    $summary = typeb_certificate_policy::generate_for_edition((int)$edition->id);
+    $message = 'Certificados Tipo B: ' . (int)$summary->generated . ' generados, '
+        . (int)$summary->existing . ' ya existentes y ' . (int)$summary->skipped . ' pendientes. '
+        . 'Falta asistencia: ' . (int)$summary->missingattendance . '. '
+        . 'Falta reflexión: ' . (int)$summary->missingreflection . '.';
+} else {
+    $summary = manager::generate_certificates_for_edition((int)$edition->id);
+    $message = get_string('certificatesgeneratedsummary', 'local_gestion_actividades', $summary)
+        . ' Correos enviados: alumnado ' . (int)($summary->studentemails ?? 0)
+        . ', profesorado/gestores ' . (int)($summary->staffemails ?? 0) . '.';
+}
 
 redirect(
     new moodle_url('/local/gestion_actividades/certificates.php', ['editionid' => $edition->id]),
-    get_string('certificatesgeneratedsummary', 'local_gestion_actividades', $summary) . ' Correos enviados: alumnado ' . (int)($summary->studentemails ?? 0) . ', profesorado/gestores ' . (int)($summary->staffemails ?? 0) . '.',
+    $message,
     null,
     \core\output\notification::NOTIFY_SUCCESS
 );
