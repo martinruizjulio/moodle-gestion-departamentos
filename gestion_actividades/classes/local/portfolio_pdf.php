@@ -163,20 +163,20 @@ class portfolio_pdf {
         $pdf->SetFont('helvetica', 'B', 20);
         $pdf->writeHTML('<h1 style="color:#2b4b1e;">Índice</h1>', true, false, true, false, '');
         $pdf->SetFont('helvetica', '', 12);
-        $pdf->writeHTML('<ol style="font-size:12pt;line-height:1.7;"><li>Portada</li><li>Resumen de horas</li><li>Certificados de Talleres Tipo A</li><li>Talleres Tipo B y formaciones externas validadas</li><li>Reconocimiento institucional</li></ol>', true, false, true, false, '');
+        $pdf->writeHTML('<ol style="font-size:12pt;line-height:1.7;"><li>Portada</li><li>Resumen de horas</li><li>Certificados de Seminarios Tipo A</li><li>Seminarios Tipo B y formaciones externas validadas</li><li>Reconocimiento institucional</li></ol>', true, false, true, false, '');
 
         self::add_ucv_page($pdf);
         $pdf->SetFont('helvetica', 'B', 18);
         $pdf->writeHTML('<h1 style="color:#2b4b1e;">Resumen de horas</h1>', true, false, true, false, '');
         $pdf->SetFont('helvetica', '', 11);
         self::write_certificate_card($pdf, 'Horas reconocidas', [
-            'Talleres Tipo A' => self::format_hours($typeahours),
-            'Talleres Tipo B' => self::format_hours($typebhours),
+            'Seminarios Tipo A' => self::format_hours($typeahours),
+            'Seminarios Tipo B' => self::format_hours($typebhours),
             'Total reconocido' => self::format_hours($typeahours + $typebhours),
         ]);
 
         self::add_ucv_page($pdf);
-        $pdf->writeHTML('<h1 style="color:#2b4b1e;">Certificados de Talleres Tipo A</h1>', true, false, true, false, '');
+        $pdf->writeHTML('<h1 style="color:#2b4b1e;">Certificados de Seminarios Tipo A</h1>', true, false, true, false, '');
         if ($typeacerts) {
             foreach ($typeacerts as $c) {
                 self::write_certificate_card($pdf, trim(($c->workshopcode ?? '') . ' - ' . ($c->workshopname ?? '')), [
@@ -191,7 +191,7 @@ class portfolio_pdf {
         }
 
         self::add_ucv_page($pdf);
-        $pdf->writeHTML('<h1 style="color:#2b4b1e;">Talleres Tipo B</h1>', true, false, true, false, '');
+        $pdf->writeHTML('<h1 style="color:#2b4b1e;">Seminarios Tipo B</h1>', true, false, true, false, '');
         if ($typebworkshopcerts) {
             foreach ($typebworkshopcerts as $c) {
                 self::write_certificate_card($pdf, trim(($c->workshopcode ?? '') . ' - ' . ($c->workshopname ?? '')), [
@@ -204,7 +204,7 @@ class portfolio_pdf {
                 ]);
             }
         } else {
-            $pdf->writeHTML('<p>No constan certificados de Talleres Tipo B internos.</p>', true, false, true, false, '');
+            $pdf->writeHTML('<p>No constan certificados de Seminarios Tipo B internos.</p>', true, false, true, false, '');
         }
 
         $pdf->writeHTML('<h2 style="color:#2b4b1e;">Formaciones externas reconocidas como Tipo B</h2>', true, false, true, false, '');
@@ -235,8 +235,8 @@ class portfolio_pdf {
                         'Grupo' => $r->groupname ?? '-',
                         'Horas' => self::format_hours((float)$r->typeahours),
                         'Asistencia' => 'Confirmada',
-                        'Tarea' => 'Entregada',
-                        'Nota Taller A' => ($r->taskgrade !== null && $r->taskgrade !== '') ? format_float((float)$r->taskgrade, 2, true) : '-',
+                        'Actividad evaluada' => 'Registrada',
+                        'Nota Tipo A' => ($r->taskgrade !== null && $r->taskgrade !== '') ? format_float((float)$r->taskgrade, 2, true) : '-',
                     ]);
                 }
                 if ((float)$r->typebhours > 0) {
@@ -246,9 +246,9 @@ class portfolio_pdf {
                         'Grupo' => $r->groupname ?? '-',
                         'Horas' => self::format_hours((float)$r->typebhours),
                         'Asistencia' => 'Confirmada',
-                        'Tarea' => 'No aplica',
+                        'Actividad evaluada' => 'No aplica',
                         'Calificación' => 'No aplica',
-                        'Texto alumno' => !empty($r->typebreflection) ? (string)$r->typebreflection : 'Pendiente',
+                        'Reflexión del alumno' => !empty($r->typebreflection) ? (string)$r->typebreflection : 'Pendiente',
                     ]);
                 }
             }
@@ -257,7 +257,6 @@ class portfolio_pdf {
         }
 
         $pdf->writeHTML('<p style="color:#666;font-size:9pt;">Documento generado automáticamente por Gestion_actividades.</p>', true, false, true, false, '');
-
         return $pdf->Output('', 'S');
     }
 
