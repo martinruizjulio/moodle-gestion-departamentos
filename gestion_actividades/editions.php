@@ -53,6 +53,11 @@ foreach (manager::list_workshop_editions($workshopid) as $e) {
     foreach ($teachers as $t) {
         $tnames[] = fullname($t);
     }
+    $members = $group ? (int)$DB->count_records('groups_members', ['groupid' => $group->id]) : 0;
+    $placeslabel = (int)$e->places . ' · ' . $members . ' inscritos';
+    $hourslabel = isset($workshop->hours) && $workshop->hours !== null
+        ? format_float((float)$workshop->hours, 2, true) . ' h'
+        : '-';
     $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => $e->id, 'workshopid' => $workshopid]), $OUTPUT->pix_icon('t/edit', get_string('edit')), ['class' => 'btn btn-secondary btn-sm', 'title' => get_string('edit')]) . ' ' .
         html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshopid, 'editionid' => $e->id]), $OUTPUT->pix_icon('i/grades', 'Gestionar notas'), ['class' => 'btn btn-primary btn-sm', 'title' => 'Gestionar asistencia y notas de esta edición']) . ' ' .
         html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $e->id]), $OUTPUT->pix_icon('i/users', get_string('studentsmanualandstatus', 'local_gestion_actividades')), ['class' => 'btn btn-secondary btn-sm', 'title' => get_string('studentsmanualandstatus', 'local_gestion_actividades')]) . ' ' .
@@ -63,9 +68,9 @@ foreach (manager::list_workshop_editions($workshopid) as $e) {
         format_string($e->name),
         $e->sessiondate ? userdate($e->sessiondate) : '-',
         $e->enrolenddate ? userdate($e->enrolenddate) : '-',
-        $e->places,
-        $group ? format_string($group->name) . ' (' . $DB->count_records('groups_members', ['groupid' => $group->id]) . ' ' . get_string('studentscount', 'local_gestion_actividades') . ')' : '-',
-        $tnames ? implode(', ', $tnames) : '-',
+        $hourslabel,
+        s($placeslabel),
+        $tnames ? implode(', ', array_map('s', $tnames)) : '-',
         s($e->status),
         $actions,
     ];
