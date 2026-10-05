@@ -321,6 +321,17 @@ class workshop_series {
      */
     private static function edition_for_series_item(\stdClass $series, \stdClass $item): ?\stdClass {
         global $DB;
+        // Explicit link first (seriesid, since 2026100513); dates are only a
+        // fallback for historical editions that could not be linked.
+        if (self::editions_have_seriesid()) {
+            $linked = $DB->get_records('local_ga_workshop_editions', [
+                'workshopid' => (int)$item->workshopid,
+                'seriesid' => (int)$series->id,
+            ], 'sessiondate DESC, id DESC', '*', 0, 1);
+            if ($linked) {
+                return reset($linked);
+            }
+        }
         $params = [
             'workshopid' => (int)$item->workshopid,
             'datefrom' => (int)$series->datefrom,
@@ -330,10 +341,20 @@ class workshop_series {
                   FROM {local_ga_workshop_editions}
                  WHERE workshopid = :workshopid
                    AND sessiondate >= :datefrom
-                   AND sessiondate <= :dateto
+                   AND sessiondate <= :dateto" . (self::editions_have_seriesid() ? "
+                   AND (seriesid = 0 OR seriesid IS NULL)" : "") . "
               ORDER BY sessiondate DESC, id DESC";
         $records = $DB->get_records_sql($sql, $params, 0, 1);
         return $records ? reset($records) : null;
+    }
+
+    private static function editions_have_seriesid(): bool {
+        global $DB;
+        static $has = null;
+        if ($has === null) {
+            $has = array_key_exists('seriesid', $DB->get_columns('local_ga_workshop_editions'));
+        }
+        return $has;
     }
 
     public static function render_calendar_html(int $seriesid): string {
@@ -471,8 +492,15 @@ class workshop_series {
         $editions = manager::list_workshop_editions($workshopid);
         $cmids = [];
         foreach ($editions as $edition) {
-            if ($series && ((int)$edition->sessiondate < (int)$series->datefrom || (int)$edition->sessiondate > (int)$series->dateto)) {
-                continue;
+            if ($series) {
+                $editionseries = (int)($edition->seriesid ?? 0);
+                if ($editionseries > 0 && $editionseries !== (int)$series->id) {
+                    continue;
+                }
+                if ($editionseries === 0 && ((int)$edition->sessiondate < (int)$series->datefrom
+                        || (int)$edition->sessiondate > (int)$series->dateto)) {
+                    continue;
+                }
             }
             foreach (['attendancecmid', 'requiredcmid', 'requiredassigncmid', 'requiredquizcmid', 'certificatecmid'] as $field) {
                 if (!empty($edition->$field)) {
