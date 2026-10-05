@@ -127,17 +127,37 @@ class bulk_workshops {
                     'id' => 0, 'courseid' => $courseid, 'code' => $row['code'], 'name' => $row['name'],
                     'description' => $row['description'], 'hours' => $row['hours'], 'sectionnum' => 0, 'workshoptype' => $row['type'],
                 ]);
+                $defaultactivitytype = $row['type'] === 'typeb' ? 'assign' : 'quiz';
                 $editionid = manager::save_workshop_edition((object)[
                     'id' => 0, 'workshopid' => $workshopid, 'workshopname' => $row['name'],
                     'workshopdescription' => $row['description'], 'workshophours' => $row['hours'], 'activityid' => 0,
                     'name' => $row['name'], 'editioncode' => $row['editioncode'], 'sessiondate' => $row['sessiondate'],
                     'enrolenddate' => $row['enrolenddate'], 'places' => $row['places'], 'groupid' => 0,
                     'attendancecmid' => 0, 'certificatecmid' => 0, 'requiredcmid' => 0,
-                    'requiredmodname' => 'assign',
-                    'activitycreationtype' => 'assign',
+                    'requiredmodname' => $defaultactivitytype,
+                    'activitycreationtype' => $defaultactivitytype,
                     'status' => 'open', 'teachers' => $row['teacherids'],
                 ]);
                 $edition = manager::get_workshop_edition($editionid);
+
+                // Keep bulk creation aligned with the canonical rule: every new
+                // Type A edition is quiz-first even when the Excel row chooses not
+                // to duplicate a quiz template yet.
+                if ($row['type'] === 'typea') {
+                    $columns = $DB->get_columns('local_ga_workshop_editions');
+                    $update = (object)[
+                        'id' => $editionid,
+                        'requiredcmid' => 0,
+                        'requiredmodname' => 'quiz',
+                        'activitycreationtype' => 'quiz',
+                        'timemodified' => time(),
+                    ];
+                    if (isset($columns['requiredquizcmid'])) $update->requiredquizcmid = 0;
+                    if (isset($columns['requiredassigncmid'])) $update->requiredassigncmid = 0;
+                    $DB->update_record('local_ga_workshop_editions', $update);
+                    $edition = manager::get_workshop_edition($editionid);
+                }
+
                 $groupid = (int)($edition->groupid ?? 0);
                 $notescmid = 0;
 
@@ -149,13 +169,6 @@ class bulk_workshops {
                     $summary->reflectioncreated++;
                 } else if (!empty($row['createquiz'])) {
                     require_once($CFG->dirroot . '/course/lib.php');
-                    $assigncmid = 0;
-                    if (!empty($edition->requiredassigncmid)) $assigncmid = (int)$edition->requiredassigncmid;
-                    else if (($edition->requiredmodname ?? '') === 'assign' && !empty($edition->requiredcmid)) $assigncmid = (int)$edition->requiredcmid;
-                    if ($assigncmid > 0) {
-                        $cm = get_coursemodule_from_id('assign', $assigncmid, $courseid, false, IGNORE_MISSING);
-                        if ($cm) course_delete_module($assigncmid);
-                    }
                     $quizcmid = self::duplicate_template($course, $quiztemplatecmid, $groupid, 'Cuestionario ' . $row['code'], $row['quizclose']);
                     $columns = $DB->get_columns('local_ga_workshop_editions');
                     $update = (object)['id' => $editionid, 'requiredcmid' => $quizcmid, 'requiredmodname' => 'quiz', 'activitycreationtype' => 'quiz', 'timemodified' => time()];
