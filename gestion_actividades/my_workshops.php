@@ -20,7 +20,13 @@ foreach (['local_ga_edition_teachers', 'local_ga_workshop_editions', 'local_ga_w
     }
 }
 
-$finishedsql = "(e.archived = 1 OR e.status IN ('archived','finished','completed','closed_finished'))";
+$hasseries = $dbman->table_exists(new xmldb_table('local_ga_workshop_series'))
+    && array_key_exists('seriesid', $DB->get_columns('local_ga_workshop_editions'));
+$seriesjoin = $hasseries
+    ? ' LEFT JOIN {local_ga_workshop_series} s ON s.id = e.seriesid'
+    : '';
+$seriesfinished = $hasseries ? " OR s.status = 'finished'" : '';
+$finishedsql = "(e.archived = 1 OR e.status IN ('archived','finished','completed','closed_full','closed_finished')$seriesfinished)";
 $condition = $view === 'finished' ? $finishedsql : "NOT " . $finishedsql;
 $sql = "SELECT e.id AS editionid, e.workshopid, e.editioncode, e.name AS editionname,
                e.sessiondate, e.status, e.archived, e.places,
@@ -30,6 +36,7 @@ $sql = "SELECT e.id AS editionid, e.workshopid, e.editioncode, e.name AS edition
           JOIN {local_ga_workshop_editions} e ON e.id = et.editionid
           JOIN {local_ga_workshops} w ON w.id = e.workshopid
           JOIN {course} c ON c.id = w.courseid
+          $seriesjoin
          WHERE et.userid = :userid AND {$condition}
       ORDER BY e.sessiondate DESC, w.name ASC, e.id DESC";
 $rows = $DB->get_records_sql($sql, ['userid' => (int)$USER->id]);
