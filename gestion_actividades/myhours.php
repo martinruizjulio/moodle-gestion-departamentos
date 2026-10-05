@@ -7,8 +7,8 @@ require_login();
 $context = context_system::instance();
 require_capability('local/gestion_actividades:view', $context);
 
-$userid = optional_param('userid', $USER->id, PARAM_INT);
-if ($userid !== $USER->id) {
+$userid = (int)optional_param('userid', (int)$USER->id, PARAM_INT);
+if ($userid !== (int)$USER->id) {
     if (!\local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id)) {
     throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
 }

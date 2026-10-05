@@ -215,12 +215,14 @@ class workshop_series {
                   FROM {" . self::TABLE . "} s
                   JOIN {" . self::ITEMTABLE . "} i ON i.seriesid = s.id
                  WHERE i.workshopid = :workshopid
-                   AND :sessiondate >= s.datefrom
-                   AND :sessiondate <= s.dateto
+                   AND s.datefrom <= :sessionfrom
+                   AND s.dateto >= :sessionto
               ORDER BY s.datefrom DESC, s.id DESC";
+        // Moodle DML does not accept the same named placeholder twice.
         $records = $DB->get_records_sql($sql, [
             'workshopid' => (int)$edition->workshopid,
-            'sessiondate' => (int)$edition->sessiondate,
+            'sessionfrom' => (int)$edition->sessiondate,
+            'sessionto' => (int)$edition->sessiondate,
         ], 0, 1);
         return $records ? reset($records) : null;
     }

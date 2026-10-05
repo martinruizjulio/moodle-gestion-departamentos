@@ -4583,7 +4583,7 @@ class manager {
 
         $meta = [];
         if ($date !== '') {
-            $meta[] = \html_writer::span(get_string('date', 'local_gestion_actividades') . ': ', 'local-ga-meta-label') . s($date);
+            $meta[] = \html_writer::span(get_string('date') . ': ', 'local-ga-meta-label') . s($date);
         }
         $meta[] = \html_writer::span(get_string('workshophours', 'local_gestion_actividades') . ': ', 'local-ga-meta-label') . $hours;
         if ($places !== '') {

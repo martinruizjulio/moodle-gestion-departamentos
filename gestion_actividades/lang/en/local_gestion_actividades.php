@@ -443,3 +443,14 @@ $string['enrolmentclosed'] = 'Workshop closed for enrolment';
 $string['enrolledbutton'] = 'Enrolled';
 
 $string['enrolmentstatus'] = 'Enrolment status';
+$string['downloadusertemplate'] = 'Download CSV template';
+$string['bulkcreateusersinfo'] = 'This tool creates Moodle users from a CSV file before importing grades. Minimum columns: email, firstname/nombre and lastname/apellidos. If there is no username, one is generated from the email. A grade column may be included to reuse the same file for the grade import.';
+$string['usersimportsummary'] = 'CSV processed: {$a->total} rows. Created: {$a->created}. Updated: {$a->updated}. Existing skipped: {$a->skipped}. Invalid: {$a->invalid}. Duplicates: {$a->duplicates}.';
+$string['createmissingusers'] = 'Create Moodle users if they do not exist';
+$string['userscsvfile'] = 'Users CSV';
+$string['updateexistingusers'] = 'Update existing users';
+$string['processuserscsv'] = 'Create/update users';
+$string['createmissingusers_help'] = 'If enabled, the plugin tries to create manual users from the CSV data when no match is found. Requires email, first name and last name, and the moodle/user:create capability.';
+$string['userscsvfile_help'] = 'CSV with columns email, firstname/nombre, lastname/apellidos. Optional: username, idnumber, nota, city, country, password.';
+$string['updateexistingusers_help'] = 'If enabled, when the email or username already exists in Moodle, first name, last name and idnumber are updated (site administrators are never modified). Otherwise existing users are skipped.';
+$string['errormissingusercolumns'] = 'The users CSV must include email, firstname/nombre and lastname/apellidos.';
