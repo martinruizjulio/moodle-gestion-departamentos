@@ -122,7 +122,8 @@ class block_gestion_hee extends block_base {
         $finished = (int)($summary['finishedcount'] ?? 0);
 
         $html = html_writer::start_div('block-gestion-hee-teacher-tools mt-3 pt-2 border-top');
-        $html .= html_writer::tag('h5', 'Gestionar mis talleres', ['class' => 'mb-2']);
+        $html .= html_writer::tag('h5', 'Profesor HEE', ['class' => 'mb-1']);
+        $html .= html_writer::tag('p', 'Gestiona únicamente los talleres HEE que tienes asignados.', ['class' => 'text-muted small mb-2']);
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'active']),
             'Talleres vigentes (' . $active . ')',
