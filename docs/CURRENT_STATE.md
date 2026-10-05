@@ -1,6 +1,6 @@
 # CURRENT_STATE — Moodle Gestión de Departamentos
 
-Última consolidación: 2026-10-05.
+Última consolidación: 2026-10-06.
 
 Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es la fuente de verdad. Este repositorio corresponde exclusivamente a Moodle Gestión de Departamentos / Gestión HEE.
 
@@ -41,7 +41,8 @@ Internamente se conservan los nombres históricos `workshop`, `workshop_series` 
 - Manual y Excel desembocan en los mismos objetos.
 - Se impiden solapamientos de rango para reutilizaciones incompatibles del mismo seminario base.
 - Las fechas de formularios/Excel se interpretan con la zona horaria del usuario mediante `date_helper`.
-- Al finalizar una Edición de seminarios, la sección completa se oculta y la jerarquía HEE la coloca en el histórico inferior.
+- Una Edición de seminarios se considera finalizada **solo cuando su estado se cambia expresamente a `finished`**; superar `dateto` no la finaliza ni la archiva automáticamente.
+- Al finalizarla expresamente, la sección completa se oculta y la jerarquía HEE la coloca en el histórico inferior.
 - Al reabrirla vuelve a la zona activa correspondiente A o B.
 
 ## Tipo A
@@ -180,6 +181,21 @@ Reglas:
 - Exporta inscripciones/asistencia, certificados, Tipo B, reflexiones, traspasos, entregas, horas institucionales e historial aplicable, incluyendo evidencias asociadas.
 - No se borran automáticamente datos académicos hasta que la Universidad determine su política de conservación/borrado.
 
+## Auditoría integral previa a Claude — 2026-10-06
+
+Se cerró una revisión estática adicional del plugin principal y del bloque lateral antes de entregar el repositorio a Claude para auditoría independiente.
+
+Correcciones confirmadas en esta ronda:
+- política de finalización unificada: las fechas no archivan/finalizan automáticamente; solo el estado explícito `finished`;
+- `workshops.php` y `archive.php` priorizan `edition.seriesid` y usan fechas solo como fallback legacy;
+- `manager_downloads.php` evita asociar una edición concreta con series históricas distintas del mismo seminario base cuando existe `edition.seriesid`;
+- el ítem visible del libro de calificaciones y sus informes se denomina **Nota Seminarios A**;
+- la prórroga de reflexión Tipo B exige una inscripción válida actual (`enrolled`, `attended` o `manual`);
+- el acceso directo a una edición cerrada ya filtraba previamente estados de inscripción válidos en `workshop_view.php`; ese hallazgo preliminar queda descartado;
+- `move_section_to()` se mantiene deliberadamente por compatibilidad y queda pendiente de validación/runtime Moodle 5 antes de migrar a una API distinta.
+
+Esta auditoría es estática. Siguen siendo obligatorias las pruebas de runtime Moodle 5 UCV y el Plugin Reviewer antes de declarar el paquete listo para producción.
+
 ## Validaciones realizadas anteriormente
 
 Las rondas anteriores de ChatGPT/Claude dejaron comprobados estáticamente PHP/XML y corrigieron, entre otros, permisos por edición, rutas de upgrade, DDL en ejecución, creación `auth=manual`, Bootstrap 5, observers, filepicker Tipo B, reflexión canónica y cálculo único de horas.
@@ -224,5 +240,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.113-alpha** (`2026100528`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.114-alpha** (`2026100529`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.24-alpha** (`2026100508`).
