@@ -100,23 +100,18 @@ function local_ga_student_progress_block(float $typeahours, float $typebvalidate
 
 $typeacerts = method_exists(manager::class, 'list_user_certificates') ? manager::list_user_certificates((int)$USER->id) : [];
 $institutionalrecords = institutional_hours::list_for_user((int)$USER->id);
-$typeahours = method_exists(manager::class, 'get_student_total_hours') ? manager::get_student_total_hours((int)$USER->id) : 0.0;
-$certtypeahours = local_ga_typea_hours_from_certificates($typeacerts);
-if ($typeahours <= 0 && $certtypeahours > 0) {
-    $typeahours = $certtypeahours;
-}
 $institutionaltypeahours = institutional_hours::total_typea_hours((int)$USER->id);
 $institutionaltypebhours = institutional_hours::total_typeb_hours((int)$USER->id);
 
 $typebworkshopcerts = manager::list_user_typeb_workshop_certificates((int)$USER->id);
 $typebcerts = portfolio_typeb::list_for_user((int)$USER->id);
-$typebworkshophours = local_ga_typea_hours_from_certificates($typebworkshopcerts);
 $typebtransferdata = method_exists(manager::class, 'get_user_typeb_transfer_totals') ? manager::get_user_typeb_transfer_totals((int)$USER->id) : (object)['count' => 0, 'hours' => 0.0];
-$typebtransferhours = (float)($typebtransferdata->hours ?? 0);
-$typeahours = max(0.0, (float)$typeahours - $typebtransferhours);
-$typebvalidatedhours = portfolio_typeb::total_validated_hours((int)$USER->id) + $institutionaltypebhours + $typebworkshophours + $typebtransferhours;
+// Canonical figures shared with the block, the gradebook and the reports.
+$hourssummary = \local_gestion_actividades\local\hours_calculator::for_user((int)$USER->id);
+$typeahours = (float)$hourssummary->typeahours;
+$typebvalidatedhours = (float)$hourssummary->typebhours;
 $typebuploadedhours = portfolio_typeb::total_uploaded_hours((int)$USER->id);
-$totalvalidated = (float)$typeahours + (float)$typebvalidatedhours;
+$totalvalidated = (float)$hourssummary->totalhours;
 $requiredhours = 54.0;
 $pendinghours = max(0.0, $requiredhours - $totalvalidated);
 

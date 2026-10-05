@@ -1046,123 +1046,19 @@ class grade_manager {
      * Compute Type A, Type B and total hours for selected users.
      */
     private static function get_hours_map(array $userids): array {
-        global $DB;
-
+        // Same figures as the portfolio and block_gestion_hee.
         $out = [];
-        foreach ($userids as $userid) {
+        foreach (hours_calculator::for_users($userids) as $userid => $hours) {
             $out[(int)$userid] = (object)[
-                'typeahours' => 0.0,
-                'typebhours' => 0.0,
-                'totalhours' => 0.0,
+                'typeahours' => $hours->typeahours,
+                'typebhours' => $hours->typebhours,
+                'totalhours' => $hours->totalhours,
             ];
         }
-        if (!$userids) {
-            return $out;
-        }
-        list($usersql, $params) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'hr');
-
-        $dbman = $DB->get_manager();
-        $hashistory = $dbman->table_exists(new \xmldb_table('local_ga_hour_history'));
-        $hasworkshops = $dbman->table_exists(new \xmldb_table('local_ga_workshops'));
-        if ($hashistory && $hasworkshops) {
-            // Hour history contains both workshop types. Classify it here to avoid
-            // counting an internal Type B workshop once as A and again as B.
-            $sql = "SELECT h.userid,
-                           COALESCE(SUM(CASE WHEN w.workshoptype = 'typeb' THEN 0 ELSE h.hours END), 0) AS typeahours,
-                           COALESCE(SUM(CASE WHEN w.workshoptype = 'typeb' THEN h.hours ELSE 0 END), 0) AS typebhours
-                      FROM {local_ga_hour_history} h
-                 LEFT JOIN {local_ga_workshops} w ON w.id = h.workshopid
-                     WHERE h.userid $usersql
-                  GROUP BY h.userid";
-            foreach ($DB->get_records_sql($sql, $params) as $record) {
-                $out[(int)$record->userid]->typeahours += (float)$record->typeahours;
-                $out[(int)$record->userid]->typebhours += (float)$record->typebhours;
+        foreach ($userids as $userid) {
+            if (!isset($out[(int)$userid])) {
+                $out[(int)$userid] = (object)['typeahours' => 0.0, 'typebhours' => 0.0, 'totalhours' => 0.0];
             }
-        } else if ($hashistory) {
-            // Compatibility fallback for an incomplete legacy schema.
-            $sql = "SELECT userid, COALESCE(SUM(hours), 0) AS hours
-                      FROM {local_ga_hour_history}
-                     WHERE userid $usersql
-                  GROUP BY userid";
-            foreach ($DB->get_records_sql($sql, $params) as $record) {
-                $out[(int)$record->userid]->typeahours += (float)$record->hours;
-            }
-        }
-
-        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_certificates'))
-            && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshops'))) {
-            $columns = $DB->get_columns('local_ga_certificates');
-            $typeafilter = isset($columns['certificatetype'])
-                ? " AND (c.certificatetype = 'typea' OR c.certificatetype IS NULL OR c.certificatetype = '')"
-                : '';
-            $notexists = $hashistory
-                ? " AND NOT EXISTS (SELECT 1 FROM {local_ga_hour_history} h WHERE h.userid = c.userid AND h.editionid = c.editionid)"
-                : '';
-            $sql = "SELECT c.userid, COALESCE(SUM(w.hours), 0) AS hours
-                      FROM {local_ga_certificates} c
-                      JOIN {local_ga_workshops} w ON w.id = c.workshopid
-                     WHERE c.userid $usersql $typeafilter $notexists
-                  GROUP BY c.userid";
-            foreach ($DB->get_records_sql($sql, $params) as $record) {
-                $out[(int)$record->userid]->typeahours += (float)$record->hours;
-            }
-
-            if (isset($columns['certificatetype'])) {
-                $sql = "SELECT c.userid, COALESCE(SUM(w.hours), 0) AS hours
-                          FROM {local_ga_certificates} c
-                          JOIN {local_ga_workshops} w ON w.id = c.workshopid
-                         WHERE c.userid $usersql
-                           AND c.certificatetype = 'typeb'
-                           $notexists
-                      GROUP BY c.userid";
-                foreach ($DB->get_records_sql($sql, $params) as $record) {
-                    $out[(int)$record->userid]->typebhours += (float)$record->hours;
-                }
-            }
-        }
-
-        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_typeb_certs'))) {
-            $sql = "SELECT userid, COALESCE(SUM(hours), 0) AS hours
-                      FROM {local_ga_typeb_certs}
-                     WHERE userid $usersql AND status = :validated
-                  GROUP BY userid";
-            $typebparams = $params;
-            $typebparams['validated'] = 'validated';
-            foreach ($DB->get_records_sql($sql, $typebparams) as $record) {
-                $out[(int)$record->userid]->typebhours += (float)$record->hours;
-            }
-        }
-
-        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_institutional_hours'))) {
-            $sql = "SELECT userid, COALESCE(SUM(typeahours), 0) AS typeahours,
-                           COALESCE(SUM(typebhours), 0) AS typebhours
-                      FROM {local_ga_institutional_hours}
-                     WHERE userid $usersql
-                  GROUP BY userid";
-            foreach ($DB->get_records_sql($sql, $params) as $record) {
-                $out[(int)$record->userid]->typeahours += (float)$record->typeahours;
-                $out[(int)$record->userid]->typebhours += (float)$record->typebhours;
-            }
-        }
-
-        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_typeb_transfers'))) {
-            $transferparams = $params;
-            $transferparams['activestatus'] = 'active';
-            $sql = "SELECT userid, COALESCE(SUM(hours), 0) AS hours
-                      FROM {local_ga_typeb_transfers}
-                     WHERE userid $usersql AND status = :activestatus
-                  GROUP BY userid";
-            foreach ($DB->get_records_sql($sql, $transferparams) as $record) {
-                $hours = (float)$record->hours;
-                $out[(int)$record->userid]->typeahours = max(0.0, $out[(int)$record->userid]->typeahours - $hours);
-                $out[(int)$record->userid]->typebhours += $hours;
-            }
-        }
-
-        foreach ($out as $record) {
-            $record->typeahours = round(max(0.0, (float)$record->typeahours), 2);
-            $record->typebhours = round(max(0.0, (float)$record->typebhours), 2);
-            $record->totalhours = round($record->typeahours + $record->typebhours, 2);
         }
         return $out;
     }

@@ -1660,23 +1660,15 @@ class manager {
         return $DB->get_records('local_ga_hour_history', ['userid' => $userid], 'timecompleted DESC, id DESC');
     }
 
+    /**
+     * Net Type A hours of a student (after transfers to Type B), from the
+     * canonical hours_calculator.
+     */
     public static function get_student_total_hours(int $userid): float {
-        global $DB;
-        $userid = max(0, $userid);
         if ($userid <= 0) {
             return 0.0;
         }
-        $total = 0.0;
-        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_hour_history'))) {
-            $total += (float)$DB->get_field_sql(
-                "SELECT COALESCE(SUM(hours), 0) FROM {local_ga_hour_history} WHERE userid = :userid",
-                ['userid' => $userid]
-            );
-        }
-        if (class_exists('local_gestion_actividades\\local\\institutional_hours')) {
-            $total += (float)institutional_hours::total_typea_hours($userid);
-        }
-        return (float)$total;
+        return (float)hours_calculator::for_user($userid)->typeahours;
     }
 
     public static function get_hours_summary_by_student(): array {
@@ -1799,13 +1791,19 @@ class manager {
 
         list($usersql, $params) = $DB->get_in_or_equal(array_keys($summary), SQL_PARAMS_NAMED);
         $users = $DB->get_records_select('user', 'id ' . $usersql . ' AND deleted = 0', $params, 'lastname ASC, firstname ASC', 'id, firstname, lastname, email');
+        // Hours always come from the canonical calculator (same figures as the
+        // portfolio, the gradebook and the block); the queries above only count.
+        $canonical = hours_calculator::for_users(array_keys($users));
         $out = [];
         foreach ($users as $user) {
             $item = $summary[(int)$user->id];
             $item->firstname = $user->firstname;
             $item->lastname = $user->lastname;
             $item->email = $user->email;
-            $item->totalhours = (float)$item->totaltypeahours + (float)$item->totaltypebhours;
+            $hours = $canonical[(int)$user->id];
+            $item->totaltypeahours = $hours->typeahours;
+            $item->totaltypebhours = $hours->typebhours;
+            $item->totalhours = $hours->totalhours;
             if ($item->totalhours > 0 || $item->completedworkshops > 0 || $item->validatedtypebcount > 0) {
                 $out[(int)$user->id] = $item;
             }
@@ -5473,39 +5471,10 @@ class manager {
     }
 
     public static function get_user_transfer_window(int $userid): \stdClass {
-        $typeacerts = self::list_user_certificates($userid);
-        $typeahours = 0.0;
-        foreach ($typeacerts as $cert) {
-            $typeahours += (float)($cert->hours ?? 0);
-        }
-        if (class_exists('local_gestion_actividades\\local\\institutional_hours')) {
-            try {
-                $typeahours += (float)institutional_hours::total_typea_hours($userid);
-            } catch (\Throwable $e) {
-                // Ignore; do not block transfer page due to optional institutional table.
-            }
-        }
-        $transfers = self::get_user_typeb_transfer_totals($userid);
-        $typeahours = max(0.0, $typeahours - (float)$transfers->hours);
-
-        $typebhours = (float)$transfers->hours;
-        if (class_exists('local_gestion_actividades\\local\\portfolio_typeb')) {
-            try {
-                $typebhours += (float)portfolio_typeb::total_validated_hours($userid);
-            } catch (\Throwable $e) {
-                // Ignore optional legacy table issues.
-            }
-        }
-        if (class_exists('local_gestion_actividades\\local\\institutional_hours')) {
-            try {
-                $typebhours += (float)institutional_hours::total_typeb_hours($userid);
-            } catch (\Throwable $e) {
-                // Ignore optional institutional table issues.
-            }
-        }
-        foreach (self::list_user_typeb_workshop_certificates($userid) as $cert) {
-            $typebhours += (float)($cert->hours ?? 0);
-        }
+        // Same net A/B figures as the portfolio, the block and the gradebook.
+        $hours = hours_calculator::for_user($userid);
+        $typeahours = (float)$hours->typeahours;
+        $typebhours = (float)$hours->typebhours;
 
         $excessa = max(0.0, $typeahours - 32.0);
         $remainingb = max(0.0, 22.0 - $typebhours);

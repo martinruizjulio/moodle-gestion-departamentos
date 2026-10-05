@@ -114,13 +114,9 @@ if ($userid > 0) {
 if ($selecteduser) {
     echo html_writer::tag('h2', 'Portafolio de ' . fullname($selecteduser));
     $typeacerts = method_exists(manager::class, 'list_user_certificates') ? manager::list_user_certificates((int)$selecteduser->id) : [];
-    $typeahours = method_exists(manager::class, 'get_student_total_hours') ? manager::get_student_total_hours((int)$selecteduser->id) : 0.0;
-    $certtypeahours = local_ga_admin_typea_hours_from_certificates($typeacerts);
-    if ($typeahours <= 0 && $certtypeahours > 0) {
-        $typeahours = $certtypeahours;
-    }
-    $typebvalidated = portfolio_typeb::total_validated_hours((int)$selecteduser->id);
-    echo html_writer::tag('p', 'Horas Tipo A: ' . round((float)$typeahours, 2) . ' h · Horas Tipo B externas completadas: ' . round((float)$typebvalidated, 2) . ' h · Total reconocido: ' . round((float)$typeahours + (float)$typebvalidated, 2) . ' h', ['class' => 'alert alert-info']);
+    $hours = \local_gestion_actividades\local\hours_calculator::for_user((int)$selecteduser->id);
+    echo html_writer::tag('p', 'Horas Tipo A: ' . round((float)$hours->typeahours, 2) . ' h · Horas Tipo B: ' . round((float)$hours->typebhours, 2)
+        . ' h (externas completadas: ' . round((float)$hours->externaltypeb, 2) . ' h) · Total reconocido: ' . round((float)$hours->totalhours, 2) . ' h', ['class' => 'alert alert-info']);
     echo html_writer::start_div('mb-3');
     echo html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_download.php', ['userid' => $selecteduser->id]), local_ga_btn_icon('t/download', 'Descargar portafolio PDF de este alumno'), ['class' => 'btn btn-primary']);
     echo ' ';

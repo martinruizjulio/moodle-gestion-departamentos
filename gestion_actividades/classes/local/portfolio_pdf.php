@@ -25,12 +25,7 @@ class portfolio_pdf {
     }
 
     public static function get_typea_hours(int $userid): float {
-        $hours = 0.0;
-        if (class_exists('local_gestion_actividades\\local\\manager') && method_exists(manager::class, 'get_student_total_hours')) {
-            $hours = (float)manager::get_student_total_hours($userid);
-        }
-        $certsum = self::sum_typea_certificate_hours($userid);
-        return max($hours, $certsum);
+        return (float)hours_calculator::for_user($userid)->typeahours;
     }
 
     public static function sum_typea_certificate_hours(int $userid): float {
@@ -148,7 +143,7 @@ class portfolio_pdf {
         $typebcerts = self::get_typeb_certificates($userid);
         $typeahours = self::get_typea_hours($userid);
         $institutional = class_exists('local_gestion_actividades\\local\\institutional_hours') ? institutional_hours::list_for_user($userid) : [];
-        $typebhours = portfolio_typeb::total_validated_hours($userid) + self::sum_certificate_hours($typebworkshopcerts) + (class_exists('local_gestion_actividades\\local\\institutional_hours') ? institutional_hours::total_typeb_hours($userid) : 0.0);
+        $typebhours = (float)hours_calculator::for_user($userid)->typebhours;
         $course = self::detect_course_label($typeacerts, $typebcerts);
 
         $pdf = new \pdf('P', 'mm', 'A4', true, 'UTF-8', false);

@@ -110,6 +110,11 @@ class observer {
             }
         }
 
+        // Type B internal hours depend on the reflection: refresh the block now.
+        if (class_exists('\\block_gestion_hee\\local\\student_hours_cache')) {
+            \block_gestion_hee\local\student_hours_cache::invalidate_user($userid);
+        }
+
         // Recalculate only this user/course. If the submission is still a draft,
         // the canonical eligibility check leaves the reflection pending.
         try {

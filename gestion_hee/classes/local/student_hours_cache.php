@@ -124,6 +124,16 @@ class student_hours_cache {
     private static function calculate_summary(int $userid): array {
         global $DB;
 
+        // Preferred path: the canonical calculator of local_gestion_actividades,
+        // so the block shows exactly the portfolio/gradebook figures (Type B
+        // internal only with a submitted reflection, external only validated +
+        // reflection, transfers A -> B). The SQL below is a fallback for an
+        // older local plugin without that class.
+        if (class_exists('\\local_gestion_actividades\\local\\hours_calculator')) {
+            $hours = \local_gestion_actividades\local\hours_calculator::for_user($userid);
+            return self::build_summary((float)$hours->typeahours, (float)$hours->typebhours);
+        }
+
         $schema = self::get_schema();
         $typeahours = 0.0;
         $typebhours = 0.0;
