@@ -14,7 +14,8 @@ function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea,
     if ($filearea === 'certificate') {
         $cert = $itemidpeek ? $DB->get_record('local_ga_certificates', ['id' => $itemidpeek], '*', IGNORE_MISSING) : false;
         if (!$cert) { return false; }
-        $canmanage = \local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id);
+        $canmanage = \local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id)
+            || (!empty($cert->editionid) && \local_gestion_actividades\local\manager::can_manage_edition((int)$cert->editionid, (int)$USER->id));
         if ((int)$cert->userid !== (int)$USER->id && !$canmanage) { return false; }
     }
 
@@ -23,21 +24,20 @@ function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea,
         if (!$mat) { return false; }
         $workshop = $DB->get_record('local_ga_workshops', ['id' => (int)$mat->workshopid], '*', IGNORE_MISSING);
         if (!$workshop) { return false; }
-        $canmanageworkshop = \local_gestion_actividades\local\manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id);
         $editionid = !empty($mat->editionid) ? (int)$mat->editionid : 0;
-        if (!$canmanageworkshop && !\local_gestion_actividades\local\manager::user_can_access_workshop_resources($editionid, (int)$USER->id)) {
+        $canmanage = $editionid > 0
+            ? \local_gestion_actividades\local\manager::can_manage_edition($editionid, (int)$USER->id)
+            : \local_gestion_actividades\local\manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id);
+        if (!$canmanage && !\local_gestion_actividades\local\manager::user_can_access_workshop_resources($editionid, (int)$USER->id)) {
             return false;
         }
     }
 
-
     if ($filearea === 'taskfile') {
         $edition = $DB->get_record('local_ga_workshop_editions', ['taskfileitemid' => $itemidpeek], '*', IGNORE_MISSING);
         if (!$edition) { return false; }
-        $workshop = $DB->get_record('local_ga_workshops', ['id' => (int)$edition->workshopid], '*', IGNORE_MISSING);
-        if (!$workshop) { return false; }
-        $canmanageworkshop = \local_gestion_actividades\local\manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id);
-        if (!$canmanageworkshop && !\local_gestion_actividades\local\manager::user_can_access_workshop_resources((int)$edition->id, (int)$USER->id)) {
+        if (!\local_gestion_actividades\local\manager::can_manage_edition((int)$edition->id, (int)$USER->id)
+                && !\local_gestion_actividades\local\manager::user_can_access_workshop_resources((int)$edition->id, (int)$USER->id)) {
             return false;
         }
     }
@@ -47,10 +47,8 @@ function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea,
         if (!$submission) { return false; }
         $edition = $DB->get_record('local_ga_workshop_editions', ['id' => (int)$submission->editionid], '*', IGNORE_MISSING);
         if (!$edition) { return false; }
-        $workshop = $DB->get_record('local_ga_workshops', ['id' => (int)$edition->workshopid], '*', IGNORE_MISSING);
-        if (!$workshop) { return false; }
-        $canmanageworkshop = \local_gestion_actividades\local\manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id);
-        if (!$canmanageworkshop && (int)$submission->userid !== (int)$USER->id) {
+        $canmanage = \local_gestion_actividades\local\manager::can_manage_edition((int)$edition->id, (int)$USER->id);
+        if (!$canmanage && (int)$submission->userid !== (int)$USER->id) {
             return false;
         }
     }
