@@ -2,6 +2,7 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
+use local_gestion_actividades\local\typeb_certificate_policy;
 
 $id = required_param('id', PARAM_INT);
 $workshop = manager::get_workshop($id);
@@ -9,10 +10,10 @@ $course = $DB->get_record('course', ['id' => $workshop->courseid], '*', MUST_EXI
 
 require_login($course);
 $context = context_course::instance($course->id);
-
 $canmanage = manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id);
 $edition = manager::get_primary_workshop_edition($id);
 $action = optional_param('action', '', PARAM_ALPHANUMEXT);
+$istypeb = manager::is_typeb_workshop($workshop);
 
 $PAGE->set_context($context);
 $PAGE->set_course($course);
@@ -23,12 +24,10 @@ $PAGE->set_heading(format_string($course->fullname));
 $message = null;
 $messagetype = 'info';
 
-
 function local_ga_btn_icon(string $pix, string $label): string {
     global $OUTPUT;
     return $OUTPUT->pix_icon($pix, '', 'moodle', ['class' => 'iconsmall mr-1']) . ' ' . $label;
 }
-
 
 if ($action === 'enrol' && confirm_sesskey()) {
     if (!$edition) {
@@ -41,60 +40,26 @@ if ($action === 'enrol' && confirm_sesskey()) {
     }
 }
 
-
-if ($action === 'save_typeb_reflection' && $edition && confirm_sesskey()) {
-    $enrolment = manager::get_edition_enrolment((int)$edition->id, (int)$USER->id);
-    if ($enrolment && in_array(($enrolment->status ?? ''), ['enrolled', 'attended'], true)) {
-        $reflection = required_param('typebreflection', PARAM_TEXT);
-        if (manager::save_typeb_reflection((int)$edition->id, (int)$USER->id, $reflection)) {
-            $message = 'Texto del Taller Tipo B guardado correctamente.';
-            $messagetype = 'success';
-        } else {
-            $message = 'No se ha podido guardar el texto. Revisa que no esté vacío.';
-            $messagetype = 'warning';
-        }
-    } else {
-        $message = 'Debes estar inscrito en el taller para guardar el texto obligatorio.';
-        $messagetype = 'warning';
-    }
-}
-
 echo $OUTPUT->header();
 
-$topbuttons = html_writer::link(
-    new moodle_url('/course/view.php', ['id' => $course->id]),
-    local_ga_btn_icon('t/left', get_string('backtocourse', 'local_gestion_actividades')),
-    ['class' => 'btn btn-outline-secondary mr-2 mb-2']
-);
+$topbuttons = html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), local_ga_btn_icon('t/left', get_string('backtocourse', 'local_gestion_actividades')), ['class' => 'btn btn-outline-secondary mr-2 mb-2']);
 if ($canmanage) {
-    $topbuttons .= html_writer::link(
-        new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id]),
-        local_ga_btn_icon('t/edit', 'Gestionar este taller'),
-        ['class' => 'btn btn-primary mb-2']
-    );
+    $topbuttons .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id]), local_ga_btn_icon('t/edit', 'Gestionar este taller'), ['class' => 'btn btn-primary mb-2']);
 }
 echo html_writer::div($topbuttons, 'mb-2');
 echo $OUTPUT->heading(format_string($workshop->code . ' - ' . $workshop->name));
+if ($message) { echo $OUTPUT->notification($message, $messagetype); }
 
-if ($message) {
-    echo $OUTPUT->notification($message, $messagetype);
-}
-
-echo html_writer::start_tag('div', ['class' => 'card mb-3']);
-echo html_writer::start_tag('div', ['class' => 'card-body']);
+echo html_writer::start_div('card mb-3');
+echo html_writer::start_div('card-body');
 echo html_writer::tag('h4', get_string('workshopinfo', 'local_gestion_actividades'));
-
 $description = trim((string)($workshop->description ?? ''));
-if ($description !== '') {
-    echo html_writer::tag('p', s($description));
-}
-
+if ($description !== '') { echo html_writer::tag('p', s($description)); }
 $hours = isset($workshop->hours) && $workshop->hours !== null ? round((float)$workshop->hours, 2) . ' h' : '-';
 $date = $edition ? manager::format_workshop_date((int)$edition->sessiondate) : '-';
 $enrolend = $edition ? manager::format_workshop_date((int)$edition->enrolenddate) : '-';
 $places = $edition ? (int)($edition->places ?? 0) : 0;
 $enrolled = $edition ? manager::get_edition_enrolment_count((int)$edition->id) : 0;
-
 $table = new html_table();
 $table->data = [
     [get_string('date'), $date],
@@ -108,96 +73,83 @@ if (!$edition) {
     echo $OUTPUT->notification(get_string('noeditionavailable', 'local_gestion_actividades'), 'warning');
 } else {
     $enrolment = manager::get_edition_enrolment((int)$edition->id, (int)$USER->id);
-    if ($enrolment && in_array((string)($enrolment->status ?? ''), ['enrolled', 'attended'], true)) {
+    if ($enrolment && in_array((string)($enrolment->status ?? ''), ['enrolled', 'attended', 'manual'], true)) {
         echo html_writer::div(get_string('enrolledlabel', 'local_gestion_actividades'), 'local-ga-pill local-ga-pill-ok', ['style' => 'display:inline-block;background:#e9f7ef;border:1px solid #badbcc;border-radius:999px;padding:8px 14px;margin:10px 0;color:#0f5132;font-weight:600;']);
     } else {
-        $url = new moodle_url('/local/gestion_actividades/workshop_view.php', [
-            'id' => $id,
-            'action' => 'enrol',
-            'sesskey' => sesskey(),
-        ]);
+        $url = new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id, 'action' => 'enrol', 'sesskey' => sesskey()]);
         echo html_writer::link($url, get_string('enrolme', 'local_gestion_actividades'), ['class' => 'btn btn-primary']);
     }
 }
-echo html_writer::end_tag('div');
-echo html_writer::end_tag('div');
+echo html_writer::end_div();
+echo html_writer::end_div();
 
 $canaccessresources = !empty($edition) && manager::user_can_access_workshop_resources((int)$edition->id, (int)$USER->id);
 $resourceblockedmessage = '';
 if (!$canaccessresources && !$canmanage) {
     $enrolmentforresources = $edition ? manager::get_edition_enrolment((int)$edition->id, (int)$USER->id) : null;
-    if (!$enrolmentforresources || !in_array((string)($enrolmentforresources->status ?? ''), ['enrolled', 'attended'], true)) {
+    if (!$enrolmentforresources || !in_array((string)($enrolmentforresources->status ?? ''), ['enrolled', 'attended', 'manual'], true)) {
         $resourceblockedmessage = 'Los materiales y la actividad estarán disponibles solo para alumnado inscrito.';
     } else if (!empty($edition->sessiondate) && time() < (int)$edition->sessiondate) {
         $resourceblockedmessage = 'Los materiales y la actividad estarán disponibles a partir del día y hora de comienzo del taller.';
     }
 }
 
-echo html_writer::start_tag('div', ['class' => 'card mb-3']);
-echo html_writer::start_tag('div', ['class' => 'card-body']);
+echo html_writer::start_div('card mb-3');
+echo html_writer::start_div('card-body');
 echo html_writer::tag('h4', get_string('workshopresources', 'local_gestion_actividades'));
-
-// materialsview_safe_try
 try {
-if (!$canaccessresources && !$canmanage) {
-    echo html_writer::tag('p', s($resourceblockedmessage), ['class' => 'text-muted']);
-    $materials = [];
-} else {
-$materials = manager::list_materials((int)$workshop->id, $edition ? (int)$edition->id : 0, true);
-if ($materials) {
-    echo html_writer::start_tag('ul');
-    foreach ($materials as $m) {
-        $fileurl = manager::get_material_file_url($m, $context);
-        $label = !empty($fileurl) ? html_writer::link($fileurl, s($m->name), ['target' => '_blank']) : (!empty($m->url) ? html_writer::link($m->url, s($m->name), ['target' => '_blank']) : s($m->name));
-        echo html_writer::tag('li', $label . (!empty($m->description) ? ' — ' . s($m->description) : ''));
-    }
-    echo html_writer::end_tag('ul');
-}
-if ($edition && in_array('assign', manager::get_required_activity_types($edition), true)) {
-    echo html_writer::tag('h4', 'Tarea del taller', ['class' => 'mt-3']);
-    if (!empty($edition->taskdescription)) {
-        echo html_writer::tag('p', s($edition->taskdescription));
-    }
-    $taskfile = manager::get_filearea_url($context, 'taskfile', (int)($edition->taskfileitemid ?? 0));
-    if ($taskfile !== '') {
-        echo html_writer::tag('p', html_writer::link($taskfile, 'Descargar archivo de la tarea', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank']));
-    }
-    if (!empty($edition->taskurl)) {
-        echo html_writer::tag('p', html_writer::link($edition->taskurl, 'Abrir enlace de la tarea', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank']));
-    }
-    if (!empty($edition->taskduedate)) {
-        echo html_writer::tag('p', 'Fecha límite: ' . userdate((int)$edition->taskduedate), ['class' => 'text-muted']);
-    }
-    $submission = manager::get_internal_task_submission((int)$edition->id, (int)$USER->id);
-    if ($submission && !empty($submission->fileitemid)) {
-        echo html_writer::div('Tarea entregada', 'alert alert-success');
-    }
-    echo html_writer::tag('p', html_writer::link(new moodle_url('/local/gestion_actividades/task_submit.php', ['id' => $edition->id]), 'Entregar tarea', ['class' => 'btn btn-primary']));
-}
-if ($edition && manager::is_typeb_workshop($workshop) && !$canmanage) {
-    echo html_writer::tag('h4', 'Texto obligatorio del Taller Tipo B', ['class' => 'mt-3']);
-    echo html_writer::tag('p', 'Explica en qué consistió el taller y cuál es su principal utilidad. La asistencia permite reconocer el taller; este texto es obligatorio para completar el portafolio.', ['class' => 'text-muted']);
-    $reflection = manager::get_typeb_reflection((int)$edition->id, (int)$USER->id);
-    echo html_writer::start_tag('form', ['method' => 'post', 'action' => new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id])]);
-    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
-    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'save_typeb_reflection']);
-    echo html_writer::tag('textarea', s($reflection->reflectiontext ?? ''), ['name' => 'typebreflection', 'class' => 'form-control mb-2', 'rows' => 5, 'required' => 'required']);
-    echo html_writer::tag('button', local_ga_btn_icon('t/save', 'Guardar texto'), ['type' => 'submit', 'class' => 'btn btn-primary']);
-    echo html_writer::end_tag('form');
-}
-if (!$materials && (empty($edition) || (!in_array('assign', manager::get_required_activity_types($edition), true) && !manager::is_typeb_workshop($workshop)))) {
-    echo html_writer::tag('p', get_string('studentresourcespending', 'local_gestion_actividades'), ['class' => 'text-muted']);
-}
-}
-} catch (\Throwable $e) {
-    echo html_writer::tag('p', get_string('studentresourcespending', 'local_gestion_actividades'), ['class' => 'text-muted']);
-    if (!empty($canmanage)) {
-        echo $OUTPUT->notification('Detalle materiales: ' . s($e->getMessage()), 'warning');
-    }
-}
+    if (!$canaccessresources && !$canmanage) {
+        echo html_writer::tag('p', s($resourceblockedmessage), ['class' => 'text-muted']);
+        $materials = [];
+    } else {
+        $materials = manager::list_materials((int)$workshop->id, $edition ? (int)$edition->id : 0, true);
+        if ($materials) {
+            echo html_writer::start_tag('ul');
+            foreach ($materials as $m) {
+                $fileurl = manager::get_material_file_url($m, $context);
+                $label = !empty($fileurl) ? html_writer::link($fileurl, s($m->name), ['target' => '_blank']) : (!empty($m->url) ? html_writer::link($m->url, s($m->name), ['target' => '_blank']) : s($m->name));
+                echo html_writer::tag('li', $label . (!empty($m->description) ? ' — ' . s($m->description) : ''));
+            }
+            echo html_writer::end_tag('ul');
+        }
 
-echo html_writer::end_tag('div');
-echo html_writer::end_tag('div');
+        if ($edition && $istypeb) {
+            echo html_writer::tag('h4', 'Tarea de reflexión', ['class' => 'mt-3']);
+            echo html_writer::tag('p', 'Escribe un breve párrafo describiendo cómo ha sido el taller y tus impresiones. Puedes responder en línea o adjuntar un archivo. Con asistencia confirmada y reflexión entregada quedarás Apto.', ['class' => 'text-muted']);
+            $cmid = (int)($edition->requiredcmid ?? 0);
+            if ($cmid > 0) {
+                $submitted = manager::user_submitted_required_activity((int)$USER->id, $cmid) || manager::user_completed_required_activity((int)$USER->id, $cmid);
+                if ($submitted) {
+                    echo html_writer::div('Reflexión entregada', 'alert alert-success');
+                } else {
+                    echo html_writer::div('Reflexión pendiente', 'alert alert-warning');
+                }
+                echo html_writer::link(new moodle_url('/mod/assign/view.php', ['id' => $cmid]), $submitted ? 'Ver mi reflexión' : 'Entregar reflexión', ['class' => 'btn btn-primary']);
+            } else {
+                echo $OUTPUT->notification('La tarea de reflexión todavía no está disponible.', 'warning');
+            }
+        } else if ($edition && in_array('assign', manager::get_required_activity_types($edition), true)) {
+            echo html_writer::tag('h4', 'Tarea del taller', ['class' => 'mt-3']);
+            if (!empty($edition->taskdescription)) { echo html_writer::tag('p', s($edition->taskdescription)); }
+            $taskfile = manager::get_filearea_url($context, 'taskfile', (int)($edition->taskfileitemid ?? 0));
+            if ($taskfile !== '') { echo html_writer::tag('p', html_writer::link($taskfile, 'Descargar archivo de la tarea', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank'])); }
+            if (!empty($edition->taskurl)) { echo html_writer::tag('p', html_writer::link($edition->taskurl, 'Abrir enlace de la tarea', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank'])); }
+            if (!empty($edition->taskduedate)) { echo html_writer::tag('p', 'Fecha límite: ' . userdate((int)$edition->taskduedate), ['class' => 'text-muted']); }
+            $submission = manager::get_internal_task_submission((int)$edition->id, (int)$USER->id);
+            if ($submission && !empty($submission->fileitemid)) { echo html_writer::div('Tarea entregada', 'alert alert-success'); }
+            echo html_writer::tag('p', html_writer::link(new moodle_url('/local/gestion_actividades/task_submit.php', ['id' => $edition->id]), 'Entregar tarea', ['class' => 'btn btn-primary']));
+        }
+
+        if (!$materials && empty($edition)) {
+            echo html_writer::tag('p', get_string('studentresourcespending', 'local_gestion_actividades'), ['class' => 'text-muted']);
+        }
+    }
+} catch (Throwable $e) {
+    echo html_writer::tag('p', get_string('studentresourcespending', 'local_gestion_actividades'), ['class' => 'text-muted']);
+    if ($canmanage) { echo $OUTPUT->notification('Detalle materiales: ' . s($e->getMessage()), 'warning'); }
+}
+echo html_writer::end_div();
+echo html_writer::end_div();
 
 if (!$canmanage) {
     $courseeditor = has_capability('moodle/course:update', $context, (int)$USER->id);
@@ -206,82 +158,48 @@ if (!$canmanage) {
     }
 }
 
-
-// certificates_visible_manager_box_v141
 try {
-    if (!empty($edition) && manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id)) {
-        echo html_writer::start_tag('div', ['class' => 'card mb-3', 'style' => 'border:2px solid #d8e8d0;']);
-        echo html_writer::start_tag('div', ['class' => 'card-body']);
+    if (!empty($edition) && $canmanage) {
+        echo html_writer::start_div('card mb-3', ['style' => 'border:2px solid #d8e8d0;']);
+        echo html_writer::start_div('card-body');
         echo html_writer::tag('h3', get_string('certificates', 'local_gestion_actividades'));
-        echo html_writer::tag('p', get_string('certificates_visible_help', 'local_gestion_actividades'), ['class' => 'text-muted']);
-        echo html_writer::link(
-            new moodle_url('/local/gestion_actividades/generate_certificates.php', ['id' => $edition->id, 'sesskey' => sesskey()]),
-            get_string('generatecertificates', 'local_gestion_actividades'),
-            ['class' => 'btn btn-primary']
-        );
-        echo ' ';
-        echo html_writer::link(
-            new moodle_url('/local/gestion_actividades/certificates.php', ['editionid' => $edition->id]),
-            get_string('viewgeneratedcertificates', 'local_gestion_actividades'),
-            ['class' => 'btn btn-secondary']
-        );
-        if (\local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id)) {
-            echo ' ';
-            echo html_writer::link(
-                new moodle_url('/local/gestion_actividades/certificate_template.php'),
-                get_string('certificatetemplate', 'local_gestion_actividades'),
-                ['class' => 'btn btn-secondary']
-            );
+        echo html_writer::tag('p', $istypeb ? 'El certificado Tipo B solo se genera cuando constan asistencia y reflexión entregada.' : get_string('certificates_visible_help', 'local_gestion_actividades'), ['class' => 'text-muted']);
+        echo html_writer::link(new moodle_url('/local/gestion_actividades/generate_certificates.php', ['id' => $edition->id, 'sesskey' => sesskey()]), get_string('generatecertificates', 'local_gestion_actividades'), ['class' => 'btn btn-primary']);
+        echo ' ' . html_writer::link(new moodle_url('/local/gestion_actividades/certificates.php', ['editionid' => $edition->id]), get_string('viewgeneratedcertificates', 'local_gestion_actividades'), ['class' => 'btn btn-secondary']);
+        if (manager::can_manage_globally((int)$USER->id)) {
+            echo ' ' . html_writer::link(new moodle_url('/local/gestion_actividades/certificate_template.php'), get_string('certificatetemplate', 'local_gestion_actividades'), ['class' => 'btn btn-secondary']);
         }
-        echo html_writer::end_tag('div');
-        echo html_writer::end_tag('div');
+        echo html_writer::end_div();
+        echo html_writer::end_div();
     }
-} catch (\Throwable $e) {
-    // Do not break workshop view if certificate block fails.
+} catch (Throwable $e) {
 }
 
-
-// student_attendance_status_v136
 if (!empty($edition)) {
     try {
-        if (manager::is_user_attended_edition((int)$edition->id, (int)$USER->id)) {
-            echo html_writer::div(
-                html_writer::tag('strong', get_string('attendance', 'local_gestion_actividades') . ': ') . get_string('studentattendanceconfirmed', 'local_gestion_actividades'),
-                'local-ga-status local-ga-status-ok',
-                ['style' => 'display:inline-block;background:#e9f7ef;border:1px solid #badbcc;border-radius:999px;padding:8px 14px;margin:10px 0;color:#0f5132;font-weight:600;']
-            );
+        $attended = manager::is_user_attended_edition((int)$edition->id, (int)$USER->id);
+        if ($attended) {
+            echo html_writer::div(html_writer::tag('strong', get_string('attendance', 'local_gestion_actividades') . ': ') . get_string('studentattendanceconfirmed', 'local_gestion_actividades'), 'local-ga-status local-ga-status-ok', ['style' => 'display:inline-block;background:#e9f7ef;border:1px solid #badbcc;border-radius:999px;padding:8px 14px;margin:10px 0;color:#0f5132;font-weight:600;']);
         } else if (manager::get_user_edition_enrolment((int)$edition->id, (int)$USER->id)) {
-            echo html_writer::div(
-                html_writer::tag('strong', get_string('attendance', 'local_gestion_actividades') . ': ') . get_string('studentattendancepending', 'local_gestion_actividades'),
-                'local-ga-status local-ga-status-pending',
-                ['style' => 'display:inline-block;background:#edf4ff;border:1px solid #b6d4fe;border-radius:999px;padding:8px 14px;margin:10px 0;color:#084298;font-weight:600;']
-            );
+            echo html_writer::div(html_writer::tag('strong', get_string('attendance', 'local_gestion_actividades') . ': ') . get_string('studentattendancepending', 'local_gestion_actividades'), 'local-ga-status local-ga-status-pending', ['style' => 'display:inline-block;background:#edf4ff;border:1px solid #b6d4fe;border-radius:999px;padding:8px 14px;margin:10px 0;color:#084298;font-weight:600;']);
         }
-} catch (\Throwable $e) {
-        // Do not break student view.
+        if ($istypeb) {
+            $eligible = typeb_certificate_policy::is_eligible((int)$edition->id, (int)$USER->id);
+            echo html_writer::div('<strong>Resultado Tipo B:</strong> ' . ($eligible ? 'Apto' : 'Pendiente de completar asistencia y/o reflexión'), $eligible ? 'alert alert-success' : 'alert alert-warning');
+        }
+    } catch (Throwable $e) {
     }
 }
 
-
-
-// student_certificate_link_v140
 if (!empty($edition)) {
     try {
         $cert = manager::get_user_certificate_for_edition((int)$edition->id, (int)$USER->id);
         if ($cert) {
-            echo html_writer::div(
-                html_writer::tag('strong', get_string('certificate', 'local_gestion_actividades') . ': ') .
-                html_writer::link(new moodle_url('/local/gestion_actividades/certificate_download.php', ['id' => $cert->id]), get_string('downloadcertificate', 'local_gestion_actividades'), ['class' => 'btn btn-primary btn-sm']),
-                'local-ga-certificate-link',
-                ['style' => 'background:#f7f9fb;border:1px solid #d8dee9;border-radius:10px;padding:12px 14px;margin:12px 0;']
-            );
+            echo html_writer::div(html_writer::tag('strong', get_string('certificate', 'local_gestion_actividades') . ': ') . html_writer::link(new moodle_url('/local/gestion_actividades/certificate_download.php', ['id' => $cert->id]), get_string('downloadcertificate', 'local_gestion_actividades'), ['class' => 'btn btn-primary btn-sm']), 'local-ga-certificate-link', ['style' => 'background:#f7f9fb;border:1px solid #d8dee9;border-radius:10px;padding:12px 14px;margin:12px 0;']);
         }
-    } catch (\Throwable $e) {
-        // Do not break student view.
+    } catch (Throwable $e) {
     }
 }
 
-if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
-    local_gestion_actividades_enable_interactive_tables();
-}
+if (function_exists('local_gestion_actividades_enable_interactive_tables')) { local_gestion_actividades_enable_interactive_tables(); }
 echo $OUTPUT->footer();
