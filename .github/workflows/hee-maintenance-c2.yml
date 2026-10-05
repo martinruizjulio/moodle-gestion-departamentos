@@ -1,0 +1,326 @@
+name: HEE maintenance C2
+on:
+  push:
+    paths:
+      - '.github/workflows/hee-maintenance-c2.yml'
+permissions:
+  contents: write
+jobs:
+  maintain:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          def read(p): return Path(p).read_text(encoding='utf-8')
+          def write(p,t): Path(p).write_text(t,encoding='utf-8')
+          def replace_function(path, signature, replacement):
+              text=read(path); start=text.find(signature)
+              if start<0: raise SystemExit(f'{path}: function not found: {signature}')
+              brace=text.find('{',start)
+              depth=0; end=None; in_s=in_d=False; esc=False
+              for i in range(brace,len(text)):
+                  c=text[i]
+                  if esc: esc=False; continue
+                  if c=='\\': esc=True; continue
+                  if not in_d and c=="'": in_s=not in_s; continue
+                  if not in_s and c=='"': in_d=not in_d; continue
+                  if in_s or in_d: continue
+                  if c=='{': depth+=1
+                  elif c=='}':
+                      depth-=1
+                      if depth==0: end=i+1; break
+              if end is None: raise SystemExit(f'{path}: unmatched function braces')
+              write(path,text[:start]+replacement+text[end:])
+          def exact(path,old,new,count=1):
+              text=read(path); n=text.count(old)
+              if n!=count: raise SystemExit(f'{path}: expected {count}, got {n}: {old[:90]}')
+              write(path,text.replace(old,new,count))
+          def commit(msg,paths):
+              subprocess.run(['git','add',*paths],check=True)
+              if subprocess.run(['git','diff','--cached','--quiet']).returncode:
+                  subprocess.run(['git','commit','-m',msg],check=True)
+
+          helper='gestion_actividades/classes/local/date_helper.php'
+          Path(helper).write_text("""<?php
+namespace local_gestion_actividades\\local;
+
+defined('MOODLE_INTERNAL') || die();
+
+final class date_helper {
+    public static function parse_user_datetime(string $value): int {
+        $value = trim(str_replace('T', ' ', $value));
+        if ($value === '') { return 0; }
+        $timezone = \\core_date::get_user_timezone_object();
+        foreach (['!Y-m-d H:i:s', '!Y-m-d H:i', '!d/m/Y H:i:s', '!d/m/Y H:i', '!d/m/Y'] as $format) {
+            $dt = \\DateTimeImmutable::createFromFormat($format, $value, $timezone);
+            if ($dt !== false) {
+                $errors = \\DateTimeImmutable::getLastErrors();
+                if ($errors === false || ((int)$errors['warning_count'] === 0 && (int)$errors['error_count'] === 0)) {
+                    return $dt->getTimestamp();
+                }
+            }
+        }
+        return 0;
+    }
+    public static function parse_user_date_noon(string $value): int {
+        $value = trim($value);
+        if ($value === '') { return 0; }
+        $timezone = \\core_date::get_user_timezone_object();
+        foreach (['!Y-m-d', '!d/m/Y'] as $format) {
+            $dt = \\DateTimeImmutable::createFromFormat($format, $value, $timezone);
+            if ($dt !== false) { return $dt->setTime(12, 0, 0)->getTimestamp(); }
+        }
+        return 0;
+    }
+    public static function input_datetime(int $timestamp): string {
+        return $timestamp > 0 ? userdate($timestamp, '%Y-%m-%dT%H:%M') : '';
+    }
+}
+""",encoding='utf-8')
+
+          ws='gestion_actividades/classes/local/workshop_series.php'
+          replace_function(ws,'    public static function ensure_schema(): void',"""    public static function ensure_schema(): void {
+        global $DB;
+        if (!$DB->get_manager()->table_exists(new \\xmldb_table(self::TABLE))
+                || !$DB->get_manager()->table_exists(new \\xmldb_table(self::ITEMTABLE))) {
+            throw new \\coding_exception('El esquema de Ediciones de talleres no está instalado. Ejecuta la actualización de Moodle.');
+        }
+    }""")
+          exact(ws,"""        if ($id > 0) {
+            $old = self::get($id);
+            if ((int)$old->courseid !== $record->courseid && self::items($id)) {
+                throw new \\RuntimeException('No se puede cambiar de curso una edición que ya contiene talleres.');
+            }
+            $record->id = $id;
+""","""        if ($id > 0) {
+            $old = self::get($id);
+            $existingitems = self::items($id);
+            if ((int)$old->courseid !== $record->courseid && $existingitems) {
+                throw new \\RuntimeException('No se puede cambiar de curso una edición que ya contiene talleres.');
+            }
+            foreach ($existingitems as $existingitem) {
+                self::assert_no_overlapping_series($id, (int)$existingitem->workshopid, $record->datefrom, $record->dateto);
+            }
+            $record->id = $id;
+""")
+          replace_function(ws,'    public static function series_for_edition(int $editionid): ?\\stdClass',"""    public static function series_for_edition(int $editionid): ?\\stdClass {
+        global $DB;
+        self::ensure_schema();
+        $edition = manager::get_workshop_edition($editionid);
+        if (property_exists($edition, 'seriesid') && (int)$edition->seriesid > 0) {
+            $series = $DB->get_record(self::TABLE, ['id' => (int)$edition->seriesid], '*', IGNORE_MISSING);
+            if ($series) { return $series; }
+        }
+        $sql = "SELECT s.*
+                  FROM {" . self::TABLE . "} s
+                  JOIN {" . self::ITEMTABLE . "} i ON i.seriesid = s.id
+                 WHERE i.workshopid = :workshopid
+                   AND s.datefrom <= :sessionfrom
+                   AND s.dateto >= :sessionto
+              ORDER BY s.datefrom DESC, s.id DESC";
+        $records = $DB->get_records_sql($sql, [
+            'workshopid' => (int)$edition->workshopid,
+            'sessionfrom' => (int)$edition->sessiondate,
+            'sessionto' => (int)$edition->sessiondate,
+        ], 0, 1);
+        return $records ? reset($records) : null;
+    }""")
+          exact(ws,'    public static function attach_workshop(int $seriesid, int $workshopid, int $sortorder = 0, int $notescmid = 0, int $sessionenddate = 0): void {','    public static function attach_workshop(int $seriesid, int $workshopid, int $sortorder = 0, int $notescmid = 0, int $sessionenddate = 0, int $editionid = 0): void {')
+          exact(ws,"""        if ($sessionenddate > 0 && ($sessionenddate < (int)$series->datefrom || $sessionenddate > (int)$series->dateto)) {
+            throw new \\RuntimeException('La hora de fin del taller queda fuera de las fechas de la edición.');
+        }
+        $existing = $DB->get_record(self::ITEMTABLE, ['seriesid' => $seriesid, 'workshopid' => $workshopid], '*', IGNORE_MISSING);
+""","""        if ($sessionenddate > 0 && ($sessionenddate < (int)$series->datefrom || $sessionenddate > (int)$series->dateto)) {
+            throw new \\RuntimeException('La hora de fin del taller queda fuera de las fechas de la edición.');
+        }
+        self::assert_no_overlapping_series($seriesid, $workshopid, (int)$series->datefrom, (int)$series->dateto);
+        if ($editionid > 0) {
+            $edition = manager::get_workshop_edition($editionid);
+            if ((int)$edition->workshopid !== $workshopid) {
+                throw new \\RuntimeException('La edición concreta no pertenece al taller indicado.');
+            }
+            $columns = $DB->get_columns('local_ga_workshop_editions');
+            if (isset($columns['seriesid'])) {
+                $DB->set_field('local_ga_workshop_editions', 'seriesid', $seriesid, ['id' => $editionid]);
+            }
+        }
+        $existing = $DB->get_record(self::ITEMTABLE, ['seriesid' => $seriesid, 'workshopid' => $workshopid], '*', IGNORE_MISSING);
+""")
+          exact(ws,'    public static function next_sortorder(int $seriesid): int {',"""    private static function assert_no_overlapping_series(int $seriesid, int $workshopid, int $datefrom, int $dateto): void {
+        global $DB;
+        $sql = "SELECT s.id, s.title
+                  FROM {" . self::TABLE . "} s
+                  JOIN {" . self::ITEMTABLE . "} i ON i.seriesid = s.id
+                 WHERE i.workshopid = :workshopid
+                   AND s.id <> :seriesid
+                   AND s.datefrom <= :dateto
+                   AND s.dateto >= :datefrom";
+        $conflict = $DB->get_record_sql($sql, [
+            'workshopid' => $workshopid,
+            'seriesid' => $seriesid,
+            'datefrom' => $datefrom,
+            'dateto' => $dateto,
+        ], IGNORE_MULTIPLE);
+        if ($conflict) {
+            throw new \\RuntimeException('Este taller ya pertenece a otra Edición de talleres cuyo rango de fechas se solapa: ' . $conflict->title . '.');
+        }
+    }
+
+    public static function next_sortorder(int $seriesid): int {""")
+          ee='gestion_actividades/edition_edit.php'; bw='gestion_actividades/classes/local/bulk_workshops.php'
+          exact(ee,'workshop_series::attach_workshop($seriesid, $workshopid, $sortorder, 0, $sessionenddate);','workshop_series::attach_workshop($seriesid, $workshopid, $sortorder, 0, $sessionenddate, $savededitionid);')
+          exact(bw,"workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid, $row['sessionenddate']);","workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid, $row['sessionenddate'], $editionid);")
+
+          ix='gestion_actividades/db/install.xml'; xml=read(ix)
+          start=xml.index('<TABLE NAME="local_ga_workshop_editions"'); end=xml.index('</TABLE>',start); seg=xml[start:end]
+          if 'NAME="seriesid"' not in seg:
+              seg=seg.replace('<FIELD NAME="workshopid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>','<FIELD NAME="workshopid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>\n        <FIELD NAME="seriesid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>',1)
+              seg=seg.replace('<INDEX NAME="workshopid" UNIQUE="false" FIELDS="workshopid"/>','<INDEX NAME="workshopid" UNIQUE="false" FIELDS="workshopid"/>\n        <INDEX NAME="seriesid" UNIQUE="false" FIELDS="seriesid"/>',1)
+              write(ix,xml[:start]+seg+xml[end:])
+
+          up='gestion_actividades/db/upgrade.php'; t=read(up)
+          t=t.replace("""        // These helpers use Moodle XMLDB and are idempotent. Running them here
+        // makes the upgrade path authoritative instead of relying on page visits.
+        \\local_gestion_actividades\\local\\portfolio_typeb::ensure_table();
+        \\local_gestion_actividades\\local\\institutional_hours::ensure_table();
+        \\local_gestion_actividades\\local\\workshop_series::ensure_schema();
+
+""",'',1)
+          marker='    return true;\n}'
+          if marker not in t: raise SystemExit('upgrade return marker missing')
+          migration="""    if ($oldversion < 2026100513) {
+        $series = new xmldb_table('local_ga_workshop_series');
+        if (!$dbman->table_exists($series)) {
+            $series->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $series->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('title', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
+            $series->add_field('datefrom', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('dateto', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('sectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('calendarcmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('calendarsectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'active');
+            $series->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $series->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $series->add_index('courseid', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
+            $series->add_index('status', XMLDB_INDEX_NOTUNIQUE, ['status']);
+            $dbman->create_table($series);
+        }
+        $items = new xmldb_table('local_ga_series_items');
+        if (!$dbman->table_exists($items)) {
+            $items->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $items->add_field('seriesid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('workshopid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('sessionenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('subsectioncmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('subsectionsectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('notescmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $items->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $items->add_index('seriesworkshop', XMLDB_INDEX_UNIQUE, ['seriesid', 'workshopid']);
+            $items->add_index('seriesorder', XMLDB_INDEX_NOTUNIQUE, ['seriesid', 'sortorder']);
+            $items->add_index('workshopid', XMLDB_INDEX_NOTUNIQUE, ['workshopid']);
+            $dbman->create_table($items);
+        } else {
+            $endfield = new xmldb_field('sessionenddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'sortorder');
+            if (!$dbman->field_exists($items, $endfield)) { $dbman->add_field($items, $endfield); }
+        }
+        $editions = new xmldb_table('local_ga_workshop_editions');
+        $seriesfield = new xmldb_field('seriesid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'workshopid');
+        if ($dbman->table_exists($editions) && !$dbman->field_exists($editions, $seriesfield)) { $dbman->add_field($editions, $seriesfield); }
+        if ($dbman->table_exists($editions)) {
+            $index = new xmldb_index('seriesid', XMLDB_INDEX_NOTUNIQUE, ['seriesid']);
+            if (!$dbman->index_exists($editions, $index)) { $dbman->add_index($editions, $index); }
+            $rows = $DB->get_records_select('local_ga_workshop_editions', 'seriesid = 0 OR seriesid IS NULL');
+            foreach ($rows as $edition) {
+                $sql = "SELECT s.id FROM {local_ga_workshop_series} s JOIN {local_ga_series_items} i ON i.seriesid = s.id
+                         WHERE i.workshopid = :workshopid AND s.datefrom <= :sessionfrom AND s.dateto >= :sessionto
+                         ORDER BY s.datefrom DESC, s.id DESC";
+                $matches = $DB->get_records_sql($sql, ['workshopid'=>(int)$edition->workshopid,'sessionfrom'=>(int)$edition->sessiondate,'sessionto'=>(int)$edition->sessiondate], 0, 1);
+                if ($matches) { $match=reset($matches); $DB->set_field('local_ga_workshop_editions','seriesid',(int)$match->id,['id'=>(int)$edition->id]); }
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026100513, 'local', 'gestion_actividades');
+    }
+
+"""
+          write(up,t.replace(marker,migration+marker,1))
+
+          gm='gestion_actividades/classes/local/grade_manager.php'
+          replace_function(gm,'    public static function ensure_settings_table(): void',"""    public static function ensure_settings_table(): void {
+        global $DB;
+        if (!$DB->get_manager()->table_exists(new \\xmldb_table(self::SETTINGS_TABLE))) {
+            throw new \\coding_exception('El esquema de configuración HEE no está instalado. Ejecuta la actualización de Moodle.');
+        }
+    }""")
+          ih='gestion_actividades/classes/local/institutional_hours.php'
+          replace_function(ih,'    public static function ensure_table(): void',"""    public static function ensure_table(): void {
+        global $DB;
+        if (!$DB->get_manager()->table_exists(new \\xmldb_table(self::TABLE))) {
+            throw new \\coding_exception('El esquema de reconocimiento institucional HEE no está instalado. Ejecuta la actualización de Moodle.');
+        }
+    }""")
+          pt='gestion_actividades/classes/local/portfolio_typeb.php'
+          replace_function(pt,'    public static function ensure_table(): void',"""    public static function ensure_table(): void {
+        global $DB;
+        if (!$DB->get_manager()->table_exists(new \\xmldb_table(self::TABLE))) {
+            throw new \\coding_exception('El esquema de certificados Tipo B no está instalado. Ejecuta la actualización de Moodle.');
+        }
+    }""")
+
+          # Timezone-aware parsing and input formatting.
+          t=read(ee)
+          if 'use local_gestion_actividades\\local\\date_helper;' not in t: t=t.replace('use local_gestion_actividades\\local\\typeb_reflection_activity;\n','use local_gestion_actividades\\local\\typeb_reflection_activity;\nuse local_gestion_actividades\\local\\date_helper;\n',1)
+          t=t.replace("strtotime(str_replace('T', ' ', required_param('sessiondate_text', PARAM_TEXT))) ?: 0","date_helper::parse_user_datetime(required_param('sessiondate_text', PARAM_TEXT))").replace("strtotime(str_replace('T', ' ', required_param('sessionenddate_text', PARAM_TEXT))) ?: 0","date_helper::parse_user_datetime(required_param('sessionenddate_text', PARAM_TEXT))").replace("strtotime(str_replace('T', ' ', required_param('enrolenddate_text', PARAM_TEXT))) ?: 0","date_helper::parse_user_datetime(required_param('enrolenddate_text', PARAM_TEXT))")
+          write(ee,t)
+          page='gestion_actividades/workshop_series.php'; t=read(page)
+          if 'use local_gestion_actividades\\local\\date_helper;' not in t: t=t.replace('use local_gestion_actividades\\local\\workshop_series;\n','use local_gestion_actividades\\local\\workshop_series;\nuse local_gestion_actividades\\local\\date_helper;\n',1)
+          t=t.replace("strtotime(str_replace('T', ' ', required_param('datefrom_text', PARAM_TEXT))) ?: 0","date_helper::parse_user_datetime(required_param('datefrom_text', PARAM_TEXT))").replace("strtotime(str_replace('T', ' ', required_param('dateto_text', PARAM_TEXT))) ?: 0","date_helper::parse_user_datetime(required_param('dateto_text', PARAM_TEXT))")
+          write(page,t)
+          it='gestion_actividades/internal_task.php'; t=read(it)
+          if 'use local_gestion_actividades\\local\\date_helper;' not in t: t=t.replace('use local_gestion_actividades\\local\\manager;\n','use local_gestion_actividades\\local\\manager;\nuse local_gestion_actividades\\local\\date_helper;\n',1)
+          t=t.replace("$duedatetext !== '' ? (strtotime(str_replace('T', ' ', $duedatetext)) ?: 0) : 0","$duedatetext !== '' ? date_helper::parse_user_datetime($duedatetext) : 0").replace("date('Y-m-d\\TH:i', (int)$edition->taskduedate)","date_helper::input_datetime((int)$edition->taskduedate)")
+          write(it,t)
+          bi='gestion_actividades/workshop_bulk_import.php'; t=read(bi)
+          if 'use local_gestion_actividades\\local\\date_helper;' not in t: t=t.replace('use local_gestion_actividades\\local\\bulk_workshops;\n','use local_gestion_actividades\\local\\bulk_workshops;\nuse local_gestion_actividades\\local\\date_helper;\n',1)
+          t=t.replace("strtotime(str_replace('T', ' ', $seriesfromtext)) ?: 0","date_helper::parse_user_datetime($seriesfromtext)").replace("strtotime(str_replace('T', ' ', $seriestotext)) ?: 0","date_helper::parse_user_datetime($seriestotext)").replace("date('Y-m-d\\TH:i', $defaultfrom)","date_helper::input_datetime($defaultfrom)").replace("date('Y-m-d\\TH:i', $defaultto)","date_helper::input_datetime($defaultto)")
+          write(bi,t)
+          replace_function(bw,'    private static function parse_datetime(',"""    private static function parse_datetime($value): int {
+        $value = trim((string)$value);
+        if ($value === '') { return 0; }
+        return date_helper::parse_user_datetime($value);
+    }""")
+
+          ver='gestion_actividades/version.php'; t=read(ver)
+          t=re.sub(r'\$plugin->version\s*=\s*\d+;','$plugin->version = 2026100513;',t)
+          t=re.sub(r"\$plugin->release\s*=\s*'[^']+';","$plugin->release = '1.5.98-alpha';",t)
+          write(ver,t)
+          commit('feat: link workshop editions explicitly to series and formalise schema',[helper,ws,ee,bw,ix,up,gm,ih,pt,page,it,bi,ver])
+          PY
+          find gestion_actividades gestion_hee -type f -name '*.php' -print0 | xargs -0 -n1 php -l >/dev/null
+          python3 - <<'PY'
+          import pathlib,xml.etree.ElementTree as ET
+          for p in pathlib.Path('.').glob('**/*.xml'):
+              if '.git' not in p.parts: ET.parse(p)
+          PY
+          rm .github/workflows/hee-maintenance-c2.yml
+          git add .github/workflows/hee-maintenance-c2.yml
+          git commit -m "chore: remove temporary HEE maintenance C2 workflow"
+          git push origin HEAD:main
