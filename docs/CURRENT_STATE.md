@@ -49,6 +49,14 @@ Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es
 - Las operaciones sensibles, certificados y ficheros comprueban la edición concreta.
 - Los materiales legacy sin edición son estructura compartida y solo los modifica Gestor HEE global.
 
+## Bloque lateral Gestión HEE
+- El resumen de horas del alumno está alineado con el modelo académico actual: `local_ga_hour_history` se clasifica por Tipo A/Tipo B según el taller y los certificados solo se añaden cuando esa edición todavía no está representada en el historial, evitando dobles cómputos.
+- Tipo B externo solo suma en el bloque cuando está `validated` y existe reflexión, igual que en el expediente.
+- Los traspasos activos mueven horas de Tipo A a Tipo B sin alterar el total.
+- El resumen de Profesor HEE considera finalizada una asignación cuando la edición hija está cerrada/archivada o cuando su **Edición de talleres** (`workshop_series`) está finalizada.
+- `my_workshops.php` usa el mismo criterio que el bloque, de modo que los contadores “vigentes/finalizados” coinciden con las listas que abren.
+- Las ediciones históricas todavía sin `seriesid` siguen clasificándose por su propio estado y no desaparecen de las listas.
+
 ## Seguridad y permisos
 - Acciones mutantes revisadas con `sesskey`/CSRF.
 - `pluginfile` valida contexto, propietario, edición y visibilidad antes de servir ficheros.
@@ -143,6 +151,13 @@ Validación: `php -l` (todos los PHP), XML bien formado, sin llamadas a métodos
 - La nota de cuestionario se reescala a 10 con la misma fórmula que la media del libro de calificaciones (`grademin`/`grademax`).
 - Comprobación estática: `php -l` en todos los PHP, XML válido, sin llamadas a métodos/funciones inexistentes, strings en/es completos.
 
+## Revisión del bloque lateral (2026-10-05)
+- Corregida la lógica histórica del contador de horas del alumno para que no clasifique todo `hour_history` como Tipo A ni duplique certificados que ya estén consolidados por edición.
+- Tipo B externo en el bloque exige validación + reflexión.
+- Los contadores de Profesor HEE y `my_workshops.php` incorporan el estado de la Edición de talleres padre y `closed_full`.
+- Las ediciones legacy sin vínculo explícito a serie siguen funcionando mediante su estado propio.
+- No hay cambios de esquema ni de permisos en esta revisión.
+
 ## Versiones actuales
-- `local_gestion_actividades`: **1.5.103-alpha** (`2026100518`). Último savepoint de esquema: **2026100516**.
-- `block_gestion_hee`: **1.0.20-alpha** (`2026100504`).
+- `local_gestion_actividades`: **1.5.104-alpha** (`2026100519`). Último savepoint de esquema: **2026100516**.
+- `block_gestion_hee`: **1.0.21-alpha** (`2026100505`).
