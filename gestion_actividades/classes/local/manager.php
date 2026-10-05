@@ -434,15 +434,10 @@ class manager {
         }
 
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-        $lastsection = 0;
-        foreach ($sections as $section) {
-            $lastsection = max($lastsection, (int)$section->section);
-        }
-
-        $newsectionnum = $lastsection + 1;
-        course_create_sections_if_missing($course, $newsectionnum);
-
-        $sectionrecord = $DB->get_record('course_sections', ['course' => $courseid, 'section' => $newsectionnum], '*', MUST_EXIST);
+        // Append as last regular section (delegated subsections stay last).
+        $created = course_create_section($course, 0);
+        $sectionrecord = $DB->get_record('course_sections', ['id' => (int)$created->id], '*', MUST_EXIST);
+        $newsectionnum = (int)$sectionrecord->section;
         $sectionrecord->name = $sectionname;
         $sectionrecord->visible = 1;
         $sectionrecord->timemodified = time();

@@ -76,18 +76,11 @@ class selfassessment_quiz {
 
         // Use a dedicated final section because the 54-hour restriction is
         // deliberately applied to both the module and its containing section.
-        $lastsection = (int)$DB->get_field_sql(
-            'SELECT COALESCE(MAX(section), 0) FROM {course_sections} WHERE course = :courseid',
-            ['courseid' => $courseid]
-        );
-        $sectionnum = $lastsection + 1;
-        course_create_sections_if_missing($course, $sectionnum);
-        $section = $DB->get_record(
-            'course_sections',
-            ['course' => $courseid, 'section' => $sectionnum],
-            '*',
-            MUST_EXIST
-        );
+        // Append a regular section; core places it before any delegated
+        // (mod_subsection) sections and returns its final number.
+        $created = course_create_section($course, 0);
+        $section = $DB->get_record('course_sections', ['id' => (int)$created->id], '*', MUST_EXIST);
+        $sectionnum = (int)$section->section;
         course_update_section($courseid, $section, [
             'name' => self::SECTION_NAME,
             'summary' => '<p>Cuestionario final de autoevaluación HEE. Se muestra automáticamente al alcanzar 54 horas reconocidas.</p>',

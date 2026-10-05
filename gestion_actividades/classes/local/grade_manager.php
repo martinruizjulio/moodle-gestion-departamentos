@@ -471,7 +471,7 @@ class grade_manager {
         if (!$section) {
             return;
         }
-        $maxsection = (int)$DB->get_field_sql('SELECT MAX(section) FROM {course_sections} WHERE course = :courseid', ['courseid' => $courseid]);
+        $maxsection = course_layout::last_regular_section_number($courseid);
         if ((int)$section->section >= $maxsection || !function_exists('move_section_to')) {
             return;
         }

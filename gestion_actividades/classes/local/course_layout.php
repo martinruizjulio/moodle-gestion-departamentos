@@ -148,15 +148,30 @@ class course_layout {
             if (!$current || (int)$current->section === 0) {
                 continue;
             }
-            $maxsection = (int)$DB->get_field_sql(
-                'SELECT COALESCE(MAX(section), 0) FROM {course_sections} WHERE course = :courseid',
-                ['courseid' => $courseid]
-            );
+            $maxsection = self::last_regular_section_number($courseid);
             if ((int)$current->section !== $maxsection && function_exists('move_section_to')) {
                 move_section_to($course, (int)$current->section, $maxsection);
             }
         }
         rebuild_course_cache($courseid, true);
+    }
+
+    /**
+     * Highest section number of a regular (non-delegated) section.
+     *
+     * Since Moodle 4.5, mod_subsection stores delegated sections with the
+     * highest numbers and core keeps them last. Moving or creating a regular
+     * section must therefore target the last *regular* number, never
+     * MAX(section) of the whole course.
+     */
+    public static function last_regular_section_number(int $courseid): int {
+        global $DB;
+        $where = 'course = :courseid';
+        if (array_key_exists('component', $DB->get_columns('course_sections'))) {
+            $where .= ' AND component IS NULL';
+        }
+        return (int)$DB->get_field_sql('SELECT COALESCE(MAX(section), 0) FROM {course_sections} WHERE ' . $where,
+            ['courseid' => $courseid]);
     }
 
     private static function series_label(\stdClass $series, string $type, bool $history): string {
