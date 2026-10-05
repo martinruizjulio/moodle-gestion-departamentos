@@ -6,13 +6,14 @@ use local_gestion_actividades\local\manager;
 
 require_login();
 $context = context_system::instance();
-if (!\local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id)) {
-    throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
+if (!manager::can_manage_globally((int)$USER->id)) {
+    throw new required_capability_exception($context, 'local/gestion_actividades:manage', 'nopermissions', '');
 }
 
+$title = 'Comprobar / actualizar usuarios institucionales';
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/users.php'));
-$PAGE->set_title(get_string('bulkcreateusers', 'local_gestion_actividades'));
+$PAGE->set_title($title);
 $PAGE->set_heading(get_string('title', 'local_gestion_actividades'));
 
 $form = new user_upload_form();
@@ -24,13 +25,11 @@ if ($form->is_cancelled()) {
 echo $OUTPUT->header();
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 
-echo $OUTPUT->heading(get_string('bulkcreateusers', 'local_gestion_actividades'));
+echo $OUTPUT->heading($title);
 echo html_writer::link(new moodle_url('/local/gestion_actividades/index.php'), get_string('return', 'local_gestion_actividades'), ['class' => 'btn btn-secondary mb-3']);
 echo ' ' . html_writer::link(new moodle_url('/local/gestion_actividades/template.php', ['type' => 'users']), get_string('downloadusertemplate', 'local_gestion_actividades'), ['class' => 'btn btn-outline-secondary mb-3']);
 
-echo html_writer::div(get_string('bulkcreateusersinfo', 'local_gestion_actividades'), 'alert alert-info');
-
-echo $OUTPUT->notification('Gestión HEE no crea cuentas Moodle. Este CSV solo trabaja con cuentas institucionales ya existentes; los usuarios no encontrados deben provisionarse primero mediante la administración institucional.', 'info');
+echo html_writer::div('El CSV se coteja únicamente con cuentas Moodle institucionales ya existentes. Gestión HEE no crea cuentas nuevas. Los usuarios no encontrados deben provisionarse primero mediante la administración institucional de Moodle.', 'alert alert-info');
 
 if ($data = $form->get_data()) {
     $filepath = $form->save_temp_file('csvfile');
