@@ -124,6 +124,9 @@ Reglas:
 - Los traspasos no cambian las horas totales.
 - Los contadores de Profesor HEE y `my_workshops.php` comparten criterio de vigente/finalizado.
 - Una Edición de seminarios padre finalizada mueve sus seminarios a finalizados aunque las ediciones hijas conserven datos históricos.
+- Debajo del resumen de horas del alumno aparece un botón destacado **INSTRUCCIONES PARA ALUMNOS** que abre un modal de apoyo sin abandonar la página.
+- La guía explica inscripción («Apuntarme/Apuntado»), requisitos de Tipo A, Tipo B interno, reconocimiento Tipo B externo, certificados/portafolio, traspasos A→B y desbloqueo de la autoevaluación al alcanzar 54 horas.
+- El contenido de ayuda está en strings `es`/`en` del bloque y el modal utiliza componentes Bootstrap 5 de Moodle; no almacena datos ni cambia reglas académicas.
 
 ## Seguridad y autenticación
 
@@ -143,7 +146,7 @@ Reglas:
 - La migración 2026100513 añadió el vínculo explícito `seriesid`.
 - La migración 2026100516 reconcilia campos/tablas/índices que falten sin eliminar datos.
 - El DDL se mantiene en instalación/upgrade, no en páginas de ejecución.
-- La jerarquía A/B, la ordenación del curso y el listado imprimible introducidos ahora **no requieren cambio de esquema**.
+- La jerarquía A/B, la ordenación del curso, el listado imprimible y la ayuda emergente de alumnado **no requieren cambio de esquema**.
 
 ## Privacidad
 
@@ -155,7 +158,7 @@ Reglas:
 
 Las rondas anteriores de ChatGPT/Claude dejaron comprobados estáticamente PHP/XML y corrigieron, entre otros, permisos por edición, rutas de upgrade, DDL en ejecución, creación `auth=manual`, Bootstrap 5, observers, filepicker Tipo B, reflexión canónica y cálculo único de horas.
 
-La nueva jerarquía A/B de `course_layout` y sus integraciones se ha revisado contra el código actual, pero **todavía necesita la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
+La nueva jerarquía A/B de `course_layout`, el listado imprimible y el modal de instrucciones se han revisado contra el código actual, pero **todavía necesitan la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
 
 ## Pruebas Moodle 5 pendientes antes del ZIP final
 
@@ -180,10 +183,11 @@ La nueva jerarquía A/B de `course_layout` y sus integraciones se ha revisado co
 - Tipo B externo: subida → validación → reflexión → horas.
 - Profesor HEE real UCV sin permiso de edición general.
 - Comprobar que **Listado de apuntados** aparece solo a Profesor HEE/Gestor HEE de la edición, muestra exactamente los inscritos actuales y que la impresión en papel oculta la navegación Moodle y deja espacio suficiente para firma/asistencia.
+- Verificar en el bloque del alumno que **INSTRUCCIONES PARA ALUMNOS** abre y cierra correctamente el modal en el tema Moodle 5 real, también en móvil, y que el contenido corresponde a las reglas actuales.
 - Exportación de privacidad.
 - Revisión externa final del ZIP con el servicio de Plugin Reviewer solicitado por la Universidad.
 
 ## Versiones actuales
 
 - `local_gestion_actividades`: **1.5.109-alpha** (`2026100524`). Último savepoint de esquema: **2026100516**.
-- `block_gestion_hee`: **1.0.22-alpha** (`2026100506`).
+- `block_gestion_hee`: **1.0.23-alpha** (`2026100507`).
