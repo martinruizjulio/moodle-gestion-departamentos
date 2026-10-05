@@ -3,6 +3,7 @@ require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\workshop_series;
+use local_gestion_actividades\local\typeb_reflection_activity;
 
 require_login();
 
@@ -75,7 +76,7 @@ if (data_submitted() && confirm_sesskey()) {
         (($record->requiredmodname ?? '') === 'quiz') ||
         !empty($record->requiredquizcmid)
     );
-    $activitycreationtype = $istypebworkshop ? '' : ($existingquiz ? 'quiz' : 'assign');
+    $activitycreationtype = $istypebworkshop ? 'assign' : ($existingquiz ? 'quiz' : 'assign');
     $data = (object)[
         'id' => optional_param('id', 0, PARAM_INT),
         'workshopid' => $workshopid,
@@ -100,6 +101,13 @@ if (data_submitted() && confirm_sesskey()) {
         'teachers' => $teachers,
     ];
     $savededitionid = manager::save_workshop_edition($data);
+
+    if ($istypebworkshop) {
+        $reflection = typeb_reflection_activity::ensure_for_edition($savededitionid);
+        if (empty($reflection->success)) {
+            throw new moodle_exception('invaliddata', 'error', '', (string)($reflection->message ?? 'No se pudo crear la tarea de reflexión Tipo B.'));
+        }
+    }
 
     // The central manager historically defaults Type A to assign. If this edition was
     // created from a Moodle quiz template, preserve that canonical quiz relationship.
@@ -198,8 +206,8 @@ echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'activityid'
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'attendancecmid', 'value' => $record->attendancecmid ?? 0]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'certificatecmid', 'value' => $record->certificatecmid ?? 0]);
 if ($istypebworkshop) {
-    echo html_writer::tag('div', 'Tipo B: sin tarea ni cuestionario calificable. Se mantiene asistencia y comentario obligatorio para el portafolio.', ['class' => 'alert alert-info']);
-    $requiredcmidvalue = 0;
+    echo html_writer::tag('div', '<strong>Actividad asociada:</strong> Tarea Moodle de reflexión. El alumno puede escribir el párrafo en línea o adjuntar un archivo. Con asistencia confirmada + entrega de la reflexión queda Apto y puede generarse el certificado.', ['class' => 'alert alert-info']);
+    $requiredcmidvalue = $record->requiredcmid ?? 0;
 } else {
     $activitylabel = ($record && ((($record->requiredmodname ?? '') === 'quiz') || !empty($record->requiredquizcmid))) ? 'Cuestionario Moodle' : 'Tarea Moodle';
     echo html_writer::tag('div', '<strong>Actividad asociada actual:</strong> ' . s($activitylabel) . '. En las importaciones Excel puede duplicarse un cuestionario modelo; sus preguntas se crean o importan siempre desde Moodle. Editar los datos del taller no cambia el tipo de actividad ya asociada.', ['class' => 'alert alert-info']);
