@@ -19,12 +19,19 @@ class typeb_certificate_policy {
         if (!manager::is_user_attended_edition($editionid, $userid)) {
             return false;
         }
-        $cmid = (int)($edition->requiredcmid ?? 0);
-        if ($cmid <= 0) {
+        return self::has_reflection($editionid, $userid);
+    }
+
+    /**
+     * Reflection = the edition's Moodle assignment submitted (latest attempt).
+     * Both attendance and reflection are mandatory for Type B.
+     */
+    public static function has_reflection(int $editionid, int $userid): bool {
+        $edition = manager::get_workshop_edition($editionid);
+        if ((int)($edition->requiredcmid ?? 0) <= 0) {
             return false;
         }
-        return manager::user_submitted_required_activity($userid, $cmid)
-            || manager::user_completed_required_activity($userid, $cmid);
+        return !empty(typeb_reflection_activity::submission_summary($editionid, $userid)->submitted);
     }
 
     public static function missing_requirements(int $editionid, int $userid): array {
@@ -33,9 +40,7 @@ class typeb_certificate_policy {
         if (!manager::is_user_attended_edition($editionid, $userid)) {
             $missing[] = 'asistencia';
         }
-        $cmid = (int)($edition->requiredcmid ?? 0);
-        if ($cmid <= 0 || (!manager::user_submitted_required_activity($userid, $cmid)
-                && !manager::user_completed_required_activity($userid, $cmid))) {
+        if (!self::has_reflection($editionid, $userid)) {
             $missing[] = 'reflexión';
         }
         return $missing;

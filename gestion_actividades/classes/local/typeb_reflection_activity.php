@@ -170,12 +170,9 @@ class typeb_reflection_activity {
             return $summary;
         }
 
-        $summary->submitted = manager::user_submitted_required_activity($userid, $cmid)
-            || manager::user_completed_required_activity($userid, $cmid);
-
-        if (!$DB->get_manager()->table_exists(new \xmldb_table('assign_submission'))) {
-            return $summary;
-        }
+        // Source of truth: the latest Moodle assignment submission must be in
+        // status 'submitted'. Completion or grades are not used, so a removed or
+        // reverted submission stops counting as a reflection immediately.
 
         $sql = "SELECT s.id, s.status, s.timemodified
                   FROM {course_modules} cm
@@ -193,8 +190,9 @@ class typeb_reflection_activity {
 
         $summary->submissionid = (int)$submission->id;
         $summary->timemodified = (int)($submission->timemodified ?? 0);
-        if ((string)($submission->status ?? '') === 'submitted') {
-            $summary->submitted = true;
+        $summary->submitted = (string)($submission->status ?? '') === 'submitted';
+        if (!$summary->submitted) {
+            return $summary;
         }
 
         $onlinetable = new \xmldb_table('assignsubmission_onlinetext');

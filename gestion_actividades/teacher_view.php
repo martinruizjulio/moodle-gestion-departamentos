@@ -206,7 +206,7 @@ if ($edition) {
             foreach ($enrolledusers as $eu) {
                 $userid = (int)$eu->userid;
                 $attended = manager::is_user_attended_edition((int)$edition->id, $userid);
-                $submitted = (int)($edition->requiredcmid ?? 0) > 0 && (manager::user_submitted_required_activity($userid, (int)$edition->requiredcmid) || manager::user_completed_required_activity($userid, (int)$edition->requiredcmid));
+                $submitted = typeb_certificate_policy::has_reflection((int)$edition->id, $userid);
                 $eligible = typeb_certificate_policy::is_eligible((int)$edition->id, $userid);
                 $certificate = manager::get_user_certificate_for_edition((int)$edition->id, $userid);
                 $atable->data[] = [
