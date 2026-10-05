@@ -120,6 +120,13 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
                 writer::with_context($context)->export_data(['Gestión HEE', $label], (object)[
                     'records' => array_values($records),
                 ]);
+                if ($table === 'local_ga_typeb_certs') {
+                    // Evidence uploaded by the student for external Type B review.
+                    foreach ($records as $record) {
+                        writer::with_context($context)->export_area_files(['Gestión HEE', $label, (string)$record->id],
+                            'local_gestion_actividades', 'typeb_certificate', (int)$record->id);
+                    }
+                }
             }
         }
     }
@@ -130,6 +137,10 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
             $records = $DB->get_records('local_ga_certificates', ['userid' => $userid, 'courseid' => $courseid], 'timeissued ASC, id ASC');
             if ($records) {
                 writer::with_context($context)->export_data(['Gestión HEE', 'Certificados'], (object)['records' => array_values($records)]);
+                foreach ($records as $record) {
+                    writer::with_context($context)->export_area_files(['Gestión HEE', 'Certificados', (string)$record->id],
+                        'local_gestion_actividades', 'certificate', (int)$record->id);
+                }
             }
         }
 
@@ -170,6 +181,12 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
             $records = $DB->get_records_sql($sql, ['userid' => $userid, 'courseid' => $courseid]);
             if ($records) {
                 writer::with_context($context)->export_data(['Gestión HEE', 'Entregas internas'], (object)['records' => array_values($records)]);
+                foreach ($records as $record) {
+                    if (!empty($record->fileitemid)) {
+                        writer::with_context($context)->export_area_files(['Gestión HEE', 'Entregas internas', (string)$record->id],
+                            'local_gestion_actividades', 'tasksubmission', (int)$record->fileitemid);
+                    }
+                }
             }
         }
     }
