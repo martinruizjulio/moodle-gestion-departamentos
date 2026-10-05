@@ -1192,24 +1192,34 @@ class grade_manager {
         }
         list($usersql, $params) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'rf');
 
-        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_typeb_reflections'))
-            && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
+        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
             $columns = $DB->get_columns('local_ga_edition_enrolments');
             $attendancecondition = isset($columns['attended'])
                 ? "(ee.attended = 1 OR ee.status = 'attended')"
                 : "ee.status = 'attended'";
-            $sql = "SELECT ee.userid, COUNT(ee.id) AS missingcount
+            $sql = "SELECT ee.id, ee.userid, ee.editionid, e.requiredcmid
                       FROM {local_ga_edition_enrolments} ee
                       JOIN {local_ga_workshop_editions} e ON e.id = ee.editionid
                       JOIN {local_ga_workshops} w ON w.id = e.workshopid
-                 LEFT JOIN {local_ga_typeb_reflections} r ON r.editionid = ee.editionid AND r.userid = ee.userid
                      WHERE ee.userid $usersql
                        AND w.workshoptype = 'typeb'
-                       AND $attendancecondition
-                       AND (r.id IS NULL OR r.reflectiontext IS NULL OR r.reflectiontext = '')
-                  GROUP BY ee.userid";
+                       AND $attendancecondition";
             foreach ($DB->get_records_sql($sql, $params) as $record) {
-                $out[(int)$record->userid] += (int)$record->missingcount;
+                $submitted = false;
+                if (!empty($record->requiredcmid)) {
+                    try {
+                        $summary = typeb_reflection_activity::submission_summary((int)$record->editionid, (int)$record->userid);
+                        $submitted = !empty($summary->submitted);
+                    } catch (\Throwable $e) {
+                        $submitted = false;
+                    }
+                } else {
+                    $legacy = manager::get_typeb_reflection((int)$record->editionid, (int)$record->userid);
+                    $submitted = $legacy && trim((string)($legacy->reflectiontext ?? '')) !== '';
+                }
+                if (!$submitted) {
+                    $out[(int)$record->userid]++;
+                }
             }
         }
 

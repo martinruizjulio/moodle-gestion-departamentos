@@ -5101,21 +5101,50 @@ class manager {
 
     public static function list_user_typeb_workshop_certificates(int $userid): array {
         global $DB;
-        if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_certificates'))) {
+        if ($userid <= 0 || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_certificates'))) {
             return [];
         }
         $columns = $DB->get_columns('local_ga_certificates');
-        $typefilter = isset($columns['certificatetype']) ? " AND cert.certificatetype = 'typeb'" : " AND 1=0";
-        $sql = "SELECT cert.*, c.fullname AS coursename, w.code AS workshopcode, w.name AS workshopname, w.hours,
-                       e.name AS editionname, e.editioncode, tr.reflectiontext
+        if (!isset($columns['certificatetype'])) {
+            return [];
+        }
+        $reflectionjoin = '';
+        $reflectionfield = "'' AS reflectiontext";
+        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_typeb_reflections'))) {
+            $reflectionjoin = 'LEFT JOIN {local_ga_typeb_reflections} tr ON tr.editionid = cert.editionid AND tr.userid = cert.userid';
+            $reflectionfield = 'tr.reflectiontext';
+        }
+        $sql = "SELECT cert.id, cert.userid, cert.courseid, cert.workshopid, cert.editionid,
+                       cert.certcode, cert.filename, cert.status, cert.timeissued,
+                       w.code AS workshopcode, w.name AS workshopname, w.hours,
+                       c.fullname AS coursename,
+                       e.name AS editionname, e.editioncode, e.requiredcmid, $reflectionfield
                   FROM {local_ga_certificates} cert
-             LEFT JOIN {course} c ON c.id = cert.courseid
-             LEFT JOIN {local_ga_workshops} w ON w.id = cert.workshopid
+                  JOIN {local_ga_workshops} w ON w.id = cert.workshopid
+                  JOIN {course} c ON c.id = cert.courseid
              LEFT JOIN {local_ga_workshop_editions} e ON e.id = cert.editionid
-             LEFT JOIN {local_ga_typeb_reflections} tr ON tr.editionid = cert.editionid AND tr.userid = cert.userid
-                 WHERE cert.userid = :userid $typefilter
+                       $reflectionjoin
+                 WHERE cert.userid = :userid AND cert.certificatetype = 'typeb'
               ORDER BY cert.timeissued DESC, cert.id DESC";
-        return $DB->get_records_sql($sql, ['userid' => $userid]);
+        $records = $DB->get_records_sql($sql, ['userid' => $userid]);
+        foreach ($records as $id => $record) {
+            if (empty($record->requiredcmid)) {
+                continue;
+            }
+            try {
+                $summary = typeb_reflection_activity::submission_summary((int)$record->editionid, (int)$record->userid);
+                if (empty($summary->submitted)) {
+                    unset($records[$id]);
+                    continue;
+                }
+                if (trim((string)($summary->text ?? '')) !== '') {
+                    $record->reflectiontext = (string)$summary->text;
+                }
+            } catch (\Throwable $e) {
+                unset($records[$id]);
+            }
+        }
+        return $records;
     }
 
 
