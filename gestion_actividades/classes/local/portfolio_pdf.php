@@ -63,7 +63,9 @@ class portfolio_pdf {
     }
 
     public static function get_typeb_certificates(int $userid): array {
-        $certs = portfolio_typeb::list_for_user($userid);
+        $certs = array_values(array_filter(portfolio_typeb::list_for_user($userid), function($cert) {
+            return (string)($cert->status ?? '') === 'validated';
+        }));
         usort($certs, function($a, $b) {
             return ((int)($a->activitydate ?? 0)) <=> ((int)($b->activitydate ?? 0));
         });
@@ -163,7 +165,7 @@ class portfolio_pdf {
         $pdf->SetFont('helvetica', 'B', 20);
         $pdf->writeHTML('<h1 style="color:#2b4b1e;">Índice</h1>', true, false, true, false, '');
         $pdf->SetFont('helvetica', '', 12);
-        $pdf->writeHTML('<ol style="font-size:12pt;line-height:1.7;"><li>Portada</li><li>Resumen de horas</li><li>Certificados de Talleres Tipo A</li><li>Talleres Tipo B y traspasos</li><li>Reconocimiento institucional</li></ol>', true, false, true, false, '');
+        $pdf->writeHTML('<ol style="font-size:12pt;line-height:1.7;"><li>Portada</li><li>Resumen de horas</li><li>Certificados de Talleres Tipo A</li><li>Talleres Tipo B y formaciones externas validadas</li><li>Reconocimiento institucional</li></ol>', true, false, true, false, '');
 
         self::add_ucv_page($pdf);
         $pdf->SetFont('helvetica', 'B', 18);
@@ -203,10 +205,24 @@ class portfolio_pdf {
                 ]);
             }
         } else {
-            $pdf->writeHTML('<p>No constan certificados de Talleres Tipo B.</p>', true, false, true, false, '');
+            $pdf->writeHTML('<p>No constan certificados de Talleres Tipo B internos.</p>', true, false, true, false, '');
         }
 
-        // Flujo antiguo de certificados Tipo B externos eliminado del portafolio PDF.
+        $pdf->writeHTML('<h2 style="color:#2b4b1e;">Formaciones externas reconocidas como Tipo B</h2>', true, false, true, false, '');
+        if ($typebcerts) {
+            foreach ($typebcerts as $c) {
+                self::write_certificate_card($pdf, (string)($c->activityname ?? 'Formación externa Tipo B'), [
+                    'Fecha de la actividad' => !empty($c->activitydate) ? userdate((int)$c->activitydate, get_string('strftimedatefullshort', 'langconfig')) : '-',
+                    'Horas reconocidas' => self::format_hours((float)($c->hours ?? 0)),
+                    'Estado' => 'Validado como Tipo B',
+                    'Justificación del alumno' => !empty($c->activitydescription) ? (string)$c->activitydescription : '-',
+                    'Comentario de validación' => !empty($c->reviewcomment) ? (string)$c->reviewcomment : '-',
+                    'Archivo acreditativo' => !empty($c->filename) ? (string)$c->filename : '-',
+                ]);
+            }
+        } else {
+            $pdf->writeHTML('<p>No constan formaciones externas validadas como Tipo B.</p>', true, false, true, false, '');
+        }
 
         self::add_ucv_page($pdf);
         $pdf->writeHTML('<h1 style="color:#2b4b1e;">Reconocimiento institucional</h1>', true, false, true, false, '');
