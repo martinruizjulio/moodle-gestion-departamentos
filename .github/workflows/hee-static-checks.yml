@@ -4,12 +4,12 @@ on:
   push:
     paths:
       - 'gestion_actividades/**'
-      - 'block_gestion_hee/**'
+      - 'gestion_hee/**'
       - '.github/workflows/hee-static-checks.yml'
   pull_request:
     paths:
       - 'gestion_actividades/**'
-      - 'block_gestion_hee/**'
+      - 'gestion_hee/**'
   workflow_dispatch:
 
 jobs:
@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find gestion_actividades block_gestion_hee -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          find gestion_actividades gestion_hee -type f -name '*.php' -print0 | xargs -0 -n1 php -l
 
       - name: XML well-formedness
         shell: bash
@@ -54,4 +54,5 @@ jobs:
           test -f gestion_actividades/db/upgrade.php
           test -f gestion_actividades/db/access.php
           test -f gestion_actividades/lang/es/local_gestion_actividades.php
-          test -f block_gestion_hee/version.php
+          test -f gestion_hee/version.php
+          test -f gestion_hee/block_gestion_hee.php
