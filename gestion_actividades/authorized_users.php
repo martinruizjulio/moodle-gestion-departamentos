@@ -13,6 +13,8 @@ $action = optional_param('action', '', PARAM_ALPHA);
 $userid = optional_param('userid', 0, PARAM_INT);
 $q = optional_param('q', '', PARAM_TEXT);
 $courseid = optional_param('courseid', 0, PARAM_INT);
+$editionid = optional_param('editionid', 0, PARAM_INT);
+$teacherid = optional_param('teacherid', 0, PARAM_INT);
 
 $courses = $DB->get_records('course', null, 'fullname ASC', 'id, fullname, shortname', 0, 200);
 if ($courseid <= 0) {
@@ -43,6 +45,66 @@ function local_ga_auth_extract_email(string $text): string {
     return '';
 }
 
+function local_ga_hee_edition_in_course(int $editionid, int $courseid): ?stdClass {
+    global $DB;
+    if ($editionid <= 0 || $courseid <= 0) {
+        return null;
+    }
+    return $DB->get_record_sql(
+        "SELECT e.id, e.workshopid, w.courseid
+           FROM {local_ga_workshop_editions} e
+           JOIN {local_ga_workshops} w ON w.id = e.workshopid
+          WHERE e.id = :editionid AND w.courseid = :courseid",
+        ['editionid' => $editionid, 'courseid' => $courseid],
+        IGNORE_MISSING
+    ) ?: null;
+}
+
+function local_ga_is_course_teacher_candidate(int $courseid, int $userid): bool {
+    if ($courseid <= 0 || $userid <= 0) {
+        return false;
+    }
+    $teachers = manager::search_course_teachers($courseid, '');
+    return isset($teachers[$userid]);
+}
+
+if ($action === 'addheeteacher' && confirm_sesskey() && $courseid > 0 && $editionid > 0 && $teacherid > 0) {
+    $edition = local_ga_hee_edition_in_course($editionid, $courseid);
+    if (!$edition) {
+        throw new invalid_parameter_exception('La edición seleccionada no pertenece al curso indicado.');
+    }
+    if (!local_ga_is_course_teacher_candidate($courseid, $teacherid)) {
+        throw new invalid_parameter_exception('El usuario seleccionado no consta como profesor del curso.');
+    }
+    if (!$DB->record_exists('local_ga_edition_teachers', ['editionid' => $editionid, 'userid' => $teacherid])) {
+        $DB->insert_record('local_ga_edition_teachers', (object)[
+            'editionid' => $editionid,
+            'userid' => $teacherid,
+            'timecreated' => time(),
+        ]);
+    }
+    redirect(
+        new moodle_url('/local/gestion_actividades/authorized_users.php', ['courseid' => $courseid]),
+        'Profesor HEE asignado al taller.',
+        null,
+        \core\output\notification::NOTIFY_SUCCESS
+    );
+}
+
+if ($action === 'removeheeteacher' && confirm_sesskey() && $courseid > 0 && $editionid > 0 && $teacherid > 0) {
+    $edition = local_ga_hee_edition_in_course($editionid, $courseid);
+    if (!$edition) {
+        throw new invalid_parameter_exception('La edición seleccionada no pertenece al curso indicado.');
+    }
+    $DB->delete_records('local_ga_edition_teachers', ['editionid' => $editionid, 'userid' => $teacherid]);
+    redirect(
+        new moodle_url('/local/gestion_actividades/authorized_users.php', ['courseid' => $courseid]),
+        'Profesor HEE retirado de este taller.',
+        null,
+        \core\output\notification::NOTIFY_SUCCESS
+    );
+}
+
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/authorized_users.php', ['courseid' => $courseid]));
 $PAGE->set_title(get_string('authorizedusers', 'local_gestion_actividades'));
@@ -59,7 +121,7 @@ echo html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'
 echo html_writer::end_div();
 
 echo $OUTPUT->heading(get_string('authorizedusers', 'local_gestion_actividades'));
-echo html_writer::tag('p', get_string('authorizedusers_teacherfilter_help', 'local_gestion_actividades'), ['class' => 'alert alert-info']);
+echo html_writer::tag('p', 'Los usuarios autorizados son gestores HEE globales. La figura Profesor HEE, configurada más abajo, solo puede gestionar los talleres concretos a los que se le asigne.', ['class' => 'alert alert-info']);
 
 $suggestions = ($courseid > 0) ? manager::search_course_teachers($courseid, '') : [];
 $results = [];
@@ -137,6 +199,101 @@ if ($users) {
     echo html_writer::table($table);
 } else {
     echo $OUTPUT->notification(get_string('noauthorizedusers', 'local_gestion_actividades'), 'info');
+}
+
+// Professor HEE: workshop-scoped management without changing the institutional Moodle role.
+echo html_writer::tag('hr', '', ['class' => 'my-4']);
+echo $OUTPUT->heading('Profesor HEE', 2);
+echo html_writer::tag(
+    'p',
+    '<strong>Profesor HEE</strong> no es un rol global de Moodle. El profesor mantiene su matrícula institucional y únicamente obtiene permisos dentro de Gestión HEE para los talleres concretos a los que se le asigne: alumnado, asistencia, materiales y actividad obligatoria/reflexión. No puede administrar el resto de la asignatura.',
+    ['class' => 'alert alert-success']
+);
+
+if ($courseid <= 0 || !$course) {
+    echo $OUTPUT->notification('Selecciona un curso para gestionar sus Profesores HEE.', 'info');
+} else if (!$DB->get_manager()->table_exists(new xmldb_table('local_ga_edition_teachers'))) {
+    echo $OUTPUT->notification('La tabla de profesorado por edición aún no está disponible en esta instalación.', 'warning');
+} else {
+    $editions = $DB->get_records_sql(
+        "SELECT e.id, e.workshopid, e.editioncode, e.name AS editionname, e.sessiondate, e.status, e.archived,
+                w.code AS workshopcode, w.name AS workshopname, w.workshoptype
+           FROM {local_ga_workshop_editions} e
+           JOIN {local_ga_workshops} w ON w.id = e.workshopid
+          WHERE w.courseid = :courseid
+       ORDER BY e.sessiondate DESC, w.name ASC, e.id DESC",
+        ['courseid' => $courseid]
+    );
+
+    if (!$editions) {
+        echo $OUTPUT->notification('Este curso todavía no tiene talleres configurados.', 'info');
+    } else {
+        $editionids = array_map('intval', array_keys($editions));
+        $assigned = [];
+        if ($editionids) {
+            list($insql, $inparams) = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'hee');
+            $rows = $DB->get_records_sql(
+                "SELECT et.id, et.editionid, et.userid, u.firstname, u.lastname, u.email
+                   FROM {local_ga_edition_teachers} et
+                   JOIN {user} u ON u.id = et.userid
+                  WHERE et.editionid {$insql} AND u.deleted = 0
+               ORDER BY u.lastname ASC, u.firstname ASC",
+                $inparams
+            );
+            foreach ($rows as $row) {
+                $assigned[(int)$row->editionid][] = $row;
+            }
+        }
+
+        $table = new html_table();
+        $table->attributes['class'] = 'generaltable table-sm';
+        $table->head = ['Taller', 'Edición', 'Fecha', 'Profesor/es HEE', 'Asignar profesor HEE'];
+        foreach ($editions as $edition) {
+            $type = manager::normalize_workshop_type((string)($edition->workshoptype ?? 'typea')) === 'typeb' ? 'Tipo B' : 'Tipo A';
+            $current = [];
+            foreach ($assigned[(int)$edition->id] ?? [] as $teacher) {
+                $removeurl = new moodle_url('/local/gestion_actividades/authorized_users.php', [
+                    'action' => 'removeheeteacher',
+                    'courseid' => $courseid,
+                    'editionid' => (int)$edition->id,
+                    'teacherid' => (int)$teacher->userid,
+                    'sesskey' => sesskey(),
+                ]);
+                $current[] = html_writer::div(
+                    s(fullname($teacher)) . ' <small class="text-muted">' . s($teacher->email) . '</small> ' .
+                    html_writer::link($removeurl, 'Quitar', ['class' => 'btn btn-outline-danger btn-sm ml-1']),
+                    'mb-1'
+                );
+            }
+            $currenthtml = $current ? implode('', $current) : html_writer::span('Sin Profesor HEE asignado', 'text-muted');
+
+            $form = html_writer::start_tag('form', ['method' => 'post', 'class' => 'm-0']);
+            $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+            $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'addheeteacher']);
+            $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
+            $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'editionid', 'value' => (int)$edition->id]);
+            if ($suggestions) {
+                $options = [];
+                foreach ($suggestions as $candidate) {
+                    $options[(int)$candidate->id] = fullname($candidate) . ' — ' . $candidate->email;
+                }
+                $form .= html_writer::select($options, 'teacherid', '', ['' => 'Selecciona profesor'], ['class' => 'form-control form-control-sm mb-1', 'required' => 'required']);
+                $form .= html_writer::tag('button', 'Asignar como Profesor HEE', ['type' => 'submit', 'class' => 'btn btn-primary btn-sm']);
+            } else {
+                $form .= html_writer::span('No se han detectado profesores matriculados en este curso.', 'text-muted');
+            }
+            $form .= html_writer::end_tag('form');
+
+            $table->data[] = [
+                html_writer::tag('strong', s($edition->workshopcode)) . '<br>' . format_string($edition->workshopname) . '<br><small>' . s($type) . '</small>',
+                s($edition->editioncode ?: $edition->editionname),
+                !empty($edition->sessiondate) ? manager::format_date_compact((int)$edition->sessiondate) : '-',
+                $currenthtml,
+                $form,
+            ];
+        }
+        echo html_writer::table($table);
+    }
 }
 
 if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
