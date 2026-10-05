@@ -127,8 +127,18 @@ Reglas:
 - Los permisos sensibles y ficheros se validan contra la edición concreta.
 - `closed_full` significa lleno, no finalizado, por lo que permanece entre los seminarios vigentes.
 - La caché del bloque se invalida al cerrar/reabrir series, archivar/borrar ediciones, reasignar docentes y cambiar reflexiones relevantes.
+- `authorized_users.php` invalida explícitamente la caché docente al asignar o retirar un Profesor HEE, de modo que el bloque lateral refleja el cambio sin esperar al TTL.
 - En la vista visual del seminario, Profesor HEE/Gestor HEE dispone de **Listado de apuntados**. Abre `edition_roster.php`, visible solo para quien puede gestionar esa edición concreta.
 - El listado usa la misma fuente de inscritos que la gestión de asistencia, ordena por apellidos/nombre y ofrece una vista preparada para imprimir en papel con columnas de asistencia/firma y observaciones. No expone el listado al alumnado.
+
+## Panel de Gestión HEE
+
+- El panel mantiene sus opciones funcionales existentes; no se ha rediseñado ni reducido por el recuento histórico de “9 opciones”.
+- Las descripciones visibles se han actualizado a la terminología y reglas actuales: **seminarios**, Tipo A con cuestionario predeterminado, Tipo B con reflexión Moodle, autoevaluación a 54 h, portafolio y validación externa Tipo B.
+- La vista general del panel prioriza `seriesid` para resolver la edición concreta y usa las fechas solo como respaldo legacy.
+- `closed_full` se interpreta como seminario completo pero todavía vigente, no como finalizado.
+- `workshop_report.php` se ha actualizado para mostrar **Actividad / Estado actividad / Resultado / Asistencia**: cuestionario Moodle y nota reescalada en Tipo A, reflexión Moodle en Tipo B y compatibilidad con tareas Tipo A históricas.
+- La nomenclatura visible del listado personalizado y del panel se ha cambiado a **seminario** sin renombrar internamente tablas/clases `workshop*`.
 
 ## Bloque lateral Gestión HEE
 
@@ -159,7 +169,7 @@ Reglas:
 - La migración 2026100513 añadió el vínculo explícito `seriesid`.
 - La migración 2026100516 reconcilia campos/tablas/índices que falten sin eliminar datos.
 - El DDL se mantiene en instalación/upgrade, no en páginas de ejecución.
-- La jerarquía A/B, la ordenación del curso, el listado imprimible, la ayuda emergente de alumnado, el cambio de valor predeterminado de Tipo A y la actualización visual del portafolio **no requieren cambio de esquema**.
+- La jerarquía A/B, la ordenación del curso, el listado imprimible, la ayuda emergente de alumnado, el cambio de valor predeterminado de Tipo A, la actualización visual del portafolio y la actualización del panel/listado personalizado **no requieren cambio de esquema**.
 
 ## Privacidad
 
@@ -171,7 +181,7 @@ Reglas:
 
 Las rondas anteriores de ChatGPT/Claude dejaron comprobados estáticamente PHP/XML y corrigieron, entre otros, permisos por edición, rutas de upgrade, DDL en ejecución, creación `auth=manual`, Bootstrap 5, observers, filepicker Tipo B, reflexión canónica y cálculo único de horas.
 
-La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de instrucciones, el valor predeterminado de cuestionario para Tipo A y la actualización del portafolio se han revisado contra el código actual, pero **todavía necesitan la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
+La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de instrucciones, el valor predeterminado de cuestionario para Tipo A, la actualización del portafolio y la actualización del panel/listado personalizado se han revisado contra el código actual, pero **todavía necesitan la prueba funcional en Moodle 5 real**. No declarar compatibilidad de producción solo por revisión estática.
 
 ## Pruebas Moodle 5 pendientes antes del ZIP final
 
@@ -199,7 +209,9 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Tipo B externo: subida → validación → reflexión → horas.
 - Portafolio alumno: comprobar que A/B/total coinciden con el bloque, que aparecen todos los estados Tipo B externo, que **Completar reflexión** abre el flujo correcto y que tras guardar la reflexión se actualizan horas/estado.
 - Portafolio alumno: comprobar PDF y ZIP desde la nueva zona de descargas y que los documentos mantienen los mismos totales canónicos.
-- Profesor HEE real UCV sin permiso de edición general.
+- Panel: comprobar que todas las opciones abren su destino correcto y que los textos corresponden a las reglas actuales.
+- Listado personalizado: probar Tipo A con cuestionario aprobado/suspenso/pendiente, Tipo B con reflexión entregada/pendiente y una edición Tipo A histórica con tarea.
+- Profesor HEE real UCV sin permiso de edición general y comprobar actualización inmediata del bloque al asignar/retirar profesor.
 - Comprobar que **Listado de apuntados** aparece solo a Profesor HEE/Gestor HEE de la edición, muestra exactamente los inscritos actuales y que la impresión en papel oculta la navegación Moodle y deja espacio suficiente para firma/asistencia.
 - Verificar en el bloque del alumno que **INSTRUCCIONES PARA ALUMNOS** abre y cierra correctamente el modal en el tema Moodle 5 real, también en móvil, y que el contenido corresponde a las reglas actuales.
 - Exportación de privacidad.
@@ -207,5 +219,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.111-alpha** (`2026100526`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.112-alpha** (`2026100527`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.24-alpha** (`2026100508`).
