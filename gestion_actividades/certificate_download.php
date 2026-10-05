@@ -10,7 +10,9 @@ $cert = $DB->get_record('local_ga_certificates', ['id' => $id], '*', MUST_EXIST)
 $course = $DB->get_record('course', ['id' => (int)$cert->courseid], '*', MUST_EXIST);
 $context = context_course::instance((int)$course->id);
 
-$canmanage = manager::can_manage_workshop_instance((int)$cert->workshopid, (int)$USER->id);
+$canmanage = !empty($cert->editionid)
+    ? manager::can_manage_edition((int)$cert->editionid, (int)$USER->id)
+    : manager::can_manage_workshop_instance((int)$cert->workshopid, (int)$USER->id);
 if ((int)$cert->userid !== (int)$USER->id && !$canmanage) {
     throw new required_capability_exception($context, 'moodle/course:update', 'nopermissions', '');
 }
@@ -35,11 +37,9 @@ if (!$file || $file->is_directory()) {
 
 $filename = $cert->filename;
 if (empty($filename) || strtolower(pathinfo($filename, PATHINFO_EXTENSION)) !== 'pdf') {
-    $filename = 'certificado_taller_tipo_a_' . (int)$cert->id . '.pdf';
+    $filename = 'certificado_taller_' . (int)$cert->id . '.pdf';
 }
 
-// Important: do not request preview/thumb here.
-// The previous version used preview => thumb, so Moodle returned the PDF icon SVG instead of the PDF.
 send_stored_file($file, 0, 0, true, [
     'filename' => $filename,
     'dontdie' => false,
