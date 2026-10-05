@@ -415,8 +415,8 @@ class grade_manager {
             'typea' => self::ensure_manual_grade_item(
                 $courseid,
                 self::ITEM_TYPEA,
-                'Nota Talleres A',
-                'Media aritmética de las notas disponibles de los talleres Tipo A y del reconocimiento institucional.'
+                'Nota Seminarios A',
+                'Media aritmética de las notas disponibles de los seminarios Tipo A y del reconocimiento institucional.'
             ),
             'portfolio' => self::ensure_manual_grade_item(
                 $courseid,
