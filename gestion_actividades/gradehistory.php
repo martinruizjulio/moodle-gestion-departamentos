@@ -5,7 +5,9 @@ use local_gestion_actividades\local\manager;
 
 require_login();
 $context = context_system::instance();
-require_capability('local/gestion_actividades:view', $context);
+if (!manager::can_manage_globally((int)$USER->id)) {
+    throw new required_capability_exception($context, 'local/gestion_actividades:manage', 'nopermissions', '');
+}
 
 $id = required_param('id', PARAM_INT);
 $activity = manager::get_activity($id);
@@ -21,7 +23,7 @@ if (!$records) {
 }
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall mr-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 
 echo $OUTPUT->heading(get_string('gradehistory', 'local_gestion_actividades') . ': ' . format_string($activity->name));
 echo html_writer::div(get_string('gradehistoryinfo', 'local_gestion_actividades'), 'alert alert-info');
