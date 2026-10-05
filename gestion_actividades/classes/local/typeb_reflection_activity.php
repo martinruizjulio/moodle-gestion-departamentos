@@ -142,9 +142,7 @@ class typeb_reflection_activity {
     }
 
     public static function is_complete(int $editionid, int $userid): bool {
-        $edition = manager::get_workshop_edition($editionid);
-        $cmid = (int)($edition->requiredcmid ?? 0);
-        return $cmid > 0 && manager::user_completed_required_activity($userid, $cmid);
+        return typeb_certificate_policy::has_reflection($editionid, $userid);
     }
 
     /**

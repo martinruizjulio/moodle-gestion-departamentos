@@ -173,7 +173,8 @@ try {
             echo html_writer::tag('p', 'Escribe un breve párrafo describiendo cómo ha sido el taller y tus impresiones. Puedes responder en línea o adjuntar un archivo. Con asistencia confirmada y reflexión entregada quedarás Apto.', ['class' => 'text-muted']);
             $cmid = (int)($edition->requiredcmid ?? 0);
             if ($cmid > 0) {
-                $submitted = manager::user_submitted_required_activity((int)$USER->id, $cmid) || manager::user_completed_required_activity((int)$USER->id, $cmid);
+                // Same rule used for Apto/certificate: latest Moodle submission sent.
+                $submitted = typeb_certificate_policy::has_reflection((int)$edition->id, (int)$USER->id);
                 if ($submitted) {
                     echo html_writer::div('Reflexión entregada', 'alert alert-success');
                 } else {
@@ -182,6 +183,27 @@ try {
                 echo html_writer::link(new moodle_url('/mod/assign/view.php', ['id' => $cmid]), $submitted ? 'Ver mi reflexión' : 'Entregar reflexión', ['class' => 'btn btn-primary']);
             } else {
                 echo $OUTPUT->notification('La tarea de reflexión todavía no está disponible.', 'warning');
+            }
+        } else if ($edition && in_array('quiz', manager::get_required_activity_types($edition), true)) {
+            $quizrequirement = manager::get_quiz_requirement($edition);
+            $quizcmid = (int)$quizrequirement->cmid;
+            echo html_writer::tag('h4', 'Cuestionario del taller', ['class' => 'mt-3']);
+            echo html_writer::tag('p', 'Para superar el taller necesitas asistencia confirmada y finalizar el cuestionario con al menos un 5 sobre 10.', ['class' => 'text-muted']);
+            if ($quizcmid > 0) {
+                $finished = manager::user_submitted_required_activity((int)$USER->id, $quizcmid);
+                $grade = $finished ? manager::get_user_quiz_grade_out_of_10((int)$USER->id, $quizcmid) : null;
+                if (!$finished) {
+                    echo html_writer::div('Cuestionario pendiente', 'alert alert-warning');
+                } else if ($grade === null) {
+                    echo html_writer::div('Cuestionario finalizado · pendiente de calificar', 'alert alert-info');
+                } else if ($grade >= (float)$quizrequirement->minimum) {
+                    echo html_writer::div('Cuestionario superado: ' . format_float($grade, 2, true) . ' / 10', 'alert alert-success');
+                } else {
+                    echo html_writer::div('Cuestionario finalizado con ' . format_float($grade, 2, true) . ' / 10: no alcanza el 5', 'alert alert-danger');
+                }
+                echo html_writer::link(new moodle_url('/mod/quiz/view.php', ['id' => $quizcmid]), $finished ? 'Ver cuestionario' : 'Hacer cuestionario', ['class' => 'btn btn-primary']);
+            } else {
+                echo $OUTPUT->notification('El cuestionario todavía no está disponible.', 'warning');
             }
         } else if ($edition && in_array('assign', manager::get_required_activity_types($edition), true)) {
             echo html_writer::tag('h4', 'Tarea del taller', ['class' => 'mt-3']);
