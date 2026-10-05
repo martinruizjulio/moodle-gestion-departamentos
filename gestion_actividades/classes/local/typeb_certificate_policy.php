@@ -187,6 +187,14 @@ class typeb_certificate_policy {
         if (!manager::is_active_enrolment($enrolment)) {
             return false;
         }
+        if ($until > 0) {
+            // The finished series is normally hidden. Its parent section can
+            // only be exposed safely for the student's edition group, so make
+            // sure that group exists and reflects the current enrolments.
+            manager::get_or_create_edition_group($editionid);
+            manager::sync_edition_group_members($editionid);
+        }
+
         $assign = self::assign_instance($cm);
         $flags = $assign->get_user_flags($userid, true);
         if (!$flags) {
@@ -198,6 +206,11 @@ class typeb_certificate_policy {
         }
         if ($until > 0) {
             \mod_assign\event\extension_granted::create_from_assign($assign, $userid)->trigger();
+        }
+
+        $series = workshop_series::series_for_edition($editionid);
+        if ($series) {
+            workshop_series::refresh_section_access((int)$series->id);
         }
         return true;
     }
