@@ -47,7 +47,7 @@ class portfolio_pdf {
         if (class_exists('local_gestion_actividades\\local\\manager') && method_exists(manager::class, 'list_user_certificates')) {
             $certs = manager::list_user_certificates($userid);
             usort($certs, function($a, $b) {
-                return ((int)($a->timeissued ?? 0)) <=> ((int)($b->timeissued ?? 0));
+                return ((int)($b->timeissued ?? 0)) <=> ((int)($a->timeissued ?? 0));
             });
             return $certs;
         }
@@ -67,7 +67,7 @@ class portfolio_pdf {
             return portfolio_typeb::is_countable($cert);
         }));
         usort($certs, function($a, $b) {
-            return ((int)($a->activitydate ?? 0)) <=> ((int)($b->activitydate ?? 0));
+            return ((int)($b->activitydate ?? 0)) <=> ((int)($a->activitydate ?? 0));
         });
         return $certs;
     }
