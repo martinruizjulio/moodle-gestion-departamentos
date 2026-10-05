@@ -131,11 +131,24 @@ class workshop_series {
         return $DB->get_records_sql($sql, ['seriesid' => $seriesid]);
     }
 
-    public static function item_for_workshop(int $workshopid): ?\stdClass {
+    public static function item_for_workshop(int $workshopid, int $seriesid = 0): ?\stdClass {
         global $DB;
         self::ensure_schema();
-        $item = $DB->get_record(self::ITEMTABLE, ['workshopid' => $workshopid], '*', IGNORE_MULTIPLE);
-        return $item ?: null;
+        if ($seriesid > 0) {
+            $item = $DB->get_record(self::ITEMTABLE, [
+                'workshopid' => $workshopid,
+                'seriesid' => $seriesid,
+            ], '*', IGNORE_MISSING);
+            return $item ?: null;
+        }
+
+        $sql = "SELECT i.*
+                  FROM {" . self::ITEMTABLE . "} i
+                  JOIN {" . self::TABLE . "} s ON s.id = i.seriesid
+                 WHERE i.workshopid = :workshopid
+              ORDER BY s.datefrom DESC, s.id DESC, i.id DESC";
+        $records = $DB->get_records_sql($sql, ['workshopid' => $workshopid], 0, 1);
+        return $records ? reset($records) : null;
     }
 
     public static function attach_workshop(int $seriesid, int $workshopid, int $sortorder = 0, int $notescmid = 0, int $sessionenddate = 0): void {
@@ -191,10 +204,40 @@ class workshop_series {
         return $item ? self::get((int)$item->seriesid) : null;
     }
 
+    /**
+     * Resolve the series that contains a concrete workshop edition by date.
+     */
+    public static function series_for_edition(int $editionid): ?\stdClass {
+        global $DB;
+        self::ensure_schema();
+        $edition = manager::get_workshop_edition($editionid);
+        $sql = "SELECT s.*
+                  FROM {" . self::TABLE . "} s
+                  JOIN {" . self::ITEMTABLE . "} i ON i.seriesid = s.id
+                 WHERE i.workshopid = :workshopid
+                   AND :sessiondate >= s.datefrom
+                   AND :sessiondate <= s.dateto
+              ORDER BY s.datefrom DESC, s.id DESC";
+        $records = $DB->get_records_sql($sql, [
+            'workshopid' => (int)$edition->workshopid,
+            'sessiondate' => (int)$edition->sessiondate,
+        ], 0, 1);
+        return $records ? reset($records) : null;
+    }
+
+    /**
+     * A workshop base may be reused by historical editions. Refresh every
+     * series that references it instead of arbitrarily picking one.
+     */
     public static function refresh_for_workshop(int $workshopid): void {
-        $series = self::series_for_workshop($workshopid);
-        if ($series) {
-            self::ensure_course_structure((int)$series->id);
+        global $DB;
+        self::ensure_schema();
+        $seriesids = $DB->get_records_sql(
+            'SELECT DISTINCT seriesid AS id FROM {' . self::ITEMTABLE . '} WHERE workshopid = :workshopid',
+            ['workshopid' => $workshopid]
+        );
+        foreach ($seriesids as $row) {
+            self::ensure_course_structure((int)$row->id);
         }
     }
 
@@ -257,7 +300,7 @@ class workshop_series {
                         'timemodified' => time(),
                     ]);
                 }
-                self::move_workshop_modules((int)$item->workshopid, $sectionid, (int)$item->notescmid);
+                self::move_workshop_modules((int)$item->workshopid, $sectionid, (int)$item->notescmid, $series);
             }
         } else {
             $DB->update_record('course_sections', (object)[
@@ -272,8 +315,6 @@ class workshop_series {
 
     /**
      * Resolve the edition of a workshop that belongs to this series date range.
-     * This prevents old/new reused workshop records from showing an arbitrary
-     * edition in the calendar.
      */
     private static function edition_for_series_item(\stdClass $series, \stdClass $item): ?\stdClass {
         global $DB;
@@ -289,10 +330,6 @@ class workshop_series {
                    AND sessiondate <= :dateto
               ORDER BY sessiondate DESC, id DESC";
         $records = $DB->get_records_sql($sql, $params, 0, 1);
-        if ($records) {
-            return reset($records);
-        }
-        $records = $DB->get_records('local_ga_workshop_editions', ['workshopid' => (int)$item->workshopid], 'sessiondate DESC, id DESC', '*', 0, 1);
         return $records ? reset($records) : null;
     }
 
@@ -319,21 +356,21 @@ class workshop_series {
             }
             $deadline = !empty($edition->enrolenddate) ? userdate((int)$edition->enrolenddate, '%d/%m/%Y %H:%M') : '-';
             $rows[] = '<tr>' .
-                '<td style="white-space:nowrap;font-weight:700">' . sprintf('%02d', (int)$item->sortorder) . '</td>' .
-                '<td><strong>' . s($item->name) . '</strong></td>' .
-                '<td style="white-space:nowrap">' . s($date) . '</td>' .
-                '<td style="white-space:nowrap">' . s($time !== '' ? $time : '-') . '</td>' .
-                '<td style="white-space:nowrap;text-align:center">' . format_float((float)$item->hours, 2, true) . ' h</td>' .
-                '<td>' . s($teachernames ? implode(', ', $teachernames) : '-') . '</td>' .
-                '<td style="white-space:nowrap;text-align:center">' . (int)$edition->places . '</td>' .
-                '<td style="white-space:nowrap">' . s($deadline) . '</td>' .
+                '<td style="padding:10px;white-space:nowrap;font-weight:700;border-bottom:1px solid #edf0ea">' . sprintf('%02d', (int)$item->sortorder) . '</td>' .
+                '<td style="padding:10px;border-bottom:1px solid #edf0ea"><strong>' . s($item->name) . '</strong></td>' .
+                '<td style="padding:10px;white-space:nowrap;border-bottom:1px solid #edf0ea">' . s($date) . '</td>' .
+                '<td style="padding:10px;white-space:nowrap;border-bottom:1px solid #edf0ea">' . s($time !== '' ? $time : '-') . '</td>' .
+                '<td style="padding:10px;white-space:nowrap;text-align:center;border-bottom:1px solid #edf0ea">' . format_float((float)$item->hours, 2, true) . ' h</td>' .
+                '<td style="padding:10px;border-bottom:1px solid #edf0ea">' . s($teachernames ? implode(', ', $teachernames) : '-') . '</td>' .
+                '<td style="padding:10px;white-space:nowrap;text-align:center;border-bottom:1px solid #edf0ea">' . (int)$edition->places . '</td>' .
+                '<td style="padding:10px;white-space:nowrap;border-bottom:1px solid #edf0ea">' . s($deadline) . '</td>' .
                 '</tr>';
         }
         $range = userdate((int)$series->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$series->dateto, '%d/%m/%Y');
         $body = $rows ? implode('', $rows) : '<tr><td colspan="8" style="padding:16px;text-align:center;color:#687064">No hay talleres publicados en esta edición.</td></tr>';
         return '<div class="ga-workshop-calendar" style="max-width:1180px;margin:0 auto">' .
             '<div style="margin-bottom:14px"><h3 style="margin:0 0 3px">' . s($series->title) . '</h3><div style="color:#64705e">' . s($range) . '</div></div>' .
-            '<div style="overflow-x:auto;border:1px solid #d7ddd2;border-radius:10px;background:#fff">' .
+            '<div style="overflow-x:auto;border:1px solid #d7ddd2;border-radius:10px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.03)">' .
             '<table style="width:100%;border-collapse:collapse;min-width:900px">' .
             '<thead><tr style="background:#f4f7f2;color:#29451f">' .
             '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">#</th>' .
@@ -413,7 +450,11 @@ class workshop_series {
         ]);
     }
 
-    private static function move_workshop_modules(int $workshopid, int $targetsectionid, int $notescmid = 0): void {
+    /**
+     * Move only the Moodle modules that belong to the edition represented by
+     * this series. Old/new editions reusing the same workshop base stay put.
+     */
+    private static function move_workshop_modules(int $workshopid, int $targetsectionid, int $notescmid = 0, ?\stdClass $series = null): void {
         global $DB, $CFG;
         if ($targetsectionid <= 0) {
             return;
@@ -423,9 +464,13 @@ class workshop_series {
         if (!$target) {
             return;
         }
+
         $editions = manager::list_workshop_editions($workshopid);
         $cmids = [];
         foreach ($editions as $edition) {
+            if ($series && ((int)$edition->sessiondate < (int)$series->datefrom || (int)$edition->sessiondate > (int)$series->dateto)) {
+                continue;
+            }
             foreach (['attendancecmid', 'requiredcmid', 'requiredassigncmid', 'requiredquizcmid', 'certificatecmid'] as $field) {
                 if (!empty($edition->$field)) {
                     $cmids[(int)$edition->$field] = (int)$edition->$field;
