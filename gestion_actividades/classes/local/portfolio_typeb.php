@@ -9,9 +9,17 @@ class portfolio_typeb {
         $dbman = $DB->get_manager();
         $table = new \xmldb_table('local_ga_typeb_certs');
         if ($dbman->table_exists($table)) {
-            $field = new \xmldb_field('activitydescription', XMLDB_TYPE_TEXT, null, null, null, null, null, 'hours');
-            if (!$dbman->field_exists($table, $field)) {
-                $dbman->add_field($table, $field);
+            $descriptionfield = new \xmldb_field('activitydescription', XMLDB_TYPE_TEXT, null, null, null, null, null, 'hours');
+            if (!$dbman->field_exists($table, $descriptionfield)) {
+                $dbman->add_field($table, $descriptionfield);
+            }
+            $reflectionfield = new \xmldb_field('reflectiontext', XMLDB_TYPE_TEXT, null, null, null, null, null, 'reviewcomment');
+            if (!$dbman->field_exists($table, $reflectionfield)) {
+                $dbman->add_field($table, $reflectionfield);
+            }
+            $reflectiontimefield = new \xmldb_field('reflectiontime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'reflectiontext');
+            if (!$dbman->field_exists($table, $reflectiontimefield)) {
+                $dbman->add_field($table, $reflectiontimefield);
             }
             return;
         }
@@ -26,6 +34,8 @@ class portfolio_typeb {
         $table->add_field('filename', XMLDB_TYPE_CHAR, '255', null, null, null, null);
         $table->add_field('status', XMLDB_TYPE_CHAR, '30', null, XMLDB_NOTNULL, null, 'pending');
         $table->add_field('reviewcomment', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('reflectiontext', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('reflectiontime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
         $table->add_field('reviewedby', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
         $table->add_field('timereviewed', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
         $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
@@ -50,6 +60,8 @@ class portfolio_typeb {
             'filename' => clean_filename($filename),
             'status' => 'pending',
             'reviewcomment' => '',
+            'reflectiontext' => '',
+            'reflectiontime' => 0,
             'reviewedby' => 0,
             'timereviewed' => 0,
             'timecreated' => $now,
@@ -71,7 +83,6 @@ class portfolio_typeb {
         ], $tmpfilepath);
 
         self::invalidate_block_cache_for_user($userid);
-
         return $id;
     }
 
@@ -135,6 +146,35 @@ class portfolio_typeb {
         return true;
     }
 
+    public static function save_reflection(int $id, int $userid, string $reflectiontext): bool {
+        global $DB;
+        self::ensure_table();
+        $reflectiontext = trim($reflectiontext);
+        if ($reflectiontext === '') {
+            return false;
+        }
+        $record = self::get($id);
+        if ((int)$record->userid !== $userid || (string)$record->status !== 'validated') {
+            return false;
+        }
+        $DB->update_record('local_ga_typeb_certs', (object)[
+            'id' => $id,
+            'reflectiontext' => $reflectiontext,
+            'reflectiontime' => time(),
+            'timemodified' => time(),
+        ]);
+        self::invalidate_block_cache_for_user($userid);
+        if (class_exists('\\local_gestion_actividades\\local\\grade_manager')) {
+            grade_manager::sync_user_safely($userid);
+        }
+        return true;
+    }
+
+    public static function is_countable(\stdClass $record): bool {
+        return (string)($record->status ?? '') === 'validated'
+            && trim((string)($record->reflectiontext ?? '')) !== '';
+    }
+
     public static function delete_upload(int $id): bool {
         global $DB;
         self::ensure_table();
@@ -150,7 +190,15 @@ class portfolio_typeb {
     public static function total_validated_hours(int $userid): float {
         global $DB;
         self::ensure_table();
-        $total = $DB->get_field_sql("SELECT COALESCE(SUM(hours), 0) FROM {local_ga_typeb_certs} WHERE userid = :userid AND status = 'validated'", ['userid' => $userid]);
+        $total = $DB->get_field_sql(
+            "SELECT COALESCE(SUM(hours), 0)
+               FROM {local_ga_typeb_certs}
+              WHERE userid = :userid
+                AND status = 'validated'
+                AND reflectiontext IS NOT NULL
+                AND " . $DB->sql_compare_text('reflectiontext') . " <> :emptyreflection",
+            ['userid' => $userid, 'emptyreflection' => '']
+        );
         return (float)$total;
     }
 
