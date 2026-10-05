@@ -132,6 +132,11 @@ Auditados los commits `c56a2e2..bb4df12` contra el código. Corregido:
 
 Validación: `php -l` (todos los PHP), XML bien formado, sin llamadas a métodos/funciones inexistentes del plugin, strings en/es completos. APIs de Moodle usadas (XMLDB, eventos de `mod_assign`, `userdate`) contrastadas con el código fuente de Moodle. **Sin ejecución en Moodle real.**
 
+## Reglas confirmadas por Julio (2026-10-05)
+- **Cuestionario Tipo A**: se aprueba con **5 sobre 10** (nota reescalada a 10). Constante `manager::QUIZ_PASS_MARK`.
+- **Tipo B**: **asistencia y reflexión son imprescindibles**. La reflexión es la última entrega de la Tarea Moodle en estado `submitted` (`typeb_certificate_policy::has_reflection`); ni la finalización ni una nota la sustituyen. Si el alumno elimina la entrega o se devuelve a borrador, deja de contar (observers `submission_removed` y `submission_status_updated`).
+- Las horas que se guardan al finalizar una edición (`refresh_completed_hours_for_edition`) usan la misma regla que los certificados.
+
 ## Versiones actuales
-- `local_gestion_actividades`: **1.5.101-alpha** (`2026100516`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.102-alpha** (`2026100517`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.20-alpha** (`2026100504`).
