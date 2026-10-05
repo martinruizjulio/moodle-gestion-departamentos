@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/gestion_actividades/db" VERSION="2026071401" COMMENT="Gestion_actividades install schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
+<XMLDB PATH="local/gestion_actividades/db" VERSION="2026100509" COMMENT="Gestion_actividades install schema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
   <TABLES>
     <TABLE NAME="local_ga_activities" COMMENT="Managed merit activity definitions">
       <FIELDS>
@@ -14,9 +14,7 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="courseid" UNIQUE="false" FIELDS="courseid"/>
         <INDEX NAME="activitykey" UNIQUE="false" FIELDS="activitykey"/>
@@ -32,12 +30,8 @@
         <FIELD NAME="notes" TYPE="text" NOTNULL="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
-      <INDEXES>
-        <INDEX NAME="activityid" UNIQUE="false" FIELDS="activityid"/>
-      </INDEXES>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES><INDEX NAME="activityid" UNIQUE="false" FIELDS="activityid"/></INDEXES>
     </TABLE>
 
     <TABLE NAME="local_ga_candidates" COMMENT="Imported candidates and ranking status">
@@ -58,9 +52,7 @@
         <FIELD NAME="reason" TYPE="text" NOTNULL="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="activityid" UNIQUE="false" FIELDS="activityid"/>
         <INDEX NAME="importid" UNIQUE="false" FIELDS="importid"/>
@@ -82,9 +74,7 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="activityid" UNIQUE="false" FIELDS="activityid"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
@@ -102,15 +92,12 @@
         <FIELD NAME="source" TYPE="char" LENGTH="50" NOTNULL="false"/>
         <FIELD NAME="timecompleted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
-        <INDEX NAME="activitykeyuserid" UNIQUE="false" FIELDS="activitykey, userid"/>
+        <INDEX NAME="activitykeyuserid" UNIQUE="false" FIELDS="activitykey,userid"/>
         <INDEX NAME="activityid" UNIQUE="false" FIELDS="activityid"/>
       </INDEXES>
     </TABLE>
-
 
     <TABLE NAME="local_ga_grades" COMMENT="Transcript grade history imported by academic year">
       <FIELDS>
@@ -125,11 +112,9 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
-        <INDEX NAME="activitykeyuseracademic" UNIQUE="true" FIELDS="activitykey, userid, academicyear"/>
+        <INDEX NAME="activitykeyuseracademic" UNIQUE="true" FIELDS="activitykey,userid,academicyear"/>
         <INDEX NAME="activityid" UNIQUE="false" FIELDS="activityid"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
         <INDEX NAME="academicyear" UNIQUE="false" FIELDS="academicyear"/>
@@ -148,18 +133,15 @@
         <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
-        <INDEX NAME="activitykeyuser" UNIQUE="false" FIELDS="activitykey, userid"/>
+        <INDEX NAME="activitykeyuser" UNIQUE="false" FIELDS="activitykey,userid"/>
         <INDEX NAME="activityid" UNIQUE="false" FIELDS="activityid"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
         <INDEX NAME="importid" UNIQUE="false" FIELDS="importid"/>
       </INDEXES>
     </TABLE>
 
-  
     <TABLE NAME="local_ga_workshops" COMMENT="Base workshops managed by Gestion_actividades">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -174,13 +156,10 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
-      <INDEXES>
-        <INDEX NAME="coursecode" UNIQUE="true" FIELDS="courseid, code"/>
-      </INDEXES>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES><INDEX NAME="coursecode" UNIQUE="true" FIELDS="courseid,code"/></INDEXES>
     </TABLE>
+
     <TABLE NAME="local_ga_workshop_editions" COMMENT="Specific workshop editions or offerings">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -214,15 +193,14 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="workshopid" UNIQUE="false" FIELDS="workshopid"/>
         <INDEX NAME="activityid" UNIQUE="false" FIELDS="activityid"/>
         <INDEX NAME="groupid" UNIQUE="false" FIELDS="groupid"/>
       </INDEXES>
     </TABLE>
+
     <TABLE NAME="local_ga_edition_teachers" COMMENT="Teachers assigned to workshop editions">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -230,13 +208,10 @@
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
-      <INDEXES>
-        <INDEX NAME="editionuserid" UNIQUE="true" FIELDS="editionid, userid"/>
-      </INDEXES>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES><INDEX NAME="editionuserid" UNIQUE="true" FIELDS="editionid,userid"/></INDEXES>
     </TABLE>
+
     <TABLE NAME="local_ga_edition_enrolments" COMMENT="Students enrolled in specific workshop editions">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -246,19 +221,61 @@
         <FIELD NAME="groupid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="status" TYPE="char" LENGTH="30" NOTNULL="true" DEFAULT="enrolled"/>
         <FIELD NAME="reason" TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="attended" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timeattended" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="attendedby" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
-        <INDEX NAME="editionuser" UNIQUE="true" FIELDS="editionid, userid"/>
-        <INDEX NAME="workshopuser" UNIQUE="false" FIELDS="workshopid, userid"/>
+        <INDEX NAME="editionuser" UNIQUE="true" FIELDS="editionid,userid"/>
+        <INDEX NAME="workshopuser" UNIQUE="false" FIELDS="workshopid,userid"/>
       </INDEXES>
     </TABLE>
 
-  
+    <TABLE NAME="local_ga_workshop_series" COMMENT="Workshop edition containers shown as course sections">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="datefrom" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="dateto" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="sectionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="calendarcmid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="calendarsectionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="active"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES>
+        <INDEX NAME="courseid" UNIQUE="false" FIELDS="courseid"/>
+        <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_ga_series_items" COMMENT="Workshops attached to a workshop edition container">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="seriesid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="workshopid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="sessionenddate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="subsectioncmid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="subsectionsectionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="notescmid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES>
+        <INDEX NAME="seriesworkshop" UNIQUE="true" FIELDS="seriesid,workshopid"/>
+        <INDEX NAME="seriesorder" UNIQUE="false" FIELDS="seriesid,sortorder"/>
+        <INDEX NAME="workshopid" UNIQUE="false" FIELDS="workshopid"/>
+      </INDEXES>
+    </TABLE>
+
     <TABLE NAME="local_ga_hour_history" COMMENT="Completed Type A workshop hours history">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -275,16 +292,13 @@
         <FIELD NAME="timecompleted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="useridx" UNIQUE="false" FIELDS="userid"/>
-        <INDEX NAME="editionuseridx" UNIQUE="true" FIELDS="editionid, userid"/>
+        <INDEX NAME="editionuseridx" UNIQUE="true" FIELDS="editionid,userid"/>
       </INDEXES>
     </TABLE>
 
-  
     <TABLE NAME="local_ga_authorized" COMMENT="Authorized plugin managers">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -292,13 +306,10 @@
         <FIELD NAME="addedby" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
-      <INDEXES>
-        <INDEX NAME="userid_uix" UNIQUE="true" FIELDS="userid"/>
-      </INDEXES>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES><INDEX NAME="userid_uix" UNIQUE="true" FIELDS="userid"/></INDEXES>
     </TABLE>
+
     <TABLE NAME="local_ga_materials" COMMENT="Workshop materials">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -312,9 +323,7 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="workshopid_idx" UNIQUE="false" FIELDS="workshopid"/>
         <INDEX NAME="editionid_idx" UNIQUE="false" FIELDS="editionid"/>
@@ -336,18 +345,14 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
-        <INDEX NAME="editionuser" UNIQUE="true" FIELDS="editionid, userid"/>
+        <INDEX NAME="editionuser" UNIQUE="true" FIELDS="editionid,userid"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
         <INDEX NAME="courseid" UNIQUE="false" FIELDS="courseid"/>
         <INDEX NAME="certificatetype" UNIQUE="false" FIELDS="certificatetype"/>
       </INDEXES>
     </TABLE>
-
-
 
     <TABLE NAME="local_ga_typeb_certs" COMMENT="External Type B certificates uploaded by students">
       <FIELDS>
@@ -361,24 +366,23 @@
         <FIELD NAME="filename" TYPE="char" LENGTH="255" NOTNULL="false"/>
         <FIELD NAME="status" TYPE="char" LENGTH="30" NOTNULL="true" DEFAULT="pending"/>
         <FIELD NAME="reviewcomment" TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="reflectiontext" TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="reflectiontime" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="reviewedby" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timereviewed" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
         <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
-        <INDEX NAME="userstatus" UNIQUE="false" FIELDS="userid, status"/>
+        <INDEX NAME="userstatus" UNIQUE="false" FIELDS="userid,status"/>
         <INDEX NAME="activitydate" UNIQUE="false" FIELDS="activitydate"/>
       </INDEXES>
     </TABLE>
 
-
-    <TABLE NAME="local_ga_typeb_reflections" COMMENT="Mandatory student reflection text for internal Type B workshops">
+    <TABLE NAME="local_ga_typeb_reflections" COMMENT="Legacy internal Type B reflection compatibility records">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="editionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
@@ -387,15 +391,12 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="editionuser" UNIQUE="true" FIELDS="editionid,userid"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
       </INDEXES>
     </TABLE>
-
 
     <TABLE NAME="local_ga_typeb_transfers" COMMENT="Student transfers of certified Type A workshop hours to Type B hours">
       <FIELDS>
@@ -411,9 +412,7 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="certificateid" UNIQUE="true" FIELDS="certificateid"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
@@ -421,7 +420,6 @@
         <INDEX NAME="editionid" UNIQUE="false" FIELDS="editionid"/>
       </INDEXES>
     </TABLE>
-
 
     <TABLE NAME="local_ga_task_submissions" COMMENT="Internal workshop task submissions">
       <FIELDS>
@@ -436,14 +434,9 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
-      <INDEXES>
-        <INDEX NAME="edition_user" UNIQUE="true" FIELDS="editionid,userid"/>
-      </INDEXES>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES><INDEX NAME="edition_user" UNIQUE="true" FIELDS="editionid,userid"/></INDEXES>
     </TABLE>
-
 
     <TABLE NAME="local_ga_institutional_hours" COMMENT="Institutional recognition of previous HEE hours imported from official spreadsheets">
       <FIELDS>
@@ -466,15 +459,12 @@
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="userid" UNIQUE="true" FIELDS="userid"/>
         <INDEX NAME="email" UNIQUE="false" FIELDS="email"/>
       </INDEXES>
     </TABLE>
-
 
     <TABLE NAME="local_ga_course_settings" COMMENT="Per-course HEE grading settings">
       <FIELDS>
@@ -485,13 +475,8 @@
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
-      <INDEXES>
-        <INDEX NAME="courseid" UNIQUE="true" FIELDS="courseid"/>
-      </INDEXES>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES><INDEX NAME="courseid" UNIQUE="true" FIELDS="courseid"/></INDEXES>
     </TABLE>
-
   </TABLES>
 </XMLDB>
