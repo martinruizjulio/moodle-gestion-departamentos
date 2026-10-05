@@ -83,9 +83,10 @@ if ($action === 'addheeteacher' && confirm_sesskey() && $courseid > 0 && $editio
             'timecreated' => time(),
         ]);
     }
+    manager::invalidate_teacher_block_cache([$teacherid], [$editionid]);
     redirect(
         new moodle_url('/local/gestion_actividades/authorized_users.php', ['courseid' => $courseid]),
-        'Profesor HEE asignado al taller.',
+        'Profesor HEE asignado al seminario.',
         null,
         \core\output\notification::NOTIFY_SUCCESS
     );
@@ -97,9 +98,10 @@ if ($action === 'removeheeteacher' && confirm_sesskey() && $courseid > 0 && $edi
         throw new invalid_parameter_exception('La edición seleccionada no pertenece al curso indicado.');
     }
     $DB->delete_records('local_ga_edition_teachers', ['editionid' => $editionid, 'userid' => $teacherid]);
+    manager::invalidate_teacher_block_cache([$teacherid], [$editionid]);
     redirect(
         new moodle_url('/local/gestion_actividades/authorized_users.php', ['courseid' => $courseid]),
-        'Profesor HEE retirado de este taller.',
+        'Profesor HEE retirado de este seminario.',
         null,
         \core\output\notification::NOTIFY_SUCCESS
     );
@@ -121,17 +123,13 @@ echo html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'
 echo html_writer::end_div();
 
 echo $OUTPUT->heading(get_string('authorizedusers', 'local_gestion_actividades'));
-echo html_writer::tag('p', 'Los usuarios autorizados son gestores HEE globales. La figura Profesor HEE, configurada más abajo, solo puede gestionar los talleres concretos a los que se le asigne.', ['class' => 'alert alert-info']);
+echo html_writer::tag('p', 'Los usuarios autorizados son gestores HEE globales. La figura Profesor HEE, configurada más abajo, solo puede gestionar los seminarios concretos a los que se le asigne.', ['class' => 'alert alert-info']);
 
 $suggestions = ($courseid > 0) ? manager::search_course_teachers($courseid, '') : [];
 $results = [];
 $qtrim = trim($q);
 if ($courseid > 0 && $qtrim !== '') {
     $results = manager::search_course_teachers($courseid, $qtrim);
-
-    // Strong fallback for datalist selections such as "Usuario Prueba1 <prueba@prueba1.es>".
-    // If Moodle/PARAM_TEXT/theme handling prevents the SQL search from matching, compare
-    // against the already loaded course teacher list and inject the exact candidate.
     $needle = \core_text::strtolower($qtrim);
     $email = local_ga_auth_extract_email($qtrim);
     $emailneedle = $email !== '' ? \core_text::strtolower($email) : '';
@@ -143,9 +141,6 @@ if ($courseid > 0 && $qtrim !== '') {
             $results[$candidate->id] = $candidate;
         }
     }
-
-    // Last resort: if the user typed/pasted an email of a valid user, show it so the
-    // administrator can authorize it instead of getting stuck without an add button.
     if (!$results && $email !== '') {
         $user = $DB->get_record('user', ['email' => $email, 'deleted' => 0, 'confirmed' => 1], 'id,firstname,lastname,email', IGNORE_MISSING);
         if ($user) {
@@ -201,12 +196,11 @@ if ($users) {
     echo $OUTPUT->notification(get_string('noauthorizedusers', 'local_gestion_actividades'), 'info');
 }
 
-// Professor HEE: workshop-scoped management without changing the institutional Moodle role.
 echo html_writer::tag('hr', '', ['class' => 'my-4']);
 echo $OUTPUT->heading('Profesor HEE', 2);
 echo html_writer::tag(
     'p',
-    '<strong>Profesor HEE</strong> no es un rol global de Moodle. El profesor mantiene su matrícula institucional y únicamente obtiene permisos dentro de Gestión HEE para los talleres concretos a los que se le asigne: alumnado, asistencia, materiales y actividad obligatoria/reflexión. No puede administrar el resto de la asignatura.',
+    '<strong>Profesor HEE</strong> no es un rol global de Moodle. El profesor mantiene su matrícula institucional y únicamente obtiene permisos dentro de Gestión HEE para los seminarios concretos a los que se le asigne: alumnado, asistencia, materiales y actividad obligatoria/reflexión. No puede administrar el resto de la asignatura.',
     ['class' => 'alert alert-success']
 );
 
@@ -226,7 +220,7 @@ if ($courseid <= 0 || !$course) {
     );
 
     if (!$editions) {
-        echo $OUTPUT->notification('Este curso todavía no tiene talleres configurados.', 'info');
+        echo $OUTPUT->notification('Este curso todavía no tiene seminarios configurados.', 'info');
     } else {
         $editionids = array_map('intval', array_keys($editions));
         $assigned = [];
@@ -247,7 +241,7 @@ if ($courseid <= 0 || !$course) {
 
         $table = new html_table();
         $table->attributes['class'] = 'generaltable table-sm';
-        $table->head = ['Taller', 'Edición', 'Fecha', 'Profesor/es HEE', 'Asignar profesor HEE'];
+        $table->head = ['Seminario', 'Edición', 'Fecha', 'Profesor/es HEE', 'Asignar profesor HEE'];
         foreach ($editions as $edition) {
             $type = manager::normalize_workshop_type((string)($edition->workshoptype ?? 'typea')) === 'typeb' ? 'Tipo B' : 'Tipo A';
             $current = [];
