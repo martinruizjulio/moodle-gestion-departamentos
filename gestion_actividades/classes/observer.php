@@ -44,6 +44,32 @@ class observer {
     }
 
     /**
+     * Resolve the student that owns an assignment submission event.
+     *
+     * mod_assign only fills relateduserid when someone acts on behalf of another
+     * user; when a student submits their own reflection relateduserid is empty.
+     * The assign_submission record is therefore the reliable owner.
+     */
+    private static function resolve_submission_userid(\core\event\base $event): int {
+        global $DB;
+
+        $submissionid = (int)($event->other['submissionid'] ?? 0);
+        if ($submissionid <= 0 && $event->objecttable === 'assign_submission') {
+            $submissionid = (int)$event->objectid;
+        }
+        if ($submissionid > 0) {
+            $owner = (int)$DB->get_field('assign_submission', 'userid', ['id' => $submissionid], IGNORE_MISSING);
+            if ($owner > 0) {
+                return $owner;
+            }
+        }
+        if (!empty($event->relateduserid)) {
+            return (int)$event->relateduserid;
+        }
+        return (int)$event->userid;
+    }
+
+    /**
      * Keep internal Type B reflection state aligned with the canonical Moodle
      * Assignment submission as soon as a student creates or updates it.
      */
@@ -51,13 +77,16 @@ class observer {
         global $DB;
 
         $cmid = (int)$event->contextinstanceid;
-        $userid = (int)$event->relateduserid;
         $courseid = (int)$event->courseid;
-        if ($cmid <= 0 || $userid <= 0 || $courseid <= 0) {
+        if ($cmid <= 0 || $courseid <= 0) {
             return;
         }
         if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_editions'))
                 || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshops'))) {
+            return;
+        }
+        $userid = self::resolve_submission_userid($event);
+        if ($userid <= 0) {
             return;
         }
 
