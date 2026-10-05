@@ -1,7 +1,6 @@
 <?php
 defined('MOODLE_INTERNAL') || die();
 
-
 function local_gestion_actividades_add_index_if_possible($dbman, string $tablename, string $indexname, array $fields): void {
     $table = new xmldb_table($tablename);
     if (!$dbman->table_exists($table)) {
@@ -23,7 +22,6 @@ function local_gestion_actividades_add_index_if_possible($dbman, string $tablena
     try {
         $dbman->add_index($table, $index);
     } catch (Throwable $e) {
-        // Defensivo: una instalación puede tener ya un índice equivalente con otro nombre.
         if (function_exists('debugging')) {
             debugging('No se ha podido crear el índice ' . $indexname . ' en ' . $tablename . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
@@ -105,27 +103,21 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071013, 'local', 'gestion_actividades');
     }
 
-
     if ($oldversion < 2026071019) {
         $table = new xmldb_table('local_ga_workshop_editions');
-
         $field = new xmldb_field('requiredcmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'certificatecmid');
         if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-
         $field = new xmldb_field('requiredmodname', XMLDB_TYPE_CHAR, '20', null, null, null, null, 'requiredcmid');
         if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-
         upgrade_plugin_savepoint(true, 2026071019, 'local', 'gestion_actividades');
     }
 
-
     if ($oldversion < 2026071021) {
         $table = new xmldb_table('local_ga_workshop_editions');
-
         $fields = [
             new xmldb_field('activitycreationtype', XMLDB_TYPE_CHAR, '20', null, null, null, null, 'requiredmodname'),
             new xmldb_field('tasknumericgrade', XMLDB_TYPE_NUMBER, '10, 2', null, null, null, null, 'activitycreationtype'),
@@ -133,7 +125,6 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             new xmldb_field('archived', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'quizgradingmode'),
             new xmldb_field('timearchived', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'archived'),
         ];
-
         if ($dbman->table_exists($table)) {
             foreach ($fields as $field) {
                 if (!$dbman->field_exists($table, $field)) {
@@ -141,26 +132,20 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 }
             }
         }
-
         upgrade_plugin_savepoint(true, 2026071021, 'local', 'gestion_actividades');
     }
 
-
     if ($oldversion < 2026071022) {
         $table = new xmldb_table('local_ga_workshops');
-
         $field = new xmldb_field('hours', XMLDB_TYPE_NUMBER, '10, 2', null, null, null, null, 'allowrepeat');
         if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-
         upgrade_plugin_savepoint(true, 2026071022, 'local', 'gestion_actividades');
     }
 
-
     if ($oldversion < 2026071023) {
         $table = new xmldb_table('local_ga_hour_history');
-
         if (!$dbman->table_exists($table)) {
             $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
             $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
@@ -175,125 +160,29 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             $table->add_field('certificatestatus', XMLDB_TYPE_CHAR, '40', null, null, null, 'pending');
             $table->add_field('timecompleted', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
             $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-
             $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
             $table->add_index('useridx', XMLDB_INDEX_NOTUNIQUE, ['userid']);
             $table->add_index('editionuseridx', XMLDB_INDEX_UNIQUE, ['editionid', 'userid']);
-
             $dbman->create_table($table);
         }
-
         upgrade_plugin_savepoint(true, 2026071023, 'local', 'gestion_actividades');
     }
 
-
     if ($oldversion < 2026071024) {
         $table = new xmldb_table('local_ga_workshops');
-
         $field = new xmldb_field('sectionnum', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'hours');
         if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-
         upgrade_plugin_savepoint(true, 2026071024, 'local', 'gestion_actividades');
     }
 
-
-    if ($oldversion < 2026071027) {
-        // No database structural change. Robust save and non-blocking section creation.
-        upgrade_plugin_savepoint(true, 2026071027, 'local', 'gestion_actividades');
+    foreach ([2026071027, 2026071028, 2026071029, 2026071030, 2026071031, 2026071032, 2026071033, 2026071034,
+              2026071035, 2026071036, 2026071037, 2026071038, 2026071039, 2026071040, 2026071041, 2026071042] as $version) {
+        if ($oldversion < $version) {
+            upgrade_plugin_savepoint(true, $version, 'local', 'gestion_actividades');
+        }
     }
-
-
-    if ($oldversion < 2026071028) {
-        // Defensive save layer: write only existing DB fields and expose clearer errors.
-        upgrade_plugin_savepoint(true, 2026071028, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071029) {
-        // Safe save mode: minimal writes only; automatic side effects disabled.
-        upgrade_plugin_savepoint(true, 2026071029, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071030) {
-        // Course visual structure: workshop entries under TALLERES TIPO A.
-        upgrade_plugin_savepoint(true, 2026071030, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071031) {
-        // Add workshop deletion flow from workshop list.
-        upgrade_plugin_savepoint(true, 2026071031, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071032) {
-        // Course section summary display for workshop list.
-        upgrade_plugin_savepoint(true, 2026071032, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071033) {
-        // Visible Page resources for workshop entries in TALLERES TIPO A.
-        upgrade_plugin_savepoint(true, 2026071033, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071034) {
-        // Single visible course section: TALLERES TIPO A with visible workshop URL entries.
-        upgrade_plugin_savepoint(true, 2026071034, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071035) {
-        // Disable automatic course resource creation to avoid Moodle course API errors.
-        upgrade_plugin_savepoint(true, 2026071035, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071036) {
-        // Create visible URL resources for workshops using low-level Moodle course module writes.
-        upgrade_plugin_savepoint(true, 2026071036, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071037) {
-        // Generate visible labels in TALLERES TIPO A with defensive error handling.
-        upgrade_plugin_savepoint(true, 2026071037, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071038) {
-        // Improved course generation using standard course module helper functions and diagnostics.
-        upgrade_plugin_savepoint(true, 2026071038, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071039) {
-        // Restore missing helper methods for course section names.
-        upgrade_plugin_savepoint(true, 2026071039, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071040) {
-        // Workshop landing page and student self-enrolment flow.
-        upgrade_plugin_savepoint(true, 2026071040, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071041) {
-        // Public workshop entry: update existing labels to point to workshop_view.php instead of internal edition pages.
-        upgrade_plugin_savepoint(true, 2026071041, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071042) {
-        // Public workshop view cleanup and course-front enrol/status endpoint.
-        upgrade_plugin_savepoint(true, 2026071042, 'local', 'gestion_actividades');
-    }
-
 
     if ($oldversion < 2026071043) {
         $table = new xmldb_table('local_ga_authorized');
@@ -335,28 +224,14 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 $dbman->add_field($table, $field);
             }
         }
-
         upgrade_plugin_savepoint(true, 2026071043, 'local', 'gestion_actividades');
     }
 
-
-    if ($oldversion < 2026071044) {
-        // UI fixes: authorized user selector button, student-safe teacher view, enrolled workshop list.
-        upgrade_plugin_savepoint(true, 2026071044, 'local', 'gestion_actividades');
+    foreach ([2026071044, 2026071045, 2026071046] as $version) {
+        if ($oldversion < $version) {
+            upgrade_plugin_savepoint(true, $version, 'local', 'gestion_actividades');
+        }
     }
-
-
-    if ($oldversion < 2026071045) {
-        // Restore teacher/admin access button in public workshop view while keeping it hidden from students.
-        upgrade_plugin_savepoint(true, 2026071045, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071046) {
-        // Course generated entries cleanup tool.
-        upgrade_plugin_savepoint(true, 2026071046, 'local', 'gestion_actividades');
-    }
-
 
     if ($oldversion < 2026071047) {
         $table = new xmldb_table('local_ga_materials');
@@ -367,30 +242,11 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071047, 'local', 'gestion_actividades');
     }
 
-
-    if ($oldversion < 2026071048) {
-        // Restore can_manage_workshop helper in simulation branch.
-        upgrade_plugin_savepoint(true, 2026071048, 'local', 'gestion_actividades');
+    foreach ([2026071048, 2026071049, 2026071050, 2026071051] as $version) {
+        if ($oldversion < $version) {
+            upgrade_plugin_savepoint(true, $version, 'local', 'gestion_actividades');
+        }
     }
-
-
-    if ($oldversion < 2026071049) {
-        // Safe enrolled/attendance list view.
-        upgrade_plugin_savepoint(true, 2026071049, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071050) {
-        // Remove unavailable draft file dependency and harden attendance list.
-        upgrade_plugin_savepoint(true, 2026071050, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071051) {
-        // Safe embedded attendance list and clearer task/quiz configured state.
-        upgrade_plugin_savepoint(true, 2026071051, 'local', 'gestion_actividades');
-    }
-
 
     if ($oldversion < 2026071052) {
         $table = new xmldb_table('local_ga_edition_enrolments');
@@ -406,10 +262,8 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 }
             }
         }
-
         upgrade_plugin_savepoint(true, 2026071052, 'local', 'gestion_actividades');
     }
-
 
     if ($oldversion < 2026071053) {
         $table = new xmldb_table('local_ga_edition_enrolments');
@@ -425,88 +279,15 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 }
             }
         }
-
         upgrade_plugin_savepoint(true, 2026071053, 'local', 'gestion_actividades');
     }
 
-
-    if ($oldversion < 2026071054) {
-        // Attendance fallback using status field and task creation signature compatibility.
-        upgrade_plugin_savepoint(true, 2026071054, 'local', 'gestion_actividades');
+    foreach ([2026071054, 2026071055, 2026071056, 2026071057, 2026071058, 2026071059, 2026071060, 2026071061,
+              2026071062, 2026071063, 2026071064, 2026071065, 2026071066] as $version) {
+        if ($oldversion < $version) {
+            upgrade_plugin_savepoint(true, $version, 'local', 'gestion_actividades');
+        }
     }
-
-
-    if ($oldversion < 2026071055) {
-        // Default required activity to assignment when previous configuration is ambiguous.
-        upgrade_plugin_savepoint(true, 2026071055, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071056) {
-        // Safer task/quiz creation: use Moodle native modedit form instead of direct DB/module creation.
-        upgrade_plugin_savepoint(true, 2026071056, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071057) {
-        // Link already-created task/quiz from workshop view; safer native creation flow.
-        upgrade_plugin_savepoint(true, 2026071057, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071058) {
-        // Auto-link existing required activity and hide it from course front page.
-        upgrade_plugin_savepoint(true, 2026071058, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071059) {
-        // Cleanup now hides linked/candidate Moodle activities from the course page.
-        upgrade_plugin_savepoint(true, 2026071059, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071060) {
-        // Required activity is restricted to the workshop edition group.
-        upgrade_plugin_savepoint(true, 2026071060, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071061) {
-        // Edition group is created automatically and required activity is bound to it.
-        upgrade_plugin_savepoint(true, 2026071061, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071062) {
-        // Fix all unqualified core_text references.
-        upgrade_plugin_savepoint(true, 2026071062, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071063) {
-        // Workshop back links, student attendance status, and archive-on-finish helpers.
-        upgrade_plugin_savepoint(true, 2026071063, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071064) {
-        // Better course-card aesthetics and real archive/hide of finished workshop cards.
-        upgrade_plugin_savepoint(true, 2026071064, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071065) {
-        // Hard archive: remove workshop/task cards from visible course section sequences.
-        upgrade_plugin_savepoint(true, 2026071065, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071066) {
-        // Remove workshop assignment/quiz activities from visible course sequence.
-        upgrade_plugin_savepoint(true, 2026071066, 'local', 'gestion_actividades');
-    }
-
 
     if ($oldversion < 2026071067) {
         $table = new xmldb_table('local_ga_certificates');
@@ -528,29 +309,20 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             $table->add_index('courseid', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
             $dbman->create_table($table);
         }
-
         if (get_config('local_gestion_actividades', 'certificatetemplatehtml') === false) {
             set_config('certificatetemplatehtml',
                 '<p>Se certifica que <strong>{alumno}</strong> ha participado y completado satisfactoriamente el taller <strong>{taller}</strong>, realizado el día <strong>{fecha}</strong>, con una duración de <strong>{horas}</strong> horas, dentro del programa de <strong>Talleres Tipo A</strong>.</p>',
                 'local_gestion_actividades'
             );
         }
-
         upgrade_plugin_savepoint(true, 2026071067, 'local', 'gestion_actividades');
     }
 
-
-    if ($oldversion < 2026071068) {
-        // Make certificate actions visible in workshop and teacher view.
-        upgrade_plugin_savepoint(true, 2026071068, 'local', 'gestion_actividades');
+    foreach ([2026071068, 2026071069] as $version) {
+        if ($oldversion < $version) {
+            upgrade_plugin_savepoint(true, $version, 'local', 'gestion_actividades');
+        }
     }
-
-
-    if ($oldversion < 2026071069) {
-        // Fix certificate download: send real PDF, not preview/icon.
-        upgrade_plugin_savepoint(true, 2026071069, 'local', 'gestion_actividades');
-    }
-
 
     if ($oldversion < 2026071084) {
         $table = new xmldb_table('local_ga_typeb_certs');
@@ -577,7 +349,6 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071084, 'local', 'gestion_actividades');
     }
 
-
     if ($oldversion < 2026071086) {
         $table = new xmldb_table('local_ga_grade_log');
         if (!$dbman->table_exists($table)) {
@@ -600,21 +371,10 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071086, 'local', 'gestion_actividades');
     }
 
-
     if ($oldversion < 2026071092) {
         global $CFG;
         require_once($CFG->dirroot . '/course/lib.php');
-
-        // Remove old student shortcuts wrongly published as course activities. Student access
-        // must live in block_gestion_hee, not inside the visible course section.
-        $oldnames = [
-            'Mi portafolio HEE',
-            'Mi portafolio HEE: horas y certificados',
-            'Mis certificados',
-            'Mis horas',
-            'Ver mis horas',
-        ];
-
+        $oldnames = ['Mi portafolio HEE', 'Mi portafolio HEE: horas y certificados', 'Mis certificados', 'Mis horas', 'Ver mis horas'];
         $targets = [];
         foreach (['url', 'label', 'page'] as $modname) {
             if (!$DB->record_exists('modules', ['name' => $modname]) || !$dbman->table_exists(new xmldb_table($modname))) {
@@ -622,53 +382,29 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             }
             foreach ($oldnames as $oldname) {
                 $alias = 'x';
-                $sql = "SELECT cm.id AS cmid
-                          FROM {course_modules} cm
-                          JOIN {modules} m ON m.id = cm.module
-                          JOIN {{$modname}} $alias ON $alias.id = cm.instance
-                         WHERE m.name = :modname
-                           AND " . $DB->sql_like("$alias.name", ':oldname', false);
-                $records = $DB->get_records_sql($sql, [
-                    'modname' => $modname,
-                    'oldname' => $DB->sql_like_escape($oldname) . '%',
-                ]);
+                $sql = "SELECT cm.id AS cmid FROM {course_modules} cm JOIN {modules} m ON m.id = cm.module JOIN {{$modname}} $alias ON $alias.id = cm.instance WHERE m.name = :modname AND " . $DB->sql_like("$alias.name", ':oldname', false);
+                $records = $DB->get_records_sql($sql, ['modname' => $modname, 'oldname' => $DB->sql_like_escape($oldname) . '%']);
                 foreach ($records as $record) {
                     $targets[(int)$record->cmid] = true;
                 }
             }
         }
-
         if ($DB->record_exists('modules', ['name' => 'url']) && $dbman->table_exists(new xmldb_table('url'))) {
-            $pathfragments = [
-                '/local/gestion_actividades/portfolio.php',
-                '/local/gestion_actividades/mycertificates.php',
-                '/local/gestion_actividades/myhours.php',
-                '/local/gestion_actividades/typeb_upload.php',
-            ];
-            foreach ($pathfragments as $fragment) {
-                $sql = "SELECT cm.id AS cmid
-                          FROM {course_modules} cm
-                          JOIN {modules} m ON m.id = cm.module
-                          JOIN {url} u ON u.id = cm.instance
-                         WHERE m.name = 'url'
-                           AND " . $DB->sql_like('u.externalurl', ':fragment', false);
+            foreach (['/local/gestion_actividades/portfolio.php', '/local/gestion_actividades/mycertificates.php', '/local/gestion_actividades/myhours.php', '/local/gestion_actividades/typeb_upload.php'] as $fragment) {
+                $sql = "SELECT cm.id AS cmid FROM {course_modules} cm JOIN {modules} m ON m.id = cm.module JOIN {url} u ON u.id = cm.instance WHERE m.name = 'url' AND " . $DB->sql_like('u.externalurl', ':fragment', false);
                 $records = $DB->get_records_sql($sql, ['fragment' => '%' . $DB->sql_like_escape($fragment) . '%']);
                 foreach ($records as $record) {
                     $targets[(int)$record->cmid] = true;
                 }
             }
         }
-
         foreach (array_keys($targets) as $cmid) {
             try {
                 course_delete_module((int)$cmid);
             } catch (Throwable $e) {
-                // Continue. A missing/half-deleted module must not block plugin upgrade.
+                // Continue with other legacy shortcuts.
             }
         }
-
-        // If the block plugin is installed, add it automatically to every course that has
-        // Gestión HEE workshops, unless it already exists there.
         if ($DB->record_exists('block', ['name' => 'gestion_hee']) && $dbman->table_exists(new xmldb_table('local_ga_workshops'))) {
             $courseids = $DB->get_records_sql("SELECT DISTINCT courseid AS id FROM {local_ga_workshops} WHERE courseid > 1");
             foreach ($courseids as $courseidrow) {
@@ -677,24 +413,14 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 if (!$context) {
                     continue;
                 }
-                $exists = $DB->record_exists_select('block_instances',
-                    'blockname = :blockname AND parentcontextid = :parentcontextid',
-                    ['blockname' => 'gestion_hee', 'parentcontextid' => $context->id]
-                );
+                $exists = $DB->record_exists_select('block_instances', 'blockname = :blockname AND parentcontextid = :parentcontextid', ['blockname' => 'gestion_hee', 'parentcontextid' => $context->id]);
                 if ($exists) {
                     continue;
                 }
                 $block = (object)[
-                    'blockname' => 'gestion_hee',
-                    'parentcontextid' => $context->id,
-                    'showinsubcontexts' => 0,
-                    'pagetypepattern' => 'course-view-*',
-                    'subpagepattern' => null,
-                    'defaultregion' => 'side-pre',
-                    'defaultweight' => 0,
-                    'configdata' => '',
-                    'timecreated' => time(),
-                    'timemodified' => time(),
+                    'blockname' => 'gestion_hee', 'parentcontextid' => $context->id, 'showinsubcontexts' => 0,
+                    'pagetypepattern' => 'course-view-*', 'subpagepattern' => null, 'defaultregion' => 'side-pre',
+                    'defaultweight' => 0, 'configdata' => '', 'timecreated' => time(), 'timemodified' => time(),
                 ];
                 $columns = $DB->get_columns('block_instances');
                 foreach (array_keys((array)$block) as $field) {
@@ -706,46 +432,37 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 rebuild_course_cache($courseid, true);
             }
         }
-
         upgrade_plugin_savepoint(true, 2026071092, 'local', 'gestion_actividades');
     }
 
-
-
     if ($oldversion < 2026071113) {
         $table = new xmldb_table('local_ga_workshop_editions');
-
         $field = new xmldb_field('requiredassigncmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'requiredcmid');
-        if (!$dbman->field_exists($table, $field)) {
+        if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-
         $field = new xmldb_field('requiredquizcmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'requiredassigncmid');
-        if (!$dbman->field_exists($table, $field)) {
+        if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-
         upgrade_plugin_savepoint(true, 2026071113, 'local', 'gestion_actividades');
     }
 
-
-
     if ($oldversion < 2026071115) {
         $table = new xmldb_table('local_ga_workshop_editions');
-
         $fields = [
             new xmldb_field('taskdescription', XMLDB_TYPE_TEXT, null, null, null, null, null, 'tasknumericgrade'),
             new xmldb_field('taskurl', XMLDB_TYPE_TEXT, null, null, null, null, null, 'taskdescription'),
             new xmldb_field('taskfileitemid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'taskurl'),
             new xmldb_field('taskduedate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'taskfileitemid'),
         ];
-
-        foreach ($fields as $field) {
-            if (!$dbman->field_exists($table, $field)) {
-                $dbman->add_field($table, $field);
+        if ($dbman->table_exists($table)) {
+            foreach ($fields as $field) {
+                if (!$dbman->field_exists($table, $field)) {
+                    $dbman->add_field($table, $field);
+                }
             }
         }
-
         $table = new xmldb_table('local_ga_task_submissions');
         if (!$dbman->table_exists($table)) {
             $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
@@ -762,11 +479,8 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             $table->add_index('edition_user', XMLDB_INDEX_UNIQUE, ['editionid', 'userid']);
             $dbman->create_table($table);
         }
-
         upgrade_plugin_savepoint(true, 2026071115, 'local', 'gestion_actividades');
     }
-
-
 
     if ($oldversion < 2026071123) {
         $table = new xmldb_table('local_ga_typeb_certs');
@@ -774,23 +488,16 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-
         upgrade_plugin_savepoint(true, 2026071123, 'local', 'gestion_actividades');
     }
 
-
-
     if ($oldversion < 2026071125) {
-        // Índices usados por block_gestion_hee para cálculos cacheados de horas.
-        // Se crean aquí porque las tablas pertenecen a local_gestion_actividades.
         local_gestion_actividades_add_index_if_possible($dbman, 'local_ga_certificates', 'userid', ['userid']);
         local_gestion_actividades_add_index_if_possible($dbman, 'local_ga_hour_history', 'useridx', ['userid']);
         local_gestion_actividades_add_index_if_possible($dbman, 'local_ga_typeb_certs', 'userid', ['userid']);
         local_gestion_actividades_add_index_if_possible($dbman, 'local_ga_typeb_certs', 'userstatus', ['userid', 'status']);
-
         upgrade_plugin_savepoint(true, 2026071125, 'local', 'gestion_actividades');
     }
-
 
     if ($oldversion < 2026071128) {
         $table = new xmldb_table('local_ga_institutional_hours');
@@ -848,7 +555,6 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071128, 'local', 'gestion_actividades');
     }
 
-
     if ($oldversion < 2026071132) {
         $table = new xmldb_table('local_ga_task_submissions');
         if ($dbman->table_exists($table)) {
@@ -863,10 +569,8 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 }
             }
         }
-
         upgrade_plugin_savepoint(true, 2026071132, 'local', 'gestion_actividades');
     }
-
 
     if ($oldversion < 2026071134) {
         $table = new xmldb_table('local_ga_institutional_hours');
@@ -876,10 +580,8 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 $dbman->add_field($table, $field);
             }
         }
-
         upgrade_plugin_savepoint(true, 2026071134, 'local', 'gestion_actividades');
     }
-
 
     if ($oldversion < 2026071135) {
         $table = new xmldb_table('local_ga_workshops');
@@ -889,7 +591,6 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 $dbman->add_field($table, $field);
             }
         }
-
         $table = new xmldb_table('local_ga_certificates');
         if ($dbman->table_exists($table)) {
             $field = new xmldb_field('certificatetype', XMLDB_TYPE_CHAR, '10', null, XMLDB_NOTNULL, null, 'typea', 'editionid');
@@ -901,7 +602,6 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 $dbman->add_index($table, $index);
             }
         }
-
         $table = new xmldb_table('local_ga_typeb_reflections');
         if (!$dbman->table_exists($table)) {
             $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
@@ -915,10 +615,8 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             $table->add_index('userid', XMLDB_INDEX_NOTUNIQUE, ['userid']);
             $dbman->create_table($table);
         }
-
         upgrade_plugin_savepoint(true, 2026071135, 'local', 'gestion_actividades');
     }
-
 
     if ($oldversion < 2026071137) {
         $table = new xmldb_table('local_ga_typeb_transfers');
@@ -941,10 +639,8 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             $table->add_index('editionid', XMLDB_INDEX_NOTUNIQUE, ['editionid']);
             $dbman->create_table($table);
         }
-
         upgrade_plugin_savepoint(true, 2026071137, 'local', 'gestion_actividades');
     }
-
 
     if ($oldversion < 2026071400) {
         $table = new xmldb_table('local_ga_course_settings');
@@ -959,7 +655,6 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             $table->add_index('courseid', XMLDB_INDEX_UNIQUE, ['courseid']);
             $dbman->create_table($table);
         }
-
         upgrade_plugin_savepoint(true, 2026071400, 'local', 'gestion_actividades');
     }
 
@@ -975,34 +670,16 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                 $dbman->add_field($table, $field);
             }
         }
-
-        // Desde esta versión todos los talleres Tipo A requieren una tarea.
         $editiontable = new xmldb_table('local_ga_workshop_editions');
         $workshoptable = new xmldb_table('local_ga_workshops');
         if ($dbman->table_exists($editiontable) && $dbman->table_exists($workshoptable)) {
-            $DB->execute("UPDATE {local_ga_workshop_editions}
-                            SET requiredmodname = 'assign', activitycreationtype = 'assign'
-                          WHERE workshopid IN (
-                                SELECT id
-                                  FROM {local_ga_workshops}
-                                 WHERE workshoptype = 'typea' OR workshoptype IS NULL OR workshoptype = ''
-                          )");
-            $DB->execute("UPDATE {local_ga_workshop_editions}
-                            SET requiredmodname = '', activitycreationtype = '', requiredcmid = 0,
-                                requiredassigncmid = 0, requiredquizcmid = 0
-                          WHERE workshopid IN (
-                                SELECT id
-                                  FROM {local_ga_workshops}
-                                 WHERE workshoptype = 'typeb'
-                          )");
+            $DB->execute("UPDATE {local_ga_workshop_editions} SET requiredmodname = 'assign', activitycreationtype = 'assign' WHERE workshopid IN (SELECT id FROM {local_ga_workshops} WHERE workshoptype = 'typea' OR workshoptype IS NULL OR workshoptype = '')");
+            $DB->execute("UPDATE {local_ga_workshop_editions} SET requiredmodname = '', activitycreationtype = '', requiredcmid = 0, requiredassigncmid = 0, requiredquizcmid = 0 WHERE workshopid IN (SELECT id FROM {local_ga_workshops} WHERE workshoptype = 'typeb')");
         }
-
         upgrade_plugin_savepoint(true, 2026071401, 'local', 'gestion_actividades');
     }
 
     if ($oldversion < 2026071402) {
-        // Create the hidden 54-hour grade item, populate it in bulk and apply the
-        // access restriction to any self-assessment quiz already selected.
         try {
             $courses = \local_gestion_actividades\local\grade_manager::get_managed_courses();
             foreach ($courses as $course) {
@@ -1018,10 +695,7 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071402, 'local', 'gestion_actividades');
     }
 
-
     if ($oldversion < 2026071404) {
-        // Reapply the 54-hour restriction using the Moodle section API so the
-        // containing section is completely hidden and course caches are purged correctly.
         try {
             $courses = \local_gestion_actividades\local\grade_manager::get_managed_courses();
             foreach ($courses as $course) {
@@ -1036,7 +710,6 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
     }
 
     if ($oldversion < 2026071405) {
-        // Repair course-card section sequences and reapply the self-assessment section condition.
         try {
             \local_gestion_actividades\local\manager::ensure_all_workshop_course_visuals();
             \local_gestion_actividades\local\grade_manager::repair_configured_selfassessment_availability();
@@ -1049,7 +722,6 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
     }
 
     if ($oldversion < 2026071411) {
-        // Rebuild the canonical hour summaries and force Autoevaluación to the final course position.
         try {
             \local_gestion_actividades\local\manager::ensure_all_workshop_course_visuals();
             \local_gestion_actividades\local\grade_manager::repair_configured_selfassessment_availability();
@@ -1061,71 +733,44 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071411, 'local', 'gestion_actividades');
     }
 
-
-    if ($oldversion < 2026071420) {
-        // Rebuild course cards so past workshops show the closed state even
-        // before the per-user AMD updater runs.
-        try {
-            \local_gestion_actividades\local\manager::ensure_all_workshop_course_visuals();
-        } catch (\Throwable $e) {
-            debugging('No se pudieron reconstruir las tarjetas HEE: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    foreach ([2026071420, 2026071421, 2026071422, 2026071423, 2026071424, 2026071429] as $version) {
+        if ($oldversion < $version) {
+            try {
+                \local_gestion_actividades\local\manager::ensure_all_workshop_course_visuals();
+            } catch (\Throwable $e) {
+                if (function_exists('debugging')) {
+                    debugging('No se pudieron reconstruir todas las tarjetas HEE durante la actualización: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+            upgrade_plugin_savepoint(true, $version, 'local', 'gestion_actividades');
         }
-        upgrade_plugin_savepoint(true, 2026071420, 'local', 'gestion_actividades');
     }
 
-    if ($oldversion < 2026071421) {
-        // Rebuild cards after installing the theme-independent status loader.
-        try {
-            \local_gestion_actividades\local\manager::ensure_all_workshop_course_visuals();
-        } catch (\Throwable $e) {
-            debugging('No se pudieron reconstruir las tarjetas HEE: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    if ($oldversion < 2026100510) {
+        // Formal, non-destructive consolidation of structures that had previously
+        // been created defensively at runtime by the HEE classes.
+        $table = new xmldb_table('local_ga_edition_enrolments');
+        if ($dbman->table_exists($table)) {
+            $fields = [
+                new xmldb_field('attended', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0'),
+                new xmldb_field('timeattended', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0'),
+                new xmldb_field('attendedby', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0'),
+            ];
+            foreach ($fields as $field) {
+                if (!$dbman->field_exists($table, $field)) {
+                    $dbman->add_field($table, $field);
+                }
+            }
         }
-        upgrade_plugin_savepoint(true, 2026071421, 'local', 'gestion_actividades');
-    }
 
+        // These helpers use Moodle XMLDB and are idempotent. Running them here
+        // makes the upgrade path authoritative instead of relying on page visits.
+        \local_gestion_actividades\local\portfolio_typeb::ensure_table();
+        \local_gestion_actividades\local\institutional_hours::ensure_table();
+        \local_gestion_actividades\local\workshop_series::ensure_schema();
 
-    if ($oldversion < 2026071422) {
-        // Rebuild the shared cards so expired editions have the orange closed
-        // state immediately; the per-user AMD module then paints enrolled users.
-        try {
-            \local_gestion_actividades\local\manager::ensure_all_workshop_course_visuals();
-        } catch (\Throwable $e) {
-            debugging('No se pudieron reconstruir las tarjetas HEE: ' . $e->getMessage(), DEBUG_DEVELOPER);
-        }
-        upgrade_plugin_savepoint(true, 2026071422, 'local', 'gestion_actividades');
-    }
-
-
-    if ($oldversion < 2026071423) {
-        // Rebuild cards with server-rendered, per-user enrolment status frames.
-        try {
-            \local_gestion_actividades\local\manager::ensure_all_workshop_course_visuals();
-        } catch (\Throwable $e) {
-            debugging('No se han podido reconstruir todas las tarjetas HEE: ' . $e->getMessage(), DEBUG_DEVELOPER);
-        }
-        upgrade_plugin_savepoint(true, 2026071423, 'local', 'gestion_actividades');
-    }
-
-    if ($oldversion < 2026071424) {
-        // Replace iframe/legacy controls with a Moodle-safe enrolment placeholder
-        // and rebuild every Type A/Type B section so the AMD updater can find it.
-        try {
-            \local_gestion_actividades\local\manager::ensure_all_workshop_course_visuals();
-        } catch (\Throwable $e) {
-            debugging('No se han podido reconstruir las tarjetas de inscripción HEE: ' . $e->getMessage(), DEBUG_DEVELOPER);
-        }
-        upgrade_plugin_savepoint(true, 2026071424, 'local', 'gestion_actividades');
-    }
-
-    if ($oldversion < 2026071429) {
-        // Rebuild every course summary with stable edition markers. Per-user
-        // states are painted from data resolved during course navigation.
-        try {
-            \local_gestion_actividades\local\manager::ensure_all_workshop_course_visuals();
-        } catch (\Throwable $e) {
-            debugging('No se pudieron reconstruir las tarjetas HEE v1.5.86: ' . $e->getMessage(), DEBUG_DEVELOPER);
-        }
-        upgrade_plugin_savepoint(true, 2026071429, 'local', 'gestion_actividades');
+        local_gestion_actividades_add_index_if_possible($dbman, 'local_ga_typeb_certs', 'userstatus', ['userid', 'status']);
+        upgrade_plugin_savepoint(true, 2026100510, 'local', 'gestion_actividades');
     }
 
     return true;
