@@ -1,0 +1,247 @@
+name: HEE maintenance B
+on:
+  push:
+    paths:
+      - '.github/workflows/hee-maintenance-b.yml'
+permissions:
+  contents: write
+jobs:
+  maintain:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          def r(p): return Path(p).read_text(encoding='utf-8')
+          def w(p,t): Path(p).write_text(t,encoding='utf-8')
+          def exact(p,o,n,c=1):
+              t=r(p); a=t.count(o)
+              if a!=c: raise SystemExit(f'{p}: expected {c}, got {a}: {o[:90]}')
+              w(p,t.replace(o,n,c))
+          def regex(p,pat,repl,c=1):
+              t=r(p); nt,n=re.subn(pat,lambda m: repl,t,count=c,flags=re.S)
+              if n!=c: raise SystemExit(f'{p}: regex expected {c}, got {n}: {pat[:90]}')
+              w(p,nt)
+          def commit(msg,paths):
+              subprocess.run(['git','add',*paths],check=True)
+              if subprocess.run(['git','diff','--cached','--quiet']).returncode:
+                  subprocess.run(['git','commit','-m',msg],check=True)
+
+          # 4. Resolve a concrete edition on the student-facing workshop page.
+          p='gestion_actividades/workshop_view.php'
+          t=r(p)
+          if 'use local_gestion_actividades\\local\\workshop_series;' not in t:
+              t=t.replace('use local_gestion_actividades\\local\\typeb_certificate_policy;\n','use local_gestion_actividades\\local\\typeb_certificate_policy;\nuse local_gestion_actividades\\local\\workshop_series;\n',1)
+          old="""$context = context_course::instance($course->id);
+          $canmanage = manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id);
+          $edition = manager::get_primary_workshop_edition($id);
+          $action = optional_param('action', '', PARAM_ALPHANUMEXT);
+          """
+          new="""$context = context_course::instance($course->id);
+          $requestededitionid = optional_param('editionid', 0, PARAM_INT);
+          $edition = null;
+          if ($requestededitionid > 0) {
+              $candidate = manager::get_workshop_edition($requestededitionid);
+              if ((int)$candidate->workshopid !== (int)$workshop->id
+                      || !empty($candidate->archived) || manager::is_edition_finished($candidate)) {
+                  throw new invalid_parameter_exception('La edición solicitada no está disponible para este taller.');
+              }
+              $series = workshop_series::series_for_edition((int)$candidate->id);
+              if ($series && (string)($series->status ?? '') === 'finished') {
+                  throw new invalid_parameter_exception('La edición de talleres ya está finalizada.');
+              }
+              $edition = $candidate;
+          } else {
+              $activeeditions = manager::get_active_editions_for_workshop((int)$workshop->id);
+              $now = time();
+              foreach ($activeeditions as $candidate) {
+                  $series = workshop_series::series_for_edition((int)$candidate->id);
+                  if ($series && (string)($series->status ?? '') === 'active'
+                          && (int)$series->datefrom <= $now && (int)$series->dateto >= $now) {
+                      $edition = $candidate;
+                      break;
+                  }
+              }
+              if (!$edition && $activeeditions) {
+                  $future = array_values(array_filter($activeeditions, static function($candidate) use ($now): bool {
+                      return (int)($candidate->sessiondate ?? 0) >= $now;
+                  }));
+                  usort($future, static function($a, $b): int {
+                      return ((int)$a->sessiondate <=> (int)$b->sessiondate) ?: ((int)$a->id <=> (int)$b->id);
+                  });
+                  if ($future) {
+                      $edition = reset($future);
+                  } else {
+                      $ordered = array_values($activeeditions);
+                      usort($ordered, static function($a, $b): int {
+                          return ((int)$b->sessiondate <=> (int)$a->sessiondate) ?: ((int)$b->id <=> (int)$a->id);
+                      });
+                      $edition = reset($ordered);
+                  }
+              }
+          }
+          $editionid = $edition ? (int)$edition->id : 0;
+          $canmanage = $edition ? manager::can_manage_edition($editionid, (int)$USER->id) : manager::can_manage_globally((int)$USER->id);
+          $action = optional_param('action', '', PARAM_ALPHANUMEXT);
+          """
+          if old not in t: raise SystemExit('workshop_view edition resolver block not found')
+          t=t.replace(old,new,1)
+          t=t.replace("$PAGE->set_url(new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id]));","$PAGE->set_url(new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id, 'editionid' => $editionid]));",1)
+          t=t.replace("new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id])","new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid])")
+          t=t.replace("new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id, 'action' => 'enrol', 'sesskey' => sesskey()])","new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $id, 'editionid' => $editionid, 'action' => 'enrol', 'sesskey' => sesskey()])")
+          w(p,t)
+          m='gestion_actividades/classes/local/manager.php'
+          t=r(m)
+          t=t.replace("$viewurl = new \\moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => (int)$workshop->id]);\n            $enrolurl = new \\moodle_url('/local/gestion_actividades/enrol.php', ['id' => (int)$edition->id]);","$viewurl = new \\moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => (int)$workshop->id, 'editionid' => (int)$edition->id]);\n            $enrolurl = new \\moodle_url('/local/gestion_actividades/enrol.php', ['id' => (int)$edition->id]);",1)
+          # Any workshop-card URL created where $edition exists should carry it.
+          t=t.replace("new \\moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id])","new \\moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id, 'editionid' => $edition ? (int)$edition->id : 0])")
+          w(m,t)
+          commit('fix: resolve student workshop view against a concrete edition',[p,m])
+
+          # 9. Canonical Type B reflection state comes from the Moodle Assignment.
+          g='gestion_actividades/classes/local/grade_manager.php'
+          old="""        if ($DB->get_manager()->table_exists(new \\xmldb_table('local_ga_typeb_reflections'))
+                      && $DB->get_manager()->table_exists(new \\xmldb_table('local_ga_edition_enrolments'))) {
+                      $columns = $DB->get_columns('local_ga_edition_enrolments');
+                      $attendancecondition = isset($columns['attended'])
+                          ? "(ee.attended = 1 OR ee.status = 'attended')"
+                          : "ee.status = 'attended'";
+                      $sql = "SELECT ee.userid, COUNT(ee.id) AS missingcount
+                                FROM {local_ga_edition_enrolments} ee
+                                JOIN {local_ga_workshop_editions} e ON e.id = ee.editionid
+                                JOIN {local_ga_workshops} w ON w.id = e.workshopid
+                           LEFT JOIN {local_ga_typeb_reflections} r ON r.editionid = ee.editionid AND r.userid = ee.userid
+                               WHERE ee.userid $usersql
+                                 AND w.workshoptype = 'typeb'
+                                 AND $attendancecondition
+                                 AND (r.id IS NULL OR r.reflectiontext IS NULL OR r.reflectiontext = '')
+                            GROUP BY ee.userid";
+                      foreach ($DB->get_records_sql($sql, $params) as $record) {
+                          $out[(int)$record->userid] += (int)$record->missingcount;
+                      }
+                  }
+          """
+          new="""        if ($DB->get_manager()->table_exists(new \\xmldb_table('local_ga_edition_enrolments'))) {
+                      $columns = $DB->get_columns('local_ga_edition_enrolments');
+                      $attendancecondition = isset($columns['attended'])
+                          ? "(ee.attended = 1 OR ee.status = 'attended')"
+                          : "ee.status = 'attended'";
+                      $sql = "SELECT ee.id, ee.userid, ee.editionid, e.requiredcmid
+                                FROM {local_ga_edition_enrolments} ee
+                                JOIN {local_ga_workshop_editions} e ON e.id = ee.editionid
+                                JOIN {local_ga_workshops} w ON w.id = e.workshopid
+                               WHERE ee.userid $usersql
+                                 AND w.workshoptype = 'typeb'
+                                 AND $attendancecondition";
+                      foreach ($DB->get_records_sql($sql, $params) as $record) {
+                          $submitted = false;
+                          if (!empty($record->requiredcmid)) {
+                              try {
+                                  $summary = typeb_reflection_activity::submission_summary((int)$record->editionid, (int)$record->userid);
+                                  $submitted = !empty($summary->submitted);
+                              } catch (\\Throwable $e) {
+                                  $submitted = false;
+                              }
+                          } else {
+                              $legacy = manager::get_typeb_reflection((int)$record->editionid, (int)$record->userid);
+                              $submitted = $legacy && trim((string)($legacy->reflectiontext ?? '')) !== '';
+                          }
+                          if (!$submitted) {
+                              $out[(int)$record->userid]++;
+                          }
+                      }
+                  }
+          """
+          exact(g,old,new)
+          # Rewrite only the Type B certificate-list function to validate linked assignments.
+          pat=r"    public static function list_user_typeb_workshop_certificates\(int \$userid\): array \{.*?\n    \}\n\n\n    public static function certificate_missing_requirements"
+          repl="""    public static function list_user_typeb_workshop_certificates(int $userid): array {
+                  global $DB;
+                  if ($userid <= 0 || !$DB->get_manager()->table_exists(new \\xmldb_table('local_ga_certificates'))) {
+                      return [];
+                  }
+                  $columns = $DB->get_columns('local_ga_certificates');
+                  if (!isset($columns['certificatetype'])) {
+                      return [];
+                  }
+                  $reflectionjoin = '';
+                  $reflectionfield = "'' AS reflectiontext";
+                  if ($DB->get_manager()->table_exists(new \\xmldb_table('local_ga_typeb_reflections'))) {
+                      $reflectionjoin = 'LEFT JOIN {local_ga_typeb_reflections} tr ON tr.editionid = cert.editionid AND tr.userid = cert.userid';
+                      $reflectionfield = 'tr.reflectiontext';
+                  }
+                  $sql = "SELECT cert.id, cert.userid, cert.courseid, cert.workshopid, cert.editionid,
+                                 cert.certcode, cert.filename, cert.status, cert.timeissued,
+                                 w.code AS workshopcode, w.name AS workshopname, w.hours,
+                                 c.fullname AS coursename,
+                                 e.name AS editionname, e.editioncode, e.requiredcmid, $reflectionfield
+                            FROM {local_ga_certificates} cert
+                            JOIN {local_ga_workshops} w ON w.id = cert.workshopid
+                            JOIN {course} c ON c.id = cert.courseid
+                       LEFT JOIN {local_ga_workshop_editions} e ON e.id = cert.editionid
+                                 $reflectionjoin
+                           WHERE cert.userid = :userid AND cert.certificatetype = 'typeb'
+                        ORDER BY cert.timeissued DESC, cert.id DESC";
+                  $records = $DB->get_records_sql($sql, ['userid' => $userid]);
+                  foreach ($records as $id => $record) {
+                      if (empty($record->requiredcmid)) {
+                          continue;
+                      }
+                      try {
+                          $summary = typeb_reflection_activity::submission_summary((int)$record->editionid, (int)$record->userid);
+                          if (empty($summary->submitted)) {
+                              unset($records[$id]);
+                              continue;
+                          }
+                          if (trim((string)($summary->text ?? '')) !== '') {
+                              $record->reflectiontext = (string)$summary->text;
+                          }
+                      } catch (\\Throwable $e) {
+                          unset($records[$id]);
+                      }
+                  }
+                  return $records;
+              }
+
+
+              public static function certificate_missing_requirements"""
+          regex(m,pat,repl)
+          commit('fix: verify Moodle reflection before counting Type B workshop records',[g,m])
+
+          # 10. Mechanical Bootstrap 5 class migration only.
+          roots=[Path('gestion_actividades'),Path('gestion_hee')]
+          changed=[]
+          pairs=[('badge badge-success','badge bg-success'),('badge badge-warning','badge bg-warning text-dark'),('badge badge-danger','badge bg-danger'),('badge badge-secondary','badge bg-secondary'),('float-right','float-end'),(' mr-',' me-'),(' ml-',' ms-'),('btn-block','d-block w-100'),('form-inline','d-flex flex-wrap align-items-center gap-2')]
+          for root in roots:
+              for f in root.rglob('*'):
+                  if not f.is_file() or f.suffix.lower() not in {'.php','.css','.mustache','.js'}: continue
+                  text=f.read_text(encoding='utf-8'); nt=text
+                  for a,b in pairs: nt=nt.replace(a,b)
+                  nt=re.sub(r"(<select[^>]*class=['\"])form-control(\b)",r"\1form-select\2",nt,flags=re.I)
+                  if nt!=text:
+                      f.write_text(nt,encoding='utf-8'); changed.append(str(f))
+          if changed: commit('chore: migrate HEE interface classes to Bootstrap 5',changed)
+          PY
+          find gestion_actividades gestion_hee -type f -name '*.php' -print0 | xargs -0 -n1 php -l >/dev/null
+          python3 - <<'PY'
+          import pathlib,xml.etree.ElementTree as ET
+          for p in pathlib.Path('.').glob('**/*.xml'):
+              if '.git' not in p.parts: ET.parse(p)
+          PY
+          rm .github/workflows/hee-maintenance-b.yml
+          git add .github/workflows/hee-maintenance-b.yml
+          git commit -m "chore: remove temporary HEE maintenance B workflow"
+          git push origin HEAD:main
