@@ -64,6 +64,7 @@ Internamente se conservan los nombres históricos `workshop`, `workshop_series` 
 - La última entrega Moodle en estado `submitted` es la fuente de verdad; la tabla legacy `local_ga_typeb_reflections` no puede rescatar una entrega eliminada.
 - Al finalizar/archivar la edición se cierra la entrega de nuevas reflexiones.
 - Profesor HEE o Gestor HEE puede conceder a un alumno concreto una prórroga de 7 días mediante la extensión nativa de `assign` y retirarla.
+- Si la Edición de seminarios ya está finalizada, la prórroga no reabre la edición: su sección padre queda técnicamente visible solo mientras exista una extensión vigente, restringida por el grupo de la edición y por la fecha límite. Así el enlace directo a la reflexión sigue funcionando sin exponer el histórico al resto del curso; al vencer la fecha, la disponibilidad temporal bloquea de nuevo el acceso.
 - El certificado solo puede generarse/regenerarse cuando se cumplen asistencia y reflexión.
 
 ## Tipo B externo
@@ -213,7 +214,7 @@ Punto de partida verificado: `e9ca208`, local 1.5.115-alpha (`2026100530`), bloq
 - **Baja de alumnos y plaza manual**: `edition_students.php` incorpora «Dar de baja» (POST + sesskey + confirmación) para Profesor HEE / Gestor HEE de la edición. `manager::unenrol_user_from_edition()` conserva el registro como `cancelled`, borra su asistencia, lo saca del grupo Moodle y actualiza el bloque; no permite la baja si ya tiene certificado. Las incorporaciones manuales que crean plaza extra se marcan (`reason = MANUAL_SEAT_REASON`) y, al darlas de baja, se resta esa plaza de forma atómica (nunca por debajo de 1). Las plazas manuales creadas antes de esta versión no llevan marca y no se restan.
 - **Archivado de actividades**: el «hard archive» heredado sacaba la actividad de la secuencia de su sección; Moodle deja entonces de resolverla (sin acceso, sin revisión, sin enlace) y no la recupera al reconstruir la caché. Además se aplicaba a todo el curso, dejando inaccesibles los cuestionarios/reflexiones de otras ediciones activas al finalizar una edición o vincular una actividad, y la limpieza por nombre podía borrar apuntes de otras ediciones del mismo seminario base. Ahora: el contenido de una Edición de seminarios nunca se saca de la secuencia ni se borra por esas limpiezas; al finalizar una edición sus actividades se **ocultan y se mueven al final de su sección**; la reflexión Tipo B queda accesible (oculta en la página si el sitio permite actividades «stealth») para la prórroga individual; `move_workshop_modules()` repara módulos huérfanos de versiones anteriores. Las ediciones heredadas fuera de una serie mantienen el comportamiento anterior.
 - **Ampliación automática de la Edición de seminarios**: si al editar o añadir un seminario su fecha/horario queda fuera del rango de su Edición, la Edición se amplía automáticamente (`workshop_series::extend_to_cover()`) con aviso, en lugar de rechazar el cambio. Aplica al formulario del seminario, a `attach_workshop()` y a la importación Excel (la previsualización avisa de las filas que ampliarán la Edición). No cambia el estado de la Edición y sigue impidiendo solapamientos con otra Edición que contenga el mismo seminario base.
-- Limitación: si se finaliza la Edición de seminarios completa, su sección queda oculta y el alumnado ya no puede abrir sus actividades, tampoco con prórroga.
+- **Prórroga Tipo B tras finalizar la Edición — resuelta 2026-10-06:** Moodle bloquea una actividad si su sección padre está oculta, aunque exista `assign_user_flags.extensionduedate`. `workshop_series::section_access_state()` mantiene el histórico oculto normalmente, pero cuando hay una extensión vigente habilita técnicamente la sección con disponibilidad Moodle restringida por **grupo de la edición + fecha de fin de la extensión**. `typeb_certificate_policy::set_late_reflection_permission()` garantiza/sincroniza el grupo y refresca ese acceso al conceder o retirar el permiso. La edición sigue en estado `finished`; no vuelve a vigente. Pendiente de confirmar este flujo en Moodle 5 real.
 
 `move_section_to()`: se mantiene. En Moodle 5.2 está deprecada (`#[deprecated]`, MDL-86862) y emite aviso de depuración, pero sigue funcionando como envoltorio de `core_courseformat\local\sectionactions::move_at()`; su retirada está prevista para Moodle 6.0 (MDL-87419). No se ha verificado que `move_at()` exista en Moodle 5.0/5.1, así que migrar ahora podría romper esas versiones: queda para cuando se fije la versión mínima.
 
@@ -247,7 +248,7 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Verificar con 53,9 h que no aparece autoevaluación y con 54 h que aparece.
 - Verificar cuestionario auto-generado y cuestionario existente seleccionado manualmente.
 - Tipo A: cuestionario, nota mínima y certificados.
-- Tipo B interno: reflexión texto/archivo, eliminación/reenvío, prórroga y certificado.
+- Tipo B interno: reflexión texto/archivo, eliminación/reenvío, prórroga y certificado. Probar expresamente una prórroga concedida **después de finalizar la Edición de seminarios**: solo el grupo de la edición debe poder alcanzar la sección durante la ventana temporal y el alumno con extensión debe poder abrir/entregar la tarea; al vencer o retirar el permiso debe quedar de nuevo inaccesible.
 - Tipo B externo: subida → validación → reflexión → horas.
 - Portafolio alumno: comprobar que A/B/total coinciden con el bloque, que aparecen todos los estados Tipo B externo, que **Completar reflexión** abre el flujo correcto y que tras guardar la reflexión se actualizan horas/estado.
 - Portafolio alumno: comprobar PDF y ZIP desde la nueva zona de descargas y que los documentos mantienen los mismos totales canónicos.
@@ -263,5 +264,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.118-alpha** (`2026100533`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.119-alpha** (`2026100534`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.25-alpha** (`2026100509`).
