@@ -66,9 +66,12 @@ class bulk_workshops {
             $seen[$row['code']] = true;
             if ($row['code'] !== '' && $DB->record_exists('local_ga_workshops', ['courseid' => $courseid, 'code' => $row['code']])) $row['errors'][] = 'Ya existe ese código en el curso.';
 
-            if ($row['type'] === 'typeb' && $row['createquiz']) {
-                $row['createquiz'] = false;
-                $row['warnings'][] = 'Tipo B: el cuestionario se ignora.';
+            if ($row['type'] === 'typeb') {
+                if ($row['createquiz']) {
+                    $row['createquiz'] = false;
+                    $row['warnings'][] = 'Tipo B: el cuestionario se ignora; se creará automáticamente una tarea Moodle de reflexión.';
+                }
+                $row['warnings'][] = 'Tipo B: se creará automáticamente una tarea de reflexión con texto en línea y archivo adjunto opcional.';
             }
             if ($row['createquiz'] && $row['quizclose'] <= 0) $row['warnings'][] = 'Sin cierre de cuestionario: conservará la fecha del modelo.';
 
@@ -107,7 +110,15 @@ class bulk_workshops {
             }
         }
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-        $summary = (object)['created' => 0, 'skipped' => count($rows) - count($validrows), 'quizcreated' => 0, 'notescreated' => 0, 'seriesid' => $seriesid, 'messages' => []];
+        $summary = (object)[
+            'created' => 0,
+            'skipped' => count($rows) - count($validrows),
+            'quizcreated' => 0,
+            'reflectioncreated' => 0,
+            'notescreated' => 0,
+            'seriesid' => $seriesid,
+            'messages' => [],
+        ];
         $transaction = $DB->start_delegated_transaction();
         try {
             $order = workshop_series::next_sortorder($seriesid);
@@ -122,15 +133,21 @@ class bulk_workshops {
                     'name' => $row['name'], 'editioncode' => $row['editioncode'], 'sessiondate' => $row['sessiondate'],
                     'enrolenddate' => $row['enrolenddate'], 'places' => $row['places'], 'groupid' => 0,
                     'attendancecmid' => 0, 'certificatecmid' => 0, 'requiredcmid' => 0,
-                    'requiredmodname' => $row['type'] === 'typea' ? 'assign' : '',
-                    'activitycreationtype' => $row['type'] === 'typea' ? 'assign' : '',
+                    'requiredmodname' => 'assign',
+                    'activitycreationtype' => 'assign',
                     'status' => 'open', 'teachers' => $row['teacherids'],
                 ]);
                 $edition = manager::get_workshop_edition($editionid);
                 $groupid = (int)($edition->groupid ?? 0);
                 $notescmid = 0;
 
-                if (!empty($row['createquiz'])) {
+                if ($row['type'] === 'typeb') {
+                    $reflection = typeb_reflection_activity::ensure_for_edition($editionid);
+                    if (empty($reflection->success)) {
+                        throw new \RuntimeException($row['code'] . ': ' . ($reflection->message ?? 'no se pudo crear la tarea de reflexión Tipo B.'));
+                    }
+                    $summary->reflectioncreated++;
+                } else if (!empty($row['createquiz'])) {
                     require_once($CFG->dirroot . '/course/lib.php');
                     $assigncmid = 0;
                     if (!empty($edition->requiredassigncmid)) $assigncmid = (int)$edition->requiredassigncmid;
@@ -220,7 +237,8 @@ class bulk_workshops {
         $sheet = $book->getActiveSheet();
         $sheet->setTitle('TALLERES');
         $sheet->fromArray(['Código','Nombre','Tipo','Descripción','Fecha','Inicio','Fin','Horas','Plazas','Cierre inscripción','Email profesor','Crear apuntes','Crear cuestionario','Cierre cuestionario','Código edición'], null, 'A1');
-        $sheet->fromArray(['TALLER-01','Nombre del taller','A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','','Sí','Sí','23/09/2026 23:59','TALLER01_E1'], null, 'A2');
+        $sheet->fromArray(['TALLER-01','Nombre del taller Tipo A','A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','','Sí','Sí','23/09/2026 23:59','TALLER01_E1'], null, 'A2');
+        $sheet->fromArray(['TALLER-B01','Nombre del taller Tipo B','B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','','Sí','No','','TALLERB01_E1'], null, 'A3');
         foreach (range('A','O') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
         $sheet->freezePane('A2');
         $path = tempnam(make_temp_directory(self::TEMPDIR), 'tpl_');
