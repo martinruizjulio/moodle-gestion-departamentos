@@ -1,8 +1,8 @@
 <?php
 require_once(__DIR__ . '/../../config.php');
 
+use local_gestion_actividades\local\bulk_workshops;
 use local_gestion_actividades\local\manager;
-use local_gestion_actividades\local\workshop_bulk_import;
 
 require_login();
 $context = context_system::instance();
@@ -18,7 +18,7 @@ $notestemplatecmid = optional_param('notestemplatecmid', 0, PARAM_INT);
 
 if ($action === 'template') {
     require_sesskey();
-    workshop_bulk_import::send_template();
+    bulk_workshops::send_template();
 }
 
 $preview = [];
@@ -30,11 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if ($action === 'upload') {
             if ($courseid <= 0) throw new RuntimeException('Selecciona el curso antes de subir la plantilla.');
-            $token = workshop_bulk_import::save_uploaded_file($_FILES['workshopfile'] ?? []);
-            $preview = workshop_bulk_import::preview($token, $courseid);
+            $token = bulk_workshops::save_uploaded_file($_FILES['workshopfile'] ?? []);
+            $preview = bulk_workshops::preview($token, $courseid);
         } else if ($action === 'confirm') {
             if ($courseid <= 0 || $token === '') throw new RuntimeException('La importación ha caducado. Vuelve a subir el Excel.');
-            $result = workshop_bulk_import::import($token, $courseid, $quiztemplatecmid, $notestemplatecmid);
+            $result = bulk_workshops::import($token, $courseid, $quiztemplatecmid, $notestemplatecmid);
             $token = '';
         }
     } catch (Throwable $e) {
@@ -58,7 +58,7 @@ echo $OUTPUT->heading('Importación masiva de talleres desde Excel');
 echo html_writer::tag('p', 'Esta vía no sustituye la creación manual. Los talleres importados quedan como talleres normales y pueden editarse después uno a uno.', ['class' => 'lead']);
 
 echo html_writer::start_div('alert alert-info');
-echo '<strong>Flujo:</strong> descarga la plantilla, completa una fila por taller, súbela, revisa la previsualización y confirma. El sistema reutiliza la creación normal de edición, grupo e inscripción. Para los cuestionarios selecciona un cuestionario Moodle modelo vacío del mismo curso; se duplicará y se restringirá al grupo de cada taller.';
+echo '<strong>Flujo:</strong> descarga la plantilla, completa una fila por taller, súbela, revisa la previsualización y confirma. El sistema reutiliza la creación normal de edición, grupo, inscripción y asistencia. Para los cuestionarios selecciona un cuestionario Moodle modelo vacío del mismo curso; se duplicará y se restringirá al grupo de cada taller.';
 echo html_writer::end_div();
 
 if ($error !== '') echo $OUTPUT->notification(s($error), 'error');
@@ -105,10 +105,10 @@ if ($token === '' && !$result) {
 
 if ($token !== '' && $courseid > 0) {
     if (!$preview) {
-        try { $preview = workshop_bulk_import::preview($token, $courseid); } catch (Throwable $e) { $error = $e->getMessage(); }
+        try { $preview = bulk_workshops::preview($token, $courseid); } catch (Throwable $e) { $error = $e->getMessage(); }
     }
-    $quizoptions = workshop_bulk_import::quiz_templates($courseid);
-    $notesoptions = workshop_bulk_import::notes_templates($courseid);
+    $quizoptions = bulk_workshops::quiz_templates($courseid);
+    $notesoptions = bulk_workshops::notes_templates($courseid);
 
     echo html_writer::tag('h3', '3. Previsualización', ['class' => 'h4']);
     $table = new html_table();
@@ -142,7 +142,7 @@ if ($token !== '' && $courseid > 0) {
     echo html_writer::start_div('card mb-4');
     echo html_writer::start_div('card-body');
     echo html_writer::tag('h3', '4. Modelos Moodle y confirmación', ['class' => 'h5']);
-    echo html_writer::tag('p', 'Selecciona un cuestionario modelo vacío. Moodle lo duplicará para cada Taller Tipo A marcado con “Crear cuestionario = Sí”. Las preguntas podrán añadirse o importarse después por la vía convencional de Moodle.', ['class' => 'text-muted']);
+    echo html_writer::tag('p', 'Selecciona un cuestionario modelo vacío. Moodle lo duplicará para cada Taller Tipo A marcado con “Crear cuestionario = Sí”. Las preguntas se podrán crear o importar después por la vía convencional de Moodle.', ['class' => 'text-muted']);
     echo html_writer::start_tag('form', ['method' => 'post']);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'confirm']);
