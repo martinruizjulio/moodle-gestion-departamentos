@@ -19,7 +19,7 @@ jobs:
         with:
           php-version: '8.1'
           coverage: none
-      - name: Remove residual runtime DDL helper and bump version
+      - name: Final source cleanup and version bump
         shell: bash
         run: |
           set -euo pipefail
@@ -37,14 +37,23 @@ jobs:
               raise SystemExit('Residual institutional_hours runtime DDL helper was not found exactly once')
           path.write_text(text, encoding='utf-8')
 
+          for root in (Path('gestion_actividades'), Path('gestion_hee')):
+              for file in root.rglob('*'):
+                  if not file.is_file() or file.suffix.lower() not in {'.php', '.css', '.mustache', '.js'}:
+                      continue
+                  source = file.read_text(encoding='utf-8')
+                  updated = source.replace('mr-', 'me-').replace('ml-', 'ms-')
+                  if updated != source:
+                      file.write_text(updated, encoding='utf-8')
+
           version = Path('gestion_actividades/version.php')
           vtext = version.read_text(encoding='utf-8')
           vtext = re.sub(r'\$plugin->version\s*=\s*\d+;', '$plugin->version = 2026100514;', vtext)
           vtext = re.sub(r"\$plugin->release\s*=\s*'[^']+';", "$plugin->release = '1.5.99-alpha';", vtext)
           version.write_text(vtext, encoding='utf-8')
           PY
-          git add gestion_actividades/classes/local/institutional_hours.php gestion_actividades/version.php
-          git commit -m "chore: remove residual runtime DDL and bump audited version"
+          git add gestion_actividades gestion_hee
+          git commit -m "chore: finish reviewer-oriented source cleanup"
       - name: PHP syntax
         shell: bash
         run: |
@@ -66,7 +75,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -n -E '->(create_table|add_field|add_index)\(' gestion_actividades/classes gestion_actividades/*.php --include='*.php'; then
+          if grep -R -n -E -- '->(create_table|add_field|add_index)\(' gestion_actividades/classes gestion_actividades/*.php --include='*.php'; then
             echo 'Runtime DDL remains outside db/upgrade.php' >&2
             exit 1
           fi
@@ -88,6 +97,7 @@ jobs:
           fi
           grep -q '2026100513' gestion_actividades/db/upgrade.php
           grep -q 'NAME="seriesid"' gestion_actividades/db/install.xml
+          grep -q '2026100514' gestion_actividades/version.php
       - name: Remove temporary workflow and publish
         shell: bash
         run: |
