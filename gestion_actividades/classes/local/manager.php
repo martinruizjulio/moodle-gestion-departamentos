@@ -1887,6 +1887,7 @@ class manager {
             $editions = $DB->get_records('local_ga_workshop_editions', ['workshopid' => $workshopid]);
             foreach ($editions as $edition) {
                 if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_teachers'))) {
+                    self::invalidate_teacher_block_cache([], [(int)$edition->id]);
                     $DB->delete_records('local_ga_edition_teachers', ['editionid' => $edition->id]);
                 }
                 if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
@@ -2054,6 +2055,7 @@ class manager {
             'editiondeleted' => 0,
         ];
 
+        self::invalidate_teacher_block_cache([], [(int)$editionid]);
         $DB->delete_records('local_ga_edition_teachers', ['editionid' => $editionid]);
         $DB->delete_records('local_ga_edition_enrolments', ['editionid' => $editionid]);
 
@@ -2412,9 +2414,31 @@ class manager {
         return $editionid;
     }
 
+    /**
+     * Refresh the Profesor HEE block counters (vigentes / finalizados) of the
+     * given teachers, or of every teacher assigned to the given editions.
+     */
+    public static function invalidate_teacher_block_cache(array $userids = [], array $editionids = []): void {
+        global $DB;
+        if (!class_exists('\\block_gestion_hee\\local\\teacher_workshops_cache')) {
+            return;
+        }
+        try {
+            $editionids = array_values(array_filter(array_map('intval', $editionids)));
+            if ($editionids && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_teachers'))) {
+                [$insql, $params] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'it');
+                $userids = array_merge($userids, $DB->get_fieldset_select('local_ga_edition_teachers', 'userid', "editionid $insql", $params));
+            }
+            \block_gestion_hee\local\teacher_workshops_cache::invalidate_users($userids);
+        } catch (\Throwable $e) {
+            debugging('No se pudo refrescar la caché docente de Gestión HEE: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
     public static function save_edition_teachers(int $editionid, array $teachers): void {
         global $DB;
 
+        $previous = $DB->get_fieldset_select('local_ga_edition_teachers', 'userid', 'editionid = :editionid', ['editionid' => $editionid]);
         $DB->delete_records('local_ga_edition_teachers', ['editionid' => $editionid]);
 
         $seen = [];
@@ -2435,6 +2459,7 @@ class manager {
                 continue;
             }
         }
+        self::invalidate_teacher_block_cache(array_merge($previous, array_keys($seen)));
     }
 
     public static function get_edition_teachers(int $editionid): array {
@@ -4507,6 +4532,8 @@ class manager {
             $edition->timemodified = $now;
         }
         $DB->update_record('local_ga_workshop_editions', self::filter_record_to_existing_fields('local_ga_workshop_editions', $edition));
+        // The edition moves from "vigentes" to "finalizados" for its teachers.
+        self::invalidate_teacher_block_cache([], [$editionid]);
 
         if (!empty($edition->requiredcmid)) {
             try {

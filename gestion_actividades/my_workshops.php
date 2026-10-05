@@ -26,7 +26,7 @@ $seriesjoin = $hasseries
     ? ' LEFT JOIN {local_ga_workshop_series} s ON s.id = e.seriesid'
     : '';
 $seriesfinished = $hasseries ? " OR COALESCE(s.status, '') = 'finished'" : '';
-$finishedsql = "(e.archived = 1 OR e.status IN ('archived','finished','completed','closed_full','closed_finished')$seriesfinished)";
+$finishedsql = "(COALESCE(e.archived, 0) = 1 OR COALESCE(e.status, '') IN ('archived','finished','completed','closed_finished')$seriesfinished)";
 $condition = $view === 'finished' ? $finishedsql : "NOT " . $finishedsql;
 $sql = "SELECT e.id AS editionid, e.workshopid, e.editioncode, e.name AS editionname,
                e.sessiondate, e.status, e.archived, e.places,

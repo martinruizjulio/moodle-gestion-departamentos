@@ -87,7 +87,7 @@ class teacher_workshops_cache {
             ? ' LEFT JOIN {local_ga_workshop_series} s ON s.id = e.seriesid'
             : '';
         $seriesfinished = $hasseries ? " OR COALESCE(s.status, '') = 'finished'" : '';
-        $finished = "(e.archived = 1 OR e.status IN ('archived','finished','completed','closed_full','closed_finished')$seriesfinished)";
+        $finished = "(COALESCE(e.archived, 0) = 1 OR COALESCE(e.status, '') IN ('archived','finished','completed','closed_finished')$seriesfinished)";
 
         $sql = "SELECT
                     SUM(CASE WHEN $finished THEN 0 ELSE 1 END) AS activecount,

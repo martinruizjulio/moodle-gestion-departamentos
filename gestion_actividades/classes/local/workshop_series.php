@@ -253,6 +253,12 @@ class workshop_series {
             'timemodified' => time(),
         ]);
         self::ensure_course_structure($seriesid);
+        // Closing/reopening the Edición de talleres moves its workshops between
+        // "vigentes" and "finalizados" in the Profesor HEE block immediately.
+        $editionids = self::editions_have_seriesid()
+            ? $DB->get_fieldset_select('local_ga_workshop_editions', 'id', 'seriesid = :seriesid', ['seriesid' => $seriesid])
+            : [];
+        manager::invalidate_teacher_block_cache([], $editionids);
     }
 
     public static function ensure_course_structure(int $seriesid): void {
