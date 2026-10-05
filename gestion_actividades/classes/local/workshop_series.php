@@ -270,13 +270,38 @@ class workshop_series {
         rebuild_course_cache((int)$course->id, true);
     }
 
-    public static function render_calendar_html(int $seriesid): string {
+    /**
+     * Resolve the edition of a workshop that belongs to this series date range.
+     * This prevents old/new reused workshop records from showing an arbitrary
+     * edition in the calendar.
+     */
+    private static function edition_for_series_item(\stdClass $series, \stdClass $item): ?\stdClass {
         global $DB;
+        $params = [
+            'workshopid' => (int)$item->workshopid,
+            'datefrom' => (int)$series->datefrom,
+            'dateto' => (int)$series->dateto,
+        ];
+        $sql = "SELECT *
+                  FROM {local_ga_workshop_editions}
+                 WHERE workshopid = :workshopid
+                   AND sessiondate >= :datefrom
+                   AND sessiondate <= :dateto
+              ORDER BY sessiondate DESC, id DESC";
+        $records = $DB->get_records_sql($sql, $params, 0, 1);
+        if ($records) {
+            return reset($records);
+        }
+        $records = $DB->get_records('local_ga_workshop_editions', ['workshopid' => (int)$item->workshopid], 'sessiondate DESC, id DESC', '*', 0, 1);
+        return $records ? reset($records) : null;
+    }
+
+    public static function render_calendar_html(int $seriesid): string {
         $series = self::get($seriesid);
         $items = self::items($seriesid);
-        $cards = [];
+        $rows = [];
         foreach ($items as $item) {
-            $edition = $DB->get_record('local_ga_workshop_editions', ['workshopid' => $item->workshopid], '*', IGNORE_MULTIPLE);
+            $edition = self::edition_for_series_item($series, $item);
             if (!$edition) {
                 continue;
             }
@@ -285,7 +310,7 @@ class workshop_series {
             foreach ($teachers as $teacher) {
                 $teachernames[] = fullname($teacher);
             }
-            $date = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%A %d/%m/%Y') : 'Fecha pendiente';
+            $date = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%d/%m/%Y') : 'Pendiente';
             $starttime = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%H:%M') : '';
             $endtime = !empty($item->sessionenddate) ? userdate((int)$item->sessionenddate, '%H:%M') : '';
             $time = $starttime;
@@ -293,18 +318,33 @@ class workshop_series {
                 $time .= '–' . $endtime;
             }
             $deadline = !empty($edition->enrolenddate) ? userdate((int)$edition->enrolenddate, '%d/%m/%Y %H:%M') : '-';
-            $cards[] = '<article style="border:1px solid #d7ddd2;border-radius:12px;background:#fff;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.05)">' .
-                '<div style="font-size:.78rem;font-weight:700;letter-spacing:.04em;color:#65735e;text-transform:uppercase">Taller ' . sprintf('%02d', (int)$item->sortorder) . '</div>' .
-                '<h4 style="margin:.25rem 0 .65rem;font-size:1.05rem;color:#29451f">' . s($item->name) . '</h4>' .
-                '<div><strong>' . s($date) . '</strong>' . ($time !== '' ? ' · ' . s($time) : '') . '</div>' .
-                '<div style="margin-top:.35rem;color:#4e5a49">' . format_float((float)$item->hours, 2, true) . ' h' . (!empty($teachernames) ? ' · ' . s(implode(', ', $teachernames)) : '') . '</div>' .
-                '<div style="margin-top:.35rem;color:#687064;font-size:.9rem">Inscripción hasta: ' . s($deadline) . ' · Plazas: ' . (int)$edition->places . '</div>' .
-                '</article>';
+            $rows[] = '<tr>' .
+                '<td style="white-space:nowrap;font-weight:700">' . sprintf('%02d', (int)$item->sortorder) . '</td>' .
+                '<td><strong>' . s($item->name) . '</strong></td>' .
+                '<td style="white-space:nowrap">' . s($date) . '</td>' .
+                '<td style="white-space:nowrap">' . s($time !== '' ? $time : '-') . '</td>' .
+                '<td style="white-space:nowrap;text-align:center">' . format_float((float)$item->hours, 2, true) . ' h</td>' .
+                '<td>' . s($teachernames ? implode(', ', $teachernames) : '-') . '</td>' .
+                '<td style="white-space:nowrap;text-align:center">' . (int)$edition->places . '</td>' .
+                '<td style="white-space:nowrap">' . s($deadline) . '</td>' .
+                '</tr>';
         }
         $range = userdate((int)$series->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$series->dateto, '%d/%m/%Y');
+        $body = $rows ? implode('', $rows) : '<tr><td colspan="8" style="padding:16px;text-align:center;color:#687064">No hay talleres publicados en esta edición.</td></tr>';
         return '<div class="ga-workshop-calendar" style="max-width:1180px;margin:0 auto">' .
-            '<div style="margin-bottom:16px"><h3 style="margin-bottom:4px">' . s($series->title) . '</h3><div style="color:#64705e">' . s($range) . '</div></div>' .
-            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">' . implode('', $cards) . '</div></div>';
+            '<div style="margin-bottom:14px"><h3 style="margin:0 0 3px">' . s($series->title) . '</h3><div style="color:#64705e">' . s($range) . '</div></div>' .
+            '<div style="overflow-x:auto;border:1px solid #d7ddd2;border-radius:10px;background:#fff">' .
+            '<table style="width:100%;border-collapse:collapse;min-width:900px">' .
+            '<thead><tr style="background:#f4f7f2;color:#29451f">' .
+            '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">#</th>' .
+            '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Taller</th>' .
+            '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Fecha</th>' .
+            '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Horario</th>' .
+            '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:center">Horas</th>' .
+            '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Profesorado</th>' .
+            '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:center">Plazas</th>' .
+            '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Cierre inscripción</th>' .
+            '</tr></thead><tbody>' . $body . '</tbody></table></div></div>';
     }
 
     private static function subsections_supported(): bool {
