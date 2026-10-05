@@ -435,7 +435,7 @@ class workshop_series {
      * late Type B reflection permission.
      */
     public static function refresh_section_access(int $seriesid): void {
-        global $DB;
+        global $DB, $CFG;
         $series = self::get($seriesid);
         if (empty($series->sectionid)) {
             return;
@@ -456,7 +456,7 @@ class workshop_series {
             $changes['availability'] = $access->availability;
         }
         if ($changes) {
-            require_once($GLOBALS['CFG']->dirroot . '/course/lib.php');
+            require_once($CFG->dirroot . '/course/lib.php');
             course_update_section((int)$series->courseid, $section, $changes);
             rebuild_course_cache((int)$series->courseid, true);
         }
