@@ -4,6 +4,8 @@ namespace local_gestion_actividades\local;
 defined('MOODLE_INTERNAL') || die();
 
 class portfolio_typeb {
+    public const STATUS_VALIDATED_PENDING_REFLECTION = 'validated_pending_reflection';
+
     public static function ensure_table(): void {
         global $DB;
         $dbman = $DB->get_manager();
@@ -133,7 +135,11 @@ class portfolio_typeb {
             return false;
         }
         $record = self::get($id);
-        $record->status = $status;
+        $storedstatus = $status;
+        if ($status === 'validated' && trim((string)($record->reflectiontext ?? '')) === '') {
+            $storedstatus = self::STATUS_VALIDATED_PENDING_REFLECTION;
+        }
+        $record->status = $storedstatus;
         $record->reviewcomment = $comment;
         $record->reviewedby = $reviewerid;
         $record->timereviewed = time();
@@ -154,11 +160,12 @@ class portfolio_typeb {
             return false;
         }
         $record = self::get($id);
-        if ((int)$record->userid !== $userid || (string)$record->status !== 'validated') {
+        if ((int)$record->userid !== $userid || !in_array((string)$record->status, [self::STATUS_VALIDATED_PENDING_REFLECTION, 'validated'], true)) {
             return false;
         }
         $DB->update_record('local_ga_typeb_certs', (object)[
             'id' => $id,
+            'status' => 'validated',
             'reflectiontext' => $reflectiontext,
             'reflectiontime' => time(),
             'timemodified' => time(),
