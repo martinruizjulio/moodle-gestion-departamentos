@@ -428,7 +428,7 @@ class grade_manager {
                 $courseid,
                 self::ITEM_FINAL,
                 'Nota Final',
-                'Nota Talleres A × 60% + Portafolio × 30% + Autoevaluación × 10%.'
+                'Nota Seminarios A × 60% + Portafolio × 30% + Autoevaluación × 10%.'
             ),
             'hoursaccess' => self::ensure_manual_grade_item(
                 $courseid,

@@ -100,7 +100,7 @@ echo html_writer::tag('h3', 'Traspasos realizados', ['class' => 'h4 mt-4']);
 if ($transfers) {
     $t = new html_table();
     $t->attributes['class'] = 'generaltable table-sm';
-    $t->head = ['Taller A traspasado', 'Horas traspasadas', 'Texto obligatorio', 'Fecha'];
+    $t->head = ['Seminario A traspasado', 'Horas traspasadas', 'Texto obligatorio', 'Fecha'];
     foreach ($transfers as $row) {
         $name = trim((string)($row->workshopcode ?? '') . ' - ' . (string)($row->workshopname ?? ''));
         $t->data[] = [

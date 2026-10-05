@@ -87,7 +87,7 @@ if ($format === 'pdf') {
         . '<th width="15%">Apellidos</th>'
         . '<th width="13%">Nombre</th>'
         . '<th width="19%">Email</th>'
-        . '<th width="9%">Talleres A</th>'
+        . '<th width="9%">Seminarios A</th>'
         . '<th width="8%">Portafolio</th>'
         . '<th width="10%">Autoevaluación</th>'
         . '<th width="8%">Nota Final</th>'
