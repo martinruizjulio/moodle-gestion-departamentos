@@ -77,7 +77,7 @@ function local_ga_dl_count_records_safe(string $tablename): int {
     return $DB->count_records($tablename);
 }
 
-function local_ga_dl_series_sql(): stdClass {
+function local_ga_dl_series_sql(bool $haseditions): stdClass {
     global $DB;
     $result = (object)[
         'joins' => '',
@@ -87,8 +87,19 @@ function local_ga_dl_series_sql(): stdClass {
             || !$DB->get_manager()->table_exists(new xmldb_table('local_ga_workshop_series'))) {
         return $result;
     }
-    $result->joins = "LEFT JOIN {local_ga_series_items} si ON si.workshopid = w.id
-                      LEFT JOIN {local_ga_workshop_series} ws ON ws.id = si.seriesid";
+    $editionhasseriesid = $haseditions
+        && $DB->get_manager()->table_exists(new xmldb_table('local_ga_workshop_editions'))
+        && array_key_exists('seriesid', $DB->get_columns('local_ga_workshop_editions'));
+    if ($editionhasseriesid) {
+        $result->joins = "LEFT JOIN {local_ga_series_items} si
+                               ON si.workshopid = w.id
+                              AND si.seriesid = e.seriesid
+                          LEFT JOIN {local_ga_workshop_series} ws ON ws.id = si.seriesid";
+    } else {
+        // Compatibility fallback for old schemas without edition.seriesid.
+        $result->joins = "LEFT JOIN {local_ga_series_items} si ON si.workshopid = w.id
+                          LEFT JOIN {local_ga_workshop_series} ws ON ws.id = si.seriesid";
+    }
     $result->fields = "ws.id AS seriesid, ws.title AS seriestitle, ws.datefrom AS seriesdatefrom, si.sortorder AS seriessortorder";
     return $result;
 }
@@ -104,7 +115,7 @@ function local_ga_dl_workshop_rows(): array {
     $editionfields = $editionsql !== ''
         ? "e.id AS editionid, e.name AS editionname, e.editioncode, e.sessiondate, e.enrolenddate, e.places, e.status AS editionstatus, e.archived"
         : "0 AS editionid, '' AS editionname, '' AS editioncode, 0 AS sessiondate, 0 AS enrolenddate, 0 AS places, '' AS editionstatus, 0 AS archived";
-    $series = local_ga_dl_series_sql();
+    $series = local_ga_dl_series_sql($editionsql !== '');
     $orderby = $editionsql !== ''
         ? 'COALESCE(ws.datefrom, e.sessiondate, 0) DESC, COALESCE(ws.id,0) DESC, COALESCE(si.sortorder,999999) ASC, e.sessiondate DESC, e.id DESC, w.code ASC'
         : 'w.code ASC';
