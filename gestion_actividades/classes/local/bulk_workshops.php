@@ -101,13 +101,20 @@ class bulk_workshops {
         }
         $rows = self::preview($token, $courseid);
         $validrows = array_values(array_filter($rows, function($row) { return !empty($row['ok']); }));
+        $minstart = 0;
+        $maxend = 0;
         foreach ($validrows as $row) {
             if (!empty($row['createquiz']) && $quiztemplatecmid <= 0) {
                 throw new \RuntimeException('Hay talleres que requieren cuestionario. Selecciona un cuestionario Moodle modelo antes de confirmar.');
             }
-            if ($row['sessiondate'] < (int)$series->datefrom || $row['sessionenddate'] > (int)$series->dateto) {
-                throw new \RuntimeException($row['code'] . ': el horario del taller queda fuera de las fechas de la edición.');
-            }
+            $minstart = $minstart > 0 ? min($minstart, (int)$row['sessiondate']) : (int)$row['sessiondate'];
+            $maxend = max($maxend, (int)$row['sessionenddate']);
+        }
+        // Seminars outside the Edición's range widen the Edición (same rule as
+        // the manual form) instead of aborting the import.
+        $seriesextension = $validrows ? workshop_series::extend_to_cover($seriesid, $minstart, $maxend) : null;
+        if ($seriesextension) {
+            $series = workshop_series::get($seriesid);
         }
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
         $summary = (object)[
@@ -117,7 +124,7 @@ class bulk_workshops {
             'reflectioncreated' => 0,
             'notescreated' => 0,
             'seriesid' => $seriesid,
-            'messages' => [],
+            'messages' => $seriesextension ? [workshop_series::extension_message($seriesextension)] : [],
         ];
         $transaction = $DB->start_delegated_transaction();
         try {

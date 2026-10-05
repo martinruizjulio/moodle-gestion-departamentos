@@ -133,8 +133,15 @@ class workshop_series {
         if ($sortorder <= 0) {
             $sortorder = 1 + (int)$DB->get_field_sql('SELECT COALESCE(MAX(sortorder), 0) FROM {' . self::ITEMTABLE . '} WHERE seriesid = :seriesid', ['seriesid' => $seriesid]);
         }
-        if ($sessionenddate > 0 && ($sessionenddate < (int)$series->datefrom || $sessionenddate > (int)$series->dateto)) {
-            throw new \RuntimeException('La hora de fin del taller queda fuera de las fechas de la edición.');
+        // A seminar outside the Edición's range widens the Edición instead of
+        // being rejected (see extend_to_cover()).
+        $sessionstart = $sessionenddate;
+        if ($editionid > 0) {
+            $sessionstart = (int)($DB->get_field('local_ga_workshop_editions', 'sessiondate', ['id' => $editionid]) ?: $sessionenddate);
+        }
+        if ($sessionenddate > 0 || $sessionstart > 0) {
+            self::extend_to_cover($seriesid, $sessionstart, $sessionenddate, $workshopid);
+            $series = self::get($seriesid);
         }
         self::assert_no_overlapping_series($seriesid, $workshopid, (int)$series->datefrom, (int)$series->dateto);
         if ($editionid > 0) {
@@ -173,6 +180,66 @@ class workshop_series {
             ]);
         }
         self::ensure_course_structure($seriesid);
+    }
+
+    /**
+     * Widen an Edición de seminarios so that [$start, $end] fits inside it.
+     *
+     * Used when a seminar's date/time is edited (or added) outside the range of
+     * its Edición: instead of rejecting the change, the Edición is extended so
+     * nothing is hidden or mis-assigned by mistake. Status is not changed.
+     * Returns null when no change was needed, otherwise old/new ranges.
+     *
+     * @throws \RuntimeException if the wider range would overlap another
+     *         Edición that contains one of the same base seminars.
+     */
+    public static function extend_to_cover(int $seriesid, int $start, int $end, int $extraworkshopid = 0): ?\stdClass {
+        global $DB;
+        self::ensure_schema();
+        $series = self::get($seriesid);
+        $oldfrom = (int)$series->datefrom;
+        $oldto = (int)$series->dateto;
+        $newfrom = ($start > 0 && ($oldfrom <= 0 || $start < $oldfrom)) ? $start : $oldfrom;
+        $newto = ($end > 0 && $end > $oldto) ? $end : $oldto;
+        if ($newfrom === $oldfrom && $newto === $oldto) {
+            return null;
+        }
+        $workshopids = [];
+        foreach (self::items($seriesid) as $item) {
+            $workshopids[(int)$item->workshopid] = (int)$item->workshopid;
+        }
+        if ($extraworkshopid > 0) {
+            $workshopids[$extraworkshopid] = $extraworkshopid;
+        }
+        foreach ($workshopids as $workshopid) {
+            self::assert_no_overlapping_series($seriesid, $workshopid, $newfrom, $newto);
+        }
+        $DB->update_record(self::TABLE, (object)[
+            'id' => $seriesid,
+            'datefrom' => $newfrom,
+            'dateto' => $newto,
+            'timemodified' => time(),
+        ]);
+        return (object)[
+            'seriesid' => $seriesid,
+            'title' => (string)$series->title,
+            'oldfrom' => $oldfrom,
+            'oldto' => $oldto,
+            'datefrom' => $newfrom,
+            'dateto' => $newto,
+        ];
+    }
+
+    /**
+     * Human message for an extension returned by extend_to_cover().
+     */
+    public static function extension_message(?\stdClass $extension): string {
+        if (!$extension) {
+            return '';
+        }
+        $format = get_string('strftimedatetimeshort', 'langconfig');
+        return 'La Edición de seminarios «' . $extension->title . '» se ha ampliado automáticamente para incluir el seminario: '
+            . userdate($extension->datefrom, $format) . ' – ' . userdate($extension->dateto, $format) . '.';
     }
 
     private static function assert_no_overlapping_series(int $seriesid, int $workshopid, int $datefrom, int $dateto): void {

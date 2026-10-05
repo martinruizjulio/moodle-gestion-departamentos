@@ -78,8 +78,20 @@ if (data_submitted() && confirm_sesskey()) {
     if ($enrolenddate <= 0 || $enrolenddate >= $sessiondate) {
         throw new moodle_exception('invaliddata', 'error', '', 'La inscripción debe cerrar antes del inicio del taller.');
     }
-    if ($linkedseries && ($sessiondate < (int)$linkedseries->datefrom || $sessionenddate > (int)$linkedseries->dateto)) {
-        throw new moodle_exception('invaliddata', 'error', '', 'El horario completo del taller debe quedar dentro de las fechas de la edición.');
+    // The Edición this seminar belongs to: the one in the URL, the one the
+    // edition is explicitly linked to, or (legacy) the one found for the seminar.
+    $targetseriesid = $seriesid > 0 ? $seriesid
+        : ((int)($record->seriesid ?? 0) > 0 ? (int)$record->seriesid : ($linkedseries ? (int)$linkedseries->id : 0));
+    // If the seminar now falls outside its Edición, widen the Edición instead of
+    // rejecting the change, so an edit made on the seminar never leaves it
+    // outside (and hidden from) its Edición by mistake.
+    $seriesextension = null;
+    if ($targetseriesid > 0) {
+        try {
+            $seriesextension = workshop_series::extend_to_cover($targetseriesid, $sessiondate, $sessionenddate, $workshopid);
+        } catch (\RuntimeException $e) {
+            throw new moodle_exception('invaliddata', 'error', '', $e->getMessage());
+        }
     }
     if ($seriesid > 0) {
         course_layout::assert_series_accepts_type($seriesid, $istypebworkshop ? 'typeb' : 'typea');
@@ -164,8 +176,17 @@ if (data_submitted() && confirm_sesskey()) {
     } else {
         workshop_series::refresh_for_workshop($workshopid);
     }
+    if ($seriesextension && $seriesid <= 0) {
+        // Refresh the calendar/date range shown in the course.
+        workshop_series::ensure_course_structure((int)$seriesextension->seriesid);
+    }
     course_layout::synchronise_course((int)$course->id);
-    redirect(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']), get_string('changessaved'));
+    $savedmessage = get_string('changessaved');
+    if ($seriesextension) {
+        $savedmessage .= ' ' . workshop_series::extension_message($seriesextension);
+    }
+    redirect(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']), $savedmessage,
+        null, $seriesextension ? \core\output\notification::NOTIFY_WARNING : \core\output\notification::NOTIFY_SUCCESS);
 }
 
 echo $OUTPUT->header();

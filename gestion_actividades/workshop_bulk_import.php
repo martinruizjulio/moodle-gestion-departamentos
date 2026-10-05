@@ -59,9 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($row['ok'])) {
                     throw new RuntimeException('Hay filas con errores. Vuelve a la previsualización y corrígelas antes de crear la edición.');
                 }
-                if ((int)$row['sessiondate'] < $seriesfrom || (int)$row['sessionenddate'] > $seriesto) {
-                    throw new RuntimeException($row['code'] . ': el horario completo queda fuera de las fechas de la edición.');
-                }
+                // A seminar outside the dates typed for the Edición widens the
+                // Edición instead of aborting (same rule as the manual form).
+                $seriesfrom = min($seriesfrom, (int)$row['sessiondate']);
+                $seriesto = max($seriesto, (int)$row['sessionenddate']);
                 $types[$row['type'] === 'typeb' ? 'typeb' : 'typea'] = true;
             }
             if (count($types) > 1) {
@@ -182,8 +183,7 @@ if ($token !== '' && $courseid > 0) {
         foreach ($row['errors'] as $m) $messages[] = html_writer::span(s($m), 'text-danger d-block');
         foreach ($row['warnings'] as $m) $messages[] = html_writer::span(s($m), 'text-warning d-block');
         if ($rowvalid && $seriesfrom && $seriesto && ((int)$row['sessiondate'] < $seriesfrom || (int)$row['sessionenddate'] > $seriesto)) {
-            $rowvalid = false;
-            $messages[] = html_writer::span('El horario completo queda fuera de la edición.', 'text-danger d-block');
+            $messages[] = html_writer::span('Fuera de las fechas indicadas: la Edición de seminarios se ampliará automáticamente para incluirlo.', 'text-warning d-block');
         }
         if ($rowvalid) $valid++;
         if (!empty($row['createquiz'])) $needsquiz = true;
