@@ -160,7 +160,7 @@ if ($series) {
             $typelabel,
             userdate((int)$s->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$s->dateto, '%d/%m/%Y'),
             $count,
-            $s->status === 'finished' ? 'Finalizada / oculta' : (((int)$s->dateto < time()) ? 'Fecha final superada / oculta' : 'Activa'),
+            $s->status === 'finished' ? 'Finalizada / oculta' : 'Activa',
             $actions,
         ];
     }
