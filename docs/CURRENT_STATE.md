@@ -451,7 +451,13 @@ Causas encontradas y corregidas:
 
 Pendiente: cursos donde ya se crearon talleres con versiones anteriores pueden tener cuestionarios cruzados (restringidos al grupo de otro taller) o ediciones sin cuestionario: revisar en «Vincular actividad» de cada taller; no se corrige automáticamente para no tocar datos existentes.
 
+## Garantía por taller (2026-10-06, 1.5.139-alpha / `2026100554`)
+
+Todo taller nuevo pertenece a una Edición (el formulario rechaza crear un taller suelto) y queda con: grupo creado expresamente (`… · HEE-E<id>`, no compartido), asistencia con sesión del grupo (grupos separados + agrupación del taller + restricción de grupo), cuestionario propio (Tipo A) o reflexión (Tipo B) con la misma vinculación al grupo, y botón Apuntarme/Desapuntarme en su subsección. Corregido además: el cuestionario duplicado desde un modelo en el Excel quedaba sin modo de grupos/agrupación.
+
+Prueba real (Moodle 5.0.11): manual A, manual B, Excel A, Excel B y Excel A con cuestionario modelo — 239 comprobaciones correctas, incluidas apuntarse → entra al grupo y accede; desapuntarse → sale del grupo y pierde acceso; volver a apuntarse; 8 talleres con 8 grupos y 8 actividades distintas; botón de cada subsección asociado a su edición.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.138-alpha** (`2026100553`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.139-alpha** (`2026100554`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
