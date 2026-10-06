@@ -570,6 +570,13 @@ class manager {
 
             $DB->set_field('local_ga_workshop_editions', 'attendancecmid', $cmid, ['id' => $editionid]);
             self::restrict_required_activity_to_edition_group($editionid, $cmid);
+            $cmcolumns = $DB->get_columns('course_modules');
+            if (isset($cmcolumns['visible'])) {
+                $DB->set_field('course_modules', 'visible', 1, ['id' => $cmid]);
+            }
+            if (isset($cmcolumns['visibleoncoursepage'])) {
+                $DB->set_field('course_modules', 'visibleoncoursepage', 1, ['id' => $cmid]);
+            }
             rebuild_course_cache((int)$course->id, true);
 
             $result->success = true;
