@@ -2244,40 +2244,117 @@ class manager {
             $items = $DB->get_records_select('local_ga_series_items', "seriesid $sinsql", $sparams);
         }
 
-        // Delete Moodle activities explicitly owned/referenced by these HEE test records.
-        $cmids = [];
+        // Moodle activities. An edition may reference activities that were NOT
+        // created by HEE (an existing quiz linked as required activity, a
+        // course-wide attendance or certificate). Those are never deleted:
+        // they are only unlinked (their HEE records disappear below) and, if
+        // they sit inside an HEE subsection, moved to a hidden section so they
+        // survive the subsection removal.
+        $refcount = [];
         foreach ($editions as $edition) {
+            $own = [];
             foreach (['attendancecmid', 'certificatecmid', 'requiredcmid', 'requiredassigncmid', 'requiredquizcmid'] as $field) {
                 if (!empty($edition->$field)) {
-                    $cmids[(int)$edition->$field] = true;
+                    $own[(int)$edition->$field] = true;
                 }
             }
-        }
-        foreach ($series as $row) {
-            if (!empty($row->calendarcmid)) {
-                $cmids[(int)$row->calendarcmid] = true;
+            foreach (array_keys($own) as $cmid) {
+                $refcount[$cmid] = ($refcount[$cmid] ?? 0) + 1;
             }
         }
         foreach ($items as $item) {
-            foreach (['notescmid', 'subsectioncmid'] as $field) {
-                if (!empty($item->$field)) {
-                    $cmids[(int)$item->$field] = true;
-                }
+            if (!empty($item->notescmid)) {
+                $refcount[(int)$item->notescmid] = ($refcount[(int)$item->notescmid] ?? 0) + 1;
             }
         }
-        foreach (array_keys($cmids) as $cmid) {
-            if ($cmid <= 0) {
+        $selfassessmentcmid = 0;
+        if (class_exists(grade_manager::class)
+                && $dbman->table_exists(new \xmldb_table(grade_manager::SETTINGS_TABLE))) {
+            $selfassessmentcmid = (int)$DB->get_field(grade_manager::SETTINGS_TABLE, 'selfassessmentcmid', ['courseid' => $courseid]);
+        }
+        $deletable = [];
+        $summary->modulespreserved = 0;
+        foreach ($refcount as $cmid => $count) {
+            $modname = $DB->get_field_sql(
+                "SELECT m.name FROM {course_modules} cm JOIN {modules} m ON m.id = cm.module
+                  WHERE cm.id = :cmid AND cm.course = :courseid",
+                ['cmid' => $cmid, 'courseid' => $courseid]
+            );
+            if ($modname === false) {
                 continue;
             }
-            $cm = $DB->get_record('course_modules', ['id' => $cmid, 'course' => $courseid], 'id', IGNORE_MISSING);
-            if (!$cm) {
+            // Shared by several editions, course-wide tools or the final
+            // self-assessment: not HEE test material of one edition.
+            if ($count > 1 || $cmid === $selfassessmentcmid
+                    || in_array((string)$modname, ['attendance', 'customcert', 'certificate', 'subsection'], true)) {
+                $summary->modulespreserved++;
+                continue;
+            }
+            $deletable[$cmid] = true;
+        }
+        foreach (array_keys($deletable) as $cmid) {
+            try {
+                course_delete_module($cmid);
+                $summary->modulesdeleted++;
+            } catch (\Throwable $e) {
+                debugging('No se pudo borrar el módulo HEE de prueba CMID ' . $cmid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+
+        // HEE subsections (calendar + TALLER). Anything still inside them
+        // (preserved activities, content a teacher added by hand) is moved to
+        // a hidden section first, then the empty subsection is removed.
+        $subsectioncmids = [];
+        foreach ($series as $row) {
+            if (!empty($row->calendarcmid)) {
+                $subsectioncmids[(int)$row->calendarcmid] = (int)($row->calendarsectionid ?? 0);
+            }
+        }
+        foreach ($items as $item) {
+            if (!empty($item->subsectioncmid)) {
+                $subsectioncmids[(int)$item->subsectioncmid] = (int)($item->subsectionsectionid ?? 0);
+            }
+        }
+        $keepsection = null;
+        foreach ($subsectioncmids as $cmid => $delegatedid) {
+            if (!$DB->record_exists('course_modules', ['id' => $cmid, 'course' => $courseid])) {
+                continue;
+            }
+            $delegated = $delegatedid > 0
+                ? $DB->get_record('course_sections', ['id' => $delegatedid, 'course' => $courseid], '*', IGNORE_MISSING)
+                : null;
+            $inside = $delegated ? array_filter(array_map('intval', explode(',', (string)$delegated->sequence))) : [];
+            $moved = true;
+            foreach ($inside as $innercmid) {
+                $innercm = get_coursemodule_from_id('', $innercmid, $courseid, false, IGNORE_MISSING);
+                if (!$innercm) {
+                    continue;
+                }
+                if ($keepsection === null) {
+                    $num = self::get_or_create_course_section($courseid, 'HEE · Actividades conservadas tras limpieza');
+                    $keepsection = $DB->get_record('course_sections', ['course' => $courseid, 'section' => $num], '*', MUST_EXIST);
+                    if (!empty($keepsection->visible)) {
+                        course_update_section($courseid, $keepsection, ['visible' => 0]);
+                        $keepsection = $DB->get_record('course_sections', ['id' => $keepsection->id], '*', MUST_EXIST);
+                    }
+                }
+                try {
+                    moveto_module($innercm, $keepsection, null);
+                    $summary->modulespreserved++;
+                } catch (\Throwable $e) {
+                    $moved = false;
+                    debugging('No se pudo conservar el módulo ' . $innercmid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+            if (!$moved) {
+                // Never delete a subsection that still holds content.
                 continue;
             }
             try {
                 course_delete_module($cmid);
                 $summary->modulesdeleted++;
             } catch (\Throwable $e) {
-                debugging('No se pudo borrar el módulo HEE de prueba CMID ' . $cmid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                debugging('No se pudo borrar la subsección HEE CMID ' . $cmid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
         }
 
@@ -2292,6 +2369,8 @@ class manager {
             $affecteduserids = array_values(array_unique(array_filter($affecteduserids)));
         }
 
+        // Plugin records: all or nothing.
+        $transaction = $DB->start_delegated_transaction();
         // Delete plugin records tied to the concrete workshop editions.
         if ($editionids) {
             [$einsql, $eparams] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'pe');
@@ -2331,9 +2410,16 @@ class manager {
             }
         }
         foreach (array_keys($groupids) as $groupid) {
-            if ($groupid > 0 && $DB->record_exists('groups', ['id' => $groupid, 'courseid' => $courseid])) {
+            $group = $groupid > 0 ? $DB->get_record('groups', ['id' => $groupid, 'courseid' => $courseid], 'id, name', IGNORE_MISSING) : null;
+            // Only groups created by HEE for an edition ("Taller CODE - ...");
+            // a course group linked by hand is kept.
+            if ($group && strpos((string)$group->name, 'Taller ') === 0) {
                 try {
                     groups_delete_group($groupid);
+                    $grouping = $DB->get_record('groupings', ['courseid' => $courseid, 'name' => 'Agrupación ' . $group->name], 'id', IGNORE_MISSING);
+                    if ($grouping && !$DB->record_exists('groupings_groups', ['groupingid' => (int)$grouping->id])) {
+                        groups_delete_grouping((int)$grouping->id);
+                    }
                     $summary->groupsdeleted++;
                 } catch (\Throwable $e) {
                     debugging('No se pudo borrar el grupo HEE de prueba ' . $groupid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
@@ -2357,6 +2443,7 @@ class manager {
             [$winsql, $wparams] = $DB->get_in_or_equal($workshopids, SQL_PARAMS_NAMED, 'pww');
             $DB->delete_records_select('local_ga_workshops', "id $winsql", $wparams);
         }
+        $transaction->allow_commit();
 
         // Course-context files created by local_gestion_actividades belong to
         // the HEE course data being reset. External Type B files live outside

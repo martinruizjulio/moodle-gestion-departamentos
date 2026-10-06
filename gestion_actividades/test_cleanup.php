@@ -19,6 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_sesskey();
     if ($action === 'purge') {
         $courseid = required_param('courseid', PARAM_INT);
+        // The purge deletes Moodle activities and groups of this course, so the
+        // user must also be able to manage that course's activities.
+        require_capability('moodle/course:manageactivities', context_course::instance($courseid));
         $confirm = trim(required_param('confirmtext', PARAM_TEXT));
         if ($confirm !== 'BORRAR PRUEBAS') {
             $error = 'Escribe exactamente BORRAR PRUEBAS para confirmar la limpieza.';
@@ -48,7 +51,9 @@ echo html_writer::div(
 echo $OUTPUT->heading('Limpieza de datos de prueba HEE');
 echo html_writer::tag('p',
     'Herramienta destructiva para reiniciar las pruebas de Talleres/Ediciones de un curso. '
-    . 'Borra talleres, Ediciones, inscripciones, grupos, horas/certificados/reflexiones internos y las actividades Moodle HEE vinculadas. '
+    . 'Borra talleres, Ediciones, inscripciones, grupos HEE, horas/certificados/reflexiones internos y las actividades Moodle propias de cada edición. '
+    . 'Las actividades vinculadas que no son propias de una sola edición (asistencia o certificado del curso, actividades compartidas, autoevaluación) se conservan; '
+    . 'lo que hubiera dentro de las subsecciones se mueve a la sección oculta «HEE · Actividades conservadas tras limpieza». '
     . 'No borra usuarios Moodle, el curso, formaciones Tipo B externas, reconocimiento institucional ni contenido ajeno a Gestión HEE.',
     ['class' => 'alert alert-warning']
 );
@@ -71,6 +76,7 @@ if ($result) {
         'Entregas: ' . (int)$result->submissions,
         'Traspasos: ' . (int)$result->transfers,
         'Módulos Moodle eliminados: ' . (int)$result->modulesdeleted,
+        'Actividades conservadas (no creadas por HEE o compartidas; sin vínculo HEE): ' . (int)($result->modulespreserved ?? 0),
         'Grupos eliminados: ' . (int)$result->groupsdeleted,
         'Secciones vacías eliminadas: ' . (int)$result->sectionsdeleted,
     ];
@@ -91,6 +97,7 @@ echo html_writer::end_div();
 
 if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
     $course = $DB->get_record('course', ['id' => $courseid], 'id,fullname', MUST_EXIST);
+    require_capability('moodle/course:manageactivities', context_course::instance($courseid));
     $summary = manager::course_test_data_summary($courseid);
 
     echo html_writer::start_div('card border-danger mb-4');
