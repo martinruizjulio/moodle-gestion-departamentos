@@ -54,6 +54,7 @@ echo html_writer::tag('p',
     . 'Borra talleres, Ediciones, inscripciones, grupos HEE, horas/certificados/reflexiones internos y las actividades Moodle propias de cada edición. '
     . 'Las actividades vinculadas que no son propias de una sola edición (asistencia o certificado del curso, actividades compartidas, autoevaluación) se conservan; '
     . 'lo que hubiera dentro de las subsecciones se mueve a la sección oculta «HEE · Actividades conservadas tras limpieza». '
+    . 'También elimina del curso las secciones HEE antiguas o huérfanas que ya no tengan registro en la gestión. '
     . 'No borra usuarios Moodle, el curso, formaciones Tipo B externas, reconocimiento institucional ni contenido ajeno a Gestión HEE.',
     ['class' => 'alert alert-warning']
 );
@@ -78,7 +79,8 @@ if ($result) {
         'Módulos Moodle eliminados: ' . (int)$result->modulesdeleted,
         'Actividades conservadas (no creadas por HEE o compartidas; sin vínculo HEE): ' . (int)($result->modulespreserved ?? 0),
         'Grupos eliminados: ' . (int)$result->groupsdeleted,
-        'Secciones vacías eliminadas: ' . (int)$result->sectionsdeleted,
+        'Secciones Moodle HEE eliminadas: ' . (int)$result->sectionsdeleted,
+        'Secciones HEE huérfanas eliminadas: ' . (int)($result->orphansectionsdeleted ?? 0),
     ];
     echo html_writer::alist($details, ['class' => 'mb-4']);
 }
