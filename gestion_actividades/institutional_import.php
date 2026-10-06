@@ -13,6 +13,50 @@ if (!manager::can_manage_globally((int)$USER->id)) {
 $action = optional_param('action', '', PARAM_ALPHA);
 $token = optional_param('token', '', PARAM_ALPHANUM);
 
+// Empty template with the recommended columns (any layout using the accepted
+// header names is also read; see the instructions on the page).
+if ($action === 'template') {
+    require_sesskey();
+    require_once($CFG->libdir . '/filelib.php');
+    if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
+        throw new moodle_exception('generalexceptionmessage', 'error', '', 'PhpSpreadsheet no está disponible.');
+    }
+    $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $sheet = $book->getActiveSheet();
+    $sheet->setTitle('TODOS');
+    $headers = ['Apellidos', 'Nombre', 'Email', 'Curso', 'Grupo', 'Horas Tipo A', 'Horas Tipo B', 'Nota Tipo A'];
+    $sheet->fromArray($headers, null, 'A1');
+    $sheet->getStyle('A1:H1')->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+    $sheet->getStyle('A1:H1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('1F5F99');
+    foreach (range('A', 'H') as $c) {
+        $sheet->getColumnDimension($c)->setWidth($c === 'C' ? 34 : 16);
+    }
+    $sheet->freezePane('A2');
+    $help = $book->createSheet();
+    $help->setTitle('INSTRUCCIONES');
+    $help->fromArray([
+        ['PLANTILLA RECONOCIMIENTO INSTITUCIONAL · cómo rellenar la hoja TODOS'],
+        ['Una fila por alumno. La columna Email es obligatoria: es el correo de su cuenta de Moodle.'],
+        ['Horas Tipo A y Horas Tipo B: horas ya reconocidas antes de usar Gestión HEE (decimales con coma o punto: 4,5).'],
+        ['Nota Tipo A: opcional, de 0 a 10.'],
+        ['Apellidos, Nombre, Curso y Grupo: opcionales, solo para que la revisión previa sea más clara.'],
+        ['Si vuelves a importar a un alumno, sus horas institucionales se SUSTITUYEN por las nuevas (no se suman).'],
+        ['Las horas Tipo B quedan pendientes hasta que el alumno escriba su comentario en «Mi portafolio HEE».'],
+        [''],
+        ['Ejemplo de fila:'],
+        $headers,
+        ['García López', 'Lucía', 'lucia.garcia@ucv.es', '2º', 'A', 12, 4, 7.5],
+    ], null, 'A1');
+    $help->getStyle('A1')->getFont()->setBold(true)->setSize(13);
+    $help->getStyle('A10:H10')->getFont()->setBold(true);
+    $help->getColumnDimension('A')->setWidth(18);
+    $book->setActiveSheetIndex(0);
+    $path = make_request_directory() . '/plantilla.xlsx';
+    (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save($path);
+    send_temp_file($path, 'Plantilla_Reconocimiento_Institucional.xlsx');
+    exit;
+}
+
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/institutional_import.php'));
 $PAGE->set_title('Importar reconocimiento institucional');
@@ -116,6 +160,37 @@ echo html_writer::tag('button', local_ga_inst_btn_icon('i/import', 'Previsualiza
 echo html_writer::end_tag('form');
 echo html_writer::end_div();
 echo html_writer::end_div();
+
+// How the Excel must be.
+echo html_writer::start_tag('details', ['class' => 'card mb-4', 'open' => 'open']);
+echo html_writer::tag('summary', html_writer::tag('strong', 'Cómo debe ser el Excel'), ['class' => 'card-header']);
+echo html_writer::start_div('card-body');
+echo html_writer::tag('p', 'No hace falta un formato fijo: el sistema busca la fila de encabezados y reconoce las columnas por su nombre, '
+    . 'en cualquier orden. Puede haber títulos encima y columnas de más (se ignoran). Se lee la hoja llamada <strong>TODOS</strong> '
+    . 'o, si no existe, la primera hoja. Si prefieres no pensarlo, descarga la plantilla y rellénala.');
+echo html_writer::link(new moodle_url('/local/gestion_actividades/institutional_import.php', ['action' => 'template', 'sesskey' => sesskey()]),
+    local_ga_inst_btn_icon('t/download', 'Descargar plantilla de reconocimiento'), ['class' => 'btn btn-outline-primary mb-3']);
+$cols = new html_table();
+$cols->attributes['class'] = 'generaltable table-sm';
+$cols->head = ['Dato', '¿Obligatorio?', 'Encabezados que se reconocen', 'Contenido'];
+$cols->data = [
+    ['Email', html_writer::tag('strong', 'Sí'), 'Email · Correo · Correo electrónico', 'Correo de la cuenta Moodle del alumno. Es lo que se usa para encontrarlo.'],
+    ['Horas Tipo A', 'Recomendado', 'Horas Tipo A · Total A · Tipo A · Horas A', 'Horas Tipo A ya reconocidas (4 o 4,5).'],
+    ['Horas Tipo B', 'Recomendado', 'Horas Tipo B · Total B · Tipo B · Horas B (o «Pte Tipo B»: horas pendientes de 22)', 'Horas Tipo B ya reconocidas.'],
+    ['Nota Tipo A', 'No', 'Nota · Nota Tipo A · Promedio · Calificación', 'Nota de 0 a 10.'],
+    ['Nombre', 'No', 'Nombre y apellidos · Alumno · o bien Nombre + Apellidos', 'Solo para reconocerlo en la revisión.'],
+    ['Curso / Grupo', 'No', 'Curso · Grupo · Clave grupo', 'Informativo.'],
+];
+echo html_writer::table($cols);
+echo html_writer::alist([
+    'Una fila por alumno. Las filas sin email se ignoran.',
+    'Primero se muestra una <strong>revisión previa sin guardar</strong>: verás quién se encuentra, quién no y quién está repetido. Solo se importan los encontrados al confirmar.',
+    'Si un alumno ya tenía horas institucionales, al volver a importarlo se <strong>sustituyen</strong> por las nuevas; no se suman.',
+    'Estas horas se suman a las de los talleres de Gestión HEE en el bloque y el portafolio del alumno.',
+    'Las horas Tipo B no cuentan hasta que el alumno escribe su comentario en «Mi portafolio HEE».',
+]);
+echo html_writer::end_div();
+echo html_writer::end_tag('details');
 
 if ($preview) {
     $summary = $preview['summary'];

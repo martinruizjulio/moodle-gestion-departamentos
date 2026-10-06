@@ -608,3 +608,7 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 - Instrucciones para alumnos actualizadas: botón Apuntarme/Desapuntarme con recarga, contenido visible solo tras apuntarse, baja hasta el inicio del taller, solo «Presente» cuenta, carpeta de materiales, reflexión solo texto en línea, certificados y horas automáticos al terminar, Ediciones finalizadas desaparecen del curso pero se conservan en el portafolio, autoevaluación al llegar a 54 h.
 - No se cambia ningún rol ni permiso de Moodle.
 - Validado (Moodle 5.0.11 local, navegador): admin, Profesor HEE sin edición, profesor sin talleres y alumno ven cada uno su vista; ambas ventanas se abren.
+
+## 2026-10-07 · local 1.5.157-alpha · Reconocimiento institucional: instrucciones y plantilla
+- `institutional_import.php`: panel «Cómo debe ser el Excel» bajo la subida (formato libre por nombre de encabezado, hoja TODOS o la primera, columnas reconocidas, obligatoriedad, revisión previa, re-importar sustituye y no suma, Tipo B requiere comentario del alumno) y botón «Descargar plantilla de reconocimiento» (`action=template`, sesskey) que genera `Plantilla_Reconocimiento_Institucional.xlsx` (hoja TODOS: Apellidos, Nombre, Email, Curso, Grupo, Horas Tipo A, Horas Tipo B, Nota Tipo A + hoja INSTRUCCIONES).
+- Validado (Moodle 5.0.11 local, navegador): descarga de la plantilla, relleno con email en mayúsculas y decimales con coma → «Encontrado» con 12,50 h A / 4,00 h B / nota 7,80; email inexistente → «No encontrado».
