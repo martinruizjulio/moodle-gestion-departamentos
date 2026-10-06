@@ -19,6 +19,15 @@ $returnurl = new moodle_url('/local/gestion_actividades/workshop_view.php', [
     'editionid' => $editionid,
 ]);
 
+if (!empty($edition->sessiondate) && time() >= (int)$edition->sessiondate) {
+    redirect(
+        $returnurl,
+        'El taller ya ha comenzado. Si necesitas darte de baja, contacta con el profesor o gestor.',
+        null,
+        \core\output\notification::NOTIFY_WARNING
+    );
+}
+
 $result = manager::unenrol_user_from_edition($editionid, (int)$USER->id);
 
 redirect(
