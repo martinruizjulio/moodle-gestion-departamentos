@@ -396,7 +396,14 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Se mantiene la regla: Tipo A manual/Excel = grupo propio + Attendance + cuestionario vacío visible/restringido; si falla cualquiera de estos pasos, la operación no se considera correcta.
 - No hay cambios de esquema ni savepoint nuevo.
 
+**Falso negativo al validar el quiz recién creado (2026-10-06):**
+- Tras resolver el error de escritura del quiz, la importación podía abortar con `el cuestionario Tipo A no quedó creado/vinculado en Moodle` aunque el módulo acabara de crearse correctamente.
+- Causa: la comprobación usaba `get_coursemodule_from_id()` dentro de la misma transacción y justo después de mover el quiz a una subsección delegada; el modinfo de Moodle podía estar todavía desfasado y devolver `false`.
+- La rutina canónica Tipo A y la validación final de Excel comprueban ahora directamente `course_modules + modules + quiz` en la base de datos, evitando depender de caché durante la transacción.
+- Si el registro quiz realmente no existe o el CMID no está vinculado, entonces sí se aborta.
+- No hay cambios de esquema ni savepoint nuevo.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.134-alpha** (`2026100549`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.135-alpha** (`2026100550`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
