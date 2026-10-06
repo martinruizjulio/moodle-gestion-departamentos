@@ -216,6 +216,15 @@ Punto de partida verificado: `e9ca208`, local 1.5.115-alpha (`2026100530`), bloq
 - **Ampliación automática de la Edición de seminarios**: si al editar o añadir un seminario su fecha/horario queda fuera del rango de su Edición, la Edición se amplía automáticamente (`workshop_series::extend_to_cover()`) con aviso, en lugar de rechazar el cambio. Aplica al formulario del seminario, a `attach_workshop()` y a la importación Excel (la previsualización avisa de las filas que ampliarán la Edición). No cambia el estado de la Edición y sigue impidiendo solapamientos con otra Edición que contenga el mismo seminario base.
 - **Prórroga Tipo B tras finalizar la Edición — resuelta 2026-10-06:** Moodle bloquea una actividad si su sección padre está oculta, aunque exista `assign_user_flags.extensionduedate`. `workshop_series::section_access_state()` mantiene el histórico oculto normalmente, pero cuando hay una extensión vigente habilita técnicamente la sección con disponibilidad Moodle restringida por **grupo de la edición + fecha de fin de la extensión**. `typeb_certificate_policy::set_late_reflection_permission()` garantiza/sincroniza el grupo y refresca ese acceso al conceder o retirar el permiso. La edición sigue en estado `finished`; no vuelve a vigente. Pendiente de confirmar este flujo en Moodle 5 real.
 
+**Correcciones tras la primera prueba Moodle 5 real (2026-10-06):**
+- **Estructura visual de la Edición**: la sección padre usa exactamente el título de la Edición de seminarios. La primera subsección es **Calendario y resumen de seminarios** y después aparecen los talleres como subsecciones Moodle nativas con nombre `TALLER 01: …`, `TALLER 02: …`, etc.
+- **Sin tarjeta legacy dentro de la subsección**: se elimina el resumen HTML duplicado del taller. Cada subsección actúa como contenedor visual y muestra directamente las actividades Moodle reales (asistencia, apuntes, cuestionario/reflexión, certificado cuando proceda), como en el diseño validado en la prueba.
+- **Restricción por grupo**: la subsección del taller hereda disponibilidad por el grupo propio de la edición cuando existe, de modo que Moodle muestra la restricción de pertenencia al grupo y mantiene el contenido protegido.
+- **Secciones legacy `TALLERES TIPO A/B`**: si el curso ya utiliza Ediciones modernas para ese tipo, la salida legacy se limpia y oculta. Esto corrige la falsa impresión de que al importar un Excel se cargan también talleres antiguos: no era el Excel, sino la reconstrucción del listado legacy de todos los talleres publicables.
+- **Inscripción desde tarjeta legacy**: los módulos AMD añaden el `sesskey` actual al enlace de inscripción cuando esa superficie legacy siga existiendo en cursos antiguos. En cursos con Edición moderna esa superficie ya no se muestra.
+- **Borrado de Edición**: `workshop_series.php` incorpora **Borrar edición** con POST + `sesskey` + confirmación. El borrado es conservador: retira la Edición de la gestión activa y oculta su sección, pero conserva los datos académicos archivados.
+- Validación puntual tras estos cambios: `php -l` correcto en `manager.php`, `workshop_series.php` (clase y página), `course_layout.php` y `enrol.php`. Falta aún repetir la comprobación visual/funcional en el Moodle 5 real.
+
 `move_section_to()`: se mantiene. En Moodle 5.2 está deprecada (`#[deprecated]`, MDL-86862) y emite aviso de depuración, pero sigue funcionando como envoltorio de `core_courseformat\local\sectionactions::move_at()`; su retirada está prevista para Moodle 6.0 (MDL-87419). No se ha verificado que `move_at()` exista en Moodle 5.0/5.1, así que migrar ahora podría romper esas versiones: queda para cuando se fije la versión mínima.
 
 Validación: `php -l` en todos los PHP, XML bien formado, sin métodos/funciones inexistentes del plugin, strings en/es completos en ambos plugins. APIs de Moodle contrastadas con el código fuente de Moodle (rama principal). **Sin ejecución en Moodle real.**
@@ -229,13 +238,12 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 ## Pruebas Moodle 5 pendientes antes del ZIP final
 
 - Instalación limpia y upgrade desde una instalación existente.
-- Confirmar visualmente el orden exacto:
-  1. sección activa Tipo A;
-  2. calendario HTML A;
-  3. subsecciones Seminario A;
-  4. sección activa Tipo B;
-  5. calendario HTML B;
-  6. subsecciones Seminario B;
+- Confirmar visualmente el orden exacto y el diseño corregido:
+  1. sección padre con el **título exacto de la Edición**;
+  2. primera subsección **Calendario y resumen de seminarios**;
+  3. subsecciones `TALLER 01: …`, `TALLER 02: …` con las actividades Moodle reales dentro y sin tarjeta HTML legacy;
+  4. no debe aparecer una sección paralela `TALLERES TIPO A/B` cuando el curso usa Ediciones modernas;
+  5. repetir el mismo patrón para Tipo B;
   7. Autoevaluación final HEE solo al alcanzar 54 h;
   8. ediciones anteriores ocultas debajo.
 - Crear edición A manual e intentar añadir B: debe rechazarse; repetir a la inversa.
@@ -264,5 +272,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.119-alpha** (`2026100534`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.120-alpha** (`2026100535`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.25-alpha** (`2026100509`).
