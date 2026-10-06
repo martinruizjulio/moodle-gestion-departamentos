@@ -585,3 +585,6 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 ## 2026-10-07 · local 1.5.153-alpha · Listado personalizado de talleres
 - `workshop_report.php` (tarjeta «8. Listado personalizado de talleres»): columnas **Apellidos · Nombre · Correo · Taller · Edición (título de la Edición) · Horas · Calificación · Asistencia · Resultado**, en pantalla y en CSV. Calificación = nota /10 del cuestionario (Tipo A) o «Reflexión entregada/pendiente» (Tipo B); Resultado Apto/No apto. Orden: fecha del taller, código, apellidos.
 - Validado en Moodle 5.0.11 local con la demo (320 filas, CSV descargado y revisado).
+
+## 2026-10-07 · local 1.5.154-alpha · Estado de talleres en Ediciones finalizadas
+- `workshops.php` y `dashboard.php`: la columna «Estado» mostraba «Abierto» (estado interno del taller) aunque su Edición estuviera finalizada/oculta. Ahora, si la Edición está finalizada, cada taller se muestra «Finalizado». Solo visual; no cambia datos. Validado en Moodle 5.0.11 local.

@@ -81,7 +81,11 @@ function local_ga_dash_type_badge(?string $type): string {
     );
 }
 
-function local_ga_dash_workshop_status(?stdClass $edition): string {
+function local_ga_dash_workshop_status(?stdClass $edition, ?stdClass $series = null): string {
+    // A finished Edición closes all its talleres, whatever their own status.
+    if ($series && (string)($series->status ?? '') === 'finished') {
+        return html_writer::span('Finalizado', 'badge bg-secondary');
+    }
     if (!$edition) {
         return html_writer::span('Pendiente de configurar', 'badge bg-warning text-dark');
     }
@@ -320,7 +324,7 @@ foreach ($serieslist as $series) {
             $edition && (int)($edition->places ?? 0) > 0 ? (int)$edition->places : '-',
             $edition ? manager::get_edition_enrolment_count((int)$edition->id) : '-',
             $teachernames ? s(implode(', ', $teachernames)) : '-',
-            local_ga_dash_workshop_status($edition),
+            local_ga_dash_workshop_status($edition, $series),
             $actions,
         ];
     }

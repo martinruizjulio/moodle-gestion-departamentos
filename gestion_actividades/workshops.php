@@ -73,7 +73,11 @@ function local_ga_series_status_label(stdClass $series): string {
     return html_writer::span('Activa', 'badge bg-success');
 }
 
-function local_ga_workshop_status_label(?stdClass $edition): string {
+function local_ga_workshop_status_label(?stdClass $edition, ?stdClass $series = null): string {
+    // A finished Edición closes all its talleres, whatever their own status.
+    if ($series && (string)($series->status ?? '') === 'finished') {
+        return html_writer::span('Finalizado', 'badge bg-secondary');
+    }
     if (!$edition) {
         return html_writer::span('Pendiente de configurar', 'badge bg-warning text-dark');
     }
@@ -242,7 +246,7 @@ foreach ($serieslist as $series) {
             format_float((float)($item->hours ?? 0), 2, true) . ' h',
             $places > 0 ? $places : '-',
             $edition ? $enrolled : '-',
-            local_ga_workshop_status_label($edition),
+            local_ga_workshop_status_label($edition, $series),
             $actions,
         ];
     }
