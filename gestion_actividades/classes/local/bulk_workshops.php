@@ -375,67 +375,88 @@ class bulk_workshops {
         return $newcmid;
     }
 
-    public static function send_template(): void {
+    /**
+     * Download Plantilla_Talleres_A.xlsx or Plantilla_Talleres_B.xlsx.
+     * One template per type, so a team member cannot mix A and B: the type
+     * comes from the template itself (sheet TALLERES_A / TALLERES_B).
+     */
+    public static function send_template(string $type = 'typea'): void {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
         if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) throw new \RuntimeException('PhpSpreadsheet no está disponible para generar la plantilla XLSX.');
+        $isb = $type === 'typeb';
+        $letter = $isb ? 'B' : 'A';
         $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $book->getActiveSheet();
-        $sheet->setTitle('TALLERES');
-        // Sheet TALLERES: headers only. It used to carry one Tipo A and one
-        // Tipo B example row; an Edición cannot mix A and B, so a template
-        // filled in on top of the examples failed or imported the examples.
-        $headers = ['Código','Nombre','Tipo','Descripción','Fecha','Inicio','Fin','Horas','Plazas','Cierre inscripción',
-            'Nombre profesor','Email profesor','Crear apuntes','Cierre cuestionario'];
-        $sheet->fromArray($headers, null, 'A1');
-        $sheet->getStyle('A1:N1')->getFont()->setBold(true);
-        // Dates and times as text, so Excel does not reformat them on typing.
-        foreach (['E', 'F', 'G', 'J', 'N'] as $col) {
-            $sheet->getStyle($col . '2:' . $col . '300')->getNumberFormat()
-                ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
-        }
-        // Drop-down lists for Tipo (A/B) and Crear apuntes (Sí/No).
-        foreach (['C' => '"A,B"', 'M' => '"Sí,No"'] as $col => $list) {
-            $validation = $sheet->getCell($col . '2')->getDataValidation();
-            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-            $validation->setAllowBlank(true);
-            $validation->setShowDropDown(true);
-            $validation->setFormula1($list);
-            $sheet->setDataValidation($col . '2:' . $col . '300', $validation);
-        }
-        foreach (range('A','N') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
-        $sheet->freezePane('A2');
+        $sheet->setTitle('TALLERES_' . $letter);
 
-        // Sheet INSTRUCCIONES (never imported: only the TALLERES sheet is read).
+        $headers = ['Código','Nombre','Descripción','Fecha','Inicio','Fin','Horas','Plazas','Cierre inscripción',
+            'Nombre profesor','Email profesor','Crear apuntes'];
+        if (!$isb) {
+            $headers[] = 'Cierre cuestionario';
+        }
+        $lastcol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+        // Row 1: unmistakable title. Row 2: column headers. Data from row 3.
+        $sheet->setCellValue('A1', 'PLANTILLA TALLERES TIPO ' . $letter . ($isb ? ' (asistencia + reflexión en línea)' : ' (asistencia + cuestionario)'));
+        $sheet->mergeCells('A1:' . $lastcol . '1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14)->getColor()->setRGB('FFFFFF');
+        $sheet->getStyle('A1:' . $lastcol . '1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setRGB($isb ? '7A3E9D' : '1F5F99');
+        $sheet->fromArray($headers, null, 'A2');
+        $sheet->getStyle('A2:' . $lastcol . '2')->getFont()->setBold(true);
+        $col = array_flip($headers);
+        $letterof = fn($h) => \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col[$h] + 1);
+        // Dates and times as text, so Excel does not reformat them on typing.
+        foreach (['Fecha', 'Inicio', 'Fin', 'Cierre inscripción', 'Cierre cuestionario'] as $h) {
+            if (isset($col[$h])) {
+                $c = $letterof($h);
+                $sheet->getStyle($c . '3:' . $c . '300')->getNumberFormat()
+                    ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+            }
+        }
+        $validation = $sheet->getCell($letterof('Crear apuntes') . '3')->getDataValidation();
+        $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+        $validation->setAllowBlank(true);
+        $validation->setShowDropDown(true);
+        $validation->setFormula1('"Sí,No"');
+        $sheet->setDataValidation($letterof('Crear apuntes') . '3:' . $letterof('Crear apuntes') . '300', $validation);
+        foreach (range('A', $lastcol) as $c) $sheet->getColumnDimension($c)->setAutoSize(true);
+        $sheet->getColumnDimension('A')->setAutoSize(false);
+        $sheet->getColumnDimension('A')->setWidth(10);
+        $sheet->freezePane('A3');
+
+        // Instructions sheet (never imported).
         $help = $book->createSheet();
-        $help->setTitle('INSTRUCCIONES');
+        $help->setTitle('INSTRUCCIONES_' . $letter);
+        $example = $isb
+            ? ['1','Nombre del taller Tipo B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','Luis Pérez','luis.perez@ucv.es','No']
+            : ['1','Nombre del taller Tipo A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','Ana García','ana.garcia@ucv.es','Sí','23/09/2026 23:59'];
         $help->fromArray([
-            ['Cómo rellenar la hoja TALLERES'],
-            ['Una fila por taller. Código: numera 1, 2, 3... (o déjalo vacío); el orden de las filas es TALLER 01, TALLER 02...'],
-            ['El código interno del taller se genera solo (TA-E12-01, TB-E12-02...), así nunca se repite ni sobrescribe otro taller.'],
-            ['Un mismo Excel solo puede contener talleres de Tipo A o solo de Tipo B (importa cada tipo por separado).'],
+            ['PLANTILLA TALLERES TIPO ' . $letter . ' · cómo rellenar la hoja TALLERES_' . $letter],
+            ['Esta plantilla es SOLO para talleres de Tipo ' . $letter . '. Para Tipo ' . ($isb ? 'A' : 'B') . ' descarga Plantilla_Talleres_' . ($isb ? 'A' : 'B') . '.'],
+            [$isb
+                ? 'Cada taller Tipo B tendrá: grupo propio, lista de asistencia, tarea de reflexión en línea (sin archivo) y carpeta de materiales.'
+                : 'Cada taller Tipo A tendrá: grupo propio, lista de asistencia, cuestionario Moodle (aprobado con 5/10) y carpeta de materiales.'],
+            ['Una fila por taller desde la fila 3. Código: numera 1, 2, 3... (o déjalo vacío); el orden de las filas es TALLER 01, TALLER 02...'],
+            ['El código interno se genera solo (T' . $letter . '-E12-01, T' . $letter . '-E12-02...), así nunca se repite ni sobrescribe otro taller.'],
             ['Formatos: fecha dd/mm/aaaa · horas de inicio y fin hh:mm · cierres dd/mm/aaaa hh:mm · horas con decimales permitidos (1,5).'],
-            ['Cierre cuestionario: solo Tipo A; déjalo vacío si aún no lo sabes (se puede fijar después en el cuestionario).'],
-            ['Nombre profesor: el nombre que se mostrará en el calendario del curso (opcional).'],
-            ['Email profesor: correo del profesor del curso, para vincularlo como profesor del taller (opcional). Varios: sepáralos con «;».'],
+            ['Nombre profesor: lo que se mostrará en el calendario del curso (opcional).'],
+            ['Email profesor: correo del profesor del curso, para vincularlo al taller (opcional). Varios: sepáralos con «;».'],
+            [$isb ? 'Crear apuntes: Sí/No (opcional).' : 'Cierre cuestionario: opcional; si se deja vacío se puede fijar después en el cuestionario.'],
             [''],
-            ['Ejemplo Tipo A (no copiar en la misma hoja que uno de Tipo B):'],
+            ['Ejemplo de fila:'],
             $headers,
-            ['1','Nombre del taller Tipo A','A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','Ana García','ana.garcia@ucv.es','Sí','23/09/2026 23:59'],
-            [''],
-            ['Ejemplo Tipo B:'],
-            $headers,
-            ['1','Nombre del taller Tipo B','B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','Luis Pérez','luis.perez@ucv.es','No',''],
+            $example,
         ], null, 'A1');
         $help->getStyle('A1')->getFont()->setBold(true)->setSize(13);
-        $help->getStyle('A10:N10')->getFont()->setBold(true);
-        $help->getStyle('A14:N14')->getFont()->setBold(true);
-        foreach (range('A','N') as $col) $help->getColumnDimension($col)->setAutoSize(true);
+        $help->getStyle('A12:' . $lastcol . '12')->getFont()->setBold(true);
+        foreach (range('A', $lastcol) as $c) $help->getColumnDimension($c)->setAutoSize(true);
         $book->setActiveSheetIndex(0);
+
         $path = tempnam(make_temp_directory(self::TEMPDIR), 'tpl_');
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save($path);
-        \send_temp_file($path, 'Plantilla_importacion_masiva_talleres.xlsx');
+        \send_temp_file($path, 'Plantilla_Talleres_' . $letter . '.xlsx');
         exit;
     }
 
@@ -446,13 +467,38 @@ class bulk_workshops {
         if (method_exists($reader, 'setReadDataOnly')) $reader->setReadDataOnly(true);
         $book = $reader->load($path);
         try {
-            $sheet = $book->getSheetByName('TALLERES') ?: $book->getSheet(0);
+            // Plantilla_Talleres_A / _B (type given by the sheet) or the older
+            // single template with a «Tipo» column.
+            $defaulttype = '';
+            $sheet = null;
+            foreach (['TALLERES_A' => 'A', 'TALLERES_B' => 'B', 'TALLERES' => ''] as $sheetname => $t) {
+                if ($candidate = $book->getSheetByName($sheetname)) {
+                    $sheet = $candidate;
+                    $defaulttype = $t;
+                    break;
+                }
+            }
+            if (!$sheet) {
+                $sheet = $book->getSheet(0);
+            }
             $data = $sheet->toArray('', true, true, false);
         } finally {
             if (method_exists($book, 'disconnectWorksheets')) $book->disconnectWorksheets();
         }
         if (!$data) return [];
-        $headers = array_map([self::class, 'normalise'], array_shift($data));
+        // Skip title rows above the header row (the one containing «Nombre»).
+        $headerrow = null;
+        $skipped = 0;
+        while ($data) {
+            $candidate = array_map([self::class, 'normalise'], array_map('strval', array_shift($data)));
+            $skipped++;
+            if (in_array('nombre', $candidate, true) || in_array('nombretaller', $candidate, true)) {
+                $headerrow = $candidate;
+                break;
+            }
+        }
+        if ($headerrow === null) return [];
+        $headers = $headerrow;
         $index = [];
         foreach ($headers as $i => $name) $index[$name] = $i;
         $aliases = [
@@ -470,14 +516,19 @@ class bulk_workshops {
         }
         $rows = [];
         foreach ($data as $i => $cells) {
-            $row = ['rownum' => $i + 2];
+            $row = ['rownum' => $i + 1 + $skipped];
             $hasdata = false;
             foreach ($cols as $key => $col) {
                 $value = $col === null ? '' : trim((string)($cells[$col] ?? ''));
                 $row[$key] = $value;
                 if ($value !== '') $hasdata = true;
             }
-            if ($hasdata) $rows[] = $row;
+            if ($hasdata) {
+                if ($defaulttype !== '' && $row['type'] === '') {
+                    $row['type'] = $defaulttype;
+                }
+                $rows[] = $row;
+            }
         }
         return $rows;
     }

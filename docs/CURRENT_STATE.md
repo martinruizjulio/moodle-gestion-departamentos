@@ -536,7 +536,15 @@ Decisiones de Julio:
 - Esquema: nuevo campo opcional `local_ga_series_items.teachernames` (char 255), añadido en `install.xml` y en el paso de actualización `2026100563` (no destructivo).
 - Prueba real (Moodle 5.0.11): Excel A y B importados dos veces cada uno con códigos 1 y 2 → `TA-E67-01/02`, `TA-E68-01/02`, `TB-E69-01/02`, `TB-E70-01/02`; profesor vinculado por correo; calendario con «Ana García» y «Luis Pérez», sin correos; alta manual en el navegador → `TB-E76-03` y nombre del profesorado guardado. Regresión: 303 + Tipo B correctos.
 
+## Plantilla_Talleres_A / Plantilla_Talleres_B y Ediciones finalizadas plegadas (2026-10-06, 1.5.149-alpha / `2026100564`)
+
+Decisiones de Julio: dos plantillas con nombre inequívoco y, al terminar una Edición, ocultarla y plegarla.
+
+- **Plantillas**: la página de importación ofrece «Descargar Plantilla_Talleres_A» y «Descargar Plantilla_Talleres_B» (`Plantilla_Talleres_A.xlsx` / `Plantilla_Talleres_B.xlsx`). Hojas `TALLERES_A`/`INSTRUCCIONES_A` y `TALLERES_B`/`INSTRUCCIONES_B`; fila 1 con título de color «PLANTILLA TALLERES TIPO A/B», fila 2 cabecera, datos desde la fila 3. Sin columna «Tipo» (el tipo lo da la hoja); la B no lleva «Cierre cuestionario». El importador también acepta la plantilla única anterior con columna «Tipo».
+- **Edición finalizada**: además de ocultarse a los alumnos e ir al histórico inferior, su sección se pliega (contenido e índice del curso) para todos los usuarios que ven secciones ocultas (profesores, gestores, administradores) mediante su preferencia `coursesectionspreferences_<curso>`; al reabrirla se despliega. Los certificados pendientes se emiten al finalizar también cuando se cambia el estado desde el formulario de la Edición.
+- Prueba real (Moodle 5.0.11): ambas plantillas descargadas desde la página; vacías; rellenadas → 2 talleres A (`TA-E80-01/02`) y 2 B (`TB-E81-01/02`) con el tipo correcto; Edición A finalizada → oculta, plegada para profesor y administrador (comprobado en el navegador: contenido e índice plegados), reabierta → visible y desplegada. Regresión: 303 + Tipo B + certificados correctos.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.148-alpha** (`2026100563`). Último savepoint de esquema: **2026100563**.
+- `local_gestion_actividades`: **1.5.149-alpha** (`2026100564`). Último savepoint de esquema: **2026100563**.
 - `block_gestion_hee`: **1.0.27-alpha** (`2026100511`).

@@ -25,7 +25,7 @@ $seriestotext = optional_param('seriesto_text', '', PARAM_TEXT);
 
 if ($action === 'template') {
     require_sesskey();
-    bulk_workshops::send_template();
+    bulk_workshops::send_template(optional_param('templatetype', 'typea', PARAM_ALPHA) === 'typeb' ? 'typeb' : 'typea');
 }
 
 $preview = [];
@@ -130,8 +130,9 @@ $courseoptions = manager::get_course_options();
 echo html_writer::start_div('card mb-4');
 echo html_writer::start_div('card-body');
 echo html_writer::tag('h3', '1. Plantilla Excel de talleres', ['class' => 'h5']);
-echo html_writer::tag('p', 'Cada fila corresponde a un taller y el orden de las filas será el orden de las subsecciones Taller 01, Taller 02, etc. Todas las filas de una importación deben ser del mismo tipo.');
-echo html_writer::link(new moodle_url('/local/gestion_actividades/workshop_bulk_import.php', ['action' => 'template', 'sesskey' => sesskey()]), 'Descargar plantilla XLSX', ['class' => 'btn btn-secondary']);
+echo html_writer::tag('p', 'Hay una plantilla para cada tipo: usa Plantilla_Talleres_A para talleres con cuestionario y Plantilla_Talleres_B para talleres con reflexión en línea. Cada fila es un taller; el orden de las filas será TALLER 01, TALLER 02, etc.');
+echo html_writer::link(new moodle_url('/local/gestion_actividades/workshop_bulk_import.php', ['action' => 'template', 'templatetype' => 'typea', 'sesskey' => sesskey()]), 'Descargar Plantilla_Talleres_A', ['class' => 'btn btn-primary me-2 mb-2']);
+echo html_writer::link(new moodle_url('/local/gestion_actividades/workshop_bulk_import.php', ['action' => 'template', 'templatetype' => 'typeb', 'sesskey' => sesskey()]), 'Descargar Plantilla_Talleres_B', ['class' => 'btn btn-secondary mb-2', 'style' => 'background:#7a3e9d;border-color:#7a3e9d;color:#fff']);
 echo html_writer::end_div();
 echo html_writer::end_div();
 

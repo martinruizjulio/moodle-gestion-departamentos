@@ -543,17 +543,6 @@ class workshop_series {
     public static function set_finished(int $seriesid, bool $finished): void {
         global $DB;
         self::ensure_schema();
-        if ($finished && self::editions_have_seriesid()) {
-            // Finishing the Edición issues every pending certificate first
-            // (and records the hours), as when each taller finishes.
-            foreach ($DB->get_fieldset_select('local_ga_workshop_editions', 'id', 'seriesid = :s', ['s' => $seriesid]) as $eid) {
-                try {
-                    auto_certificates::process_edition((int)$eid);
-                } catch (\Throwable $e) {
-                    debugging('No se pudieron emitir los certificados de la edición ' . (int)$eid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
-                }
-            }
-        }
         $DB->update_record(self::TABLE, (object)[
             'id' => $seriesid,
             'status' => $finished ? 'finished' : 'active',
@@ -576,6 +565,24 @@ class workshop_series {
             : [];
         manager::invalidate_teacher_block_cache([], $editionids);
         if ($finished) {
+            // Finishing the Edición (button or form) issues every pending
+            // certificate first and records the hours, before reflections close.
+            foreach ($editionids as $eid) {
+                try {
+                    auto_certificates::process_edition((int)$eid);
+                } catch (\Throwable $e) {
+                    debugging('No se pudieron emitir los certificados de la edición ' . (int)$eid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+        }
+        // Finished Ediciones stay collapsed for teachers/managers (students do
+        // not see them at all); reopening expands them again.
+        try {
+            self::set_collapsed_for_staff($seriesid, $finished);
+        } catch (\Throwable $e) {
+            debugging('No se pudo plegar la sección de la Edición: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+        if ($finished) {
             foreach ($editionids as $editionid) {
                 try {
                     typeb_certificate_policy::close_reflection_submissions((int)$editionid);
@@ -584,6 +591,53 @@ class workshop_series {
                 }
             }
         }
+    }
+
+    /**
+     * Fold (or unfold) the Edición parent section in the course page for every
+     * user who can see hidden sections (teachers, managers, site admins). Moodle
+     * keeps this per user in «coursesectionspreferences_<courseid>»; only the
+     * contentcollapsed / indexcollapsed lists of that preference are touched.
+     */
+    public static function set_collapsed_for_staff(int $seriesid, bool $collapsed): void {
+        global $DB;
+        $series = self::get($seriesid);
+        if (empty($series->sectionid)) {
+            return;
+        }
+        $courseid = (int)$series->courseid;
+        $sectionid = (int)$series->sectionid;
+        $context = \context_course::instance($courseid);
+        $users = get_users_by_capability($context, 'moodle/course:viewhiddensections', 'u.id');
+        foreach (get_admins() as $admin) {
+            $users[$admin->id] = $admin;
+        }
+        $name = 'coursesectionspreferences_' . $courseid;
+        foreach (array_keys($users) as $userid) {
+            $prefs = json_decode((string)get_user_preferences($name, '', (int)$userid), true);
+            if (!is_array($prefs)) {
+                $prefs = [];
+            }
+            // Page content and course index (left drawer).
+            $changed = false;
+            foreach (['contentcollapsed', 'indexcollapsed'] as $key) {
+                $list = array_values(array_map('intval', (array)($prefs[$key] ?? [])));
+                $has = in_array($sectionid, $list, true);
+                if ($collapsed && !$has) {
+                    $list[] = $sectionid;
+                } else if (!$collapsed && $has) {
+                    $list = array_values(array_diff($list, [$sectionid]));
+                } else {
+                    continue;
+                }
+                $prefs[$key] = $list;
+                $changed = true;
+            }
+            if ($changed) {
+                set_user_preference($name, json_encode($prefs), (int)$userid);
+            }
+        }
+        \cache::make('core', 'coursesectionspreferences')->delete($courseid);
     }
 
     /**
