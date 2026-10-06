@@ -106,7 +106,7 @@ if ($transfers) {
         $t->data[] = [
             s($name),
             format_float((float)$row->hours, 2, true) . ' h',
-            format_text((string)$row->reflectiontext, FORMAT_PLAIN),
+            format_text(\local_gestion_actividades\local\manager::reflection_plain($row->reflectiontext), FORMAT_PLAIN),
             !empty($row->timecreated) ? userdate((int)$row->timecreated) : '-',
         ];
     }

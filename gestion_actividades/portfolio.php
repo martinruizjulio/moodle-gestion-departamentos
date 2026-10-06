@@ -327,7 +327,7 @@ if ($typebworkshopcerts) {
             s(($c->workshopcode ?? '') . ' - ' . ($c->workshopname ?? '')),
             !empty($c->hours) ? format_float((float)$c->hours, 2, true) . ' h' : '-',
             'Confirmada',
-            !empty($c->reflectiontext) ? format_text($c->reflectiontext, FORMAT_PLAIN) : 'Entregada',
+            !empty($c->reflectiontext) ? format_text(\local_gestion_actividades\local\manager::reflection_plain($c->reflectiontext), FORMAT_PLAIN) : 'Entregada',
             userdate((int)$c->timeissued),
             html_writer::link(
                 $url,
@@ -530,7 +530,7 @@ if ($transferrows) {
         $table->data[] = [
             s(trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? ''))),
             format_float((float)($r->hours ?? 0), 2, true) . ' h',
-            format_text((string)($r->reflectiontext ?? ''), FORMAT_PLAIN),
+            format_text(\local_gestion_actividades\local\manager::reflection_plain($r->reflectiontext ?? ''), FORMAT_PLAIN),
             !empty($r->timecreated) ? userdate((int)$r->timecreated) : '-',
         ];
     }

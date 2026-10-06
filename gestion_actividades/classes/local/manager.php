@@ -8,6 +8,16 @@ require_once($CFG->dirroot . '/user/lib.php');
 require_once($CFG->libdir . '/gradelib.php');
 
 class manager {
+    /**
+     * Reflection text as plain text: online-text submissions are stored as
+     * HTML by the editor («<p>…</p>»), which must not show up as raw tags.
+     */
+    public static function reflection_plain(?string $text): string {
+        $text = preg_replace('~<\s*(br|/p|/div|/li)\b[^>]*>~i', "\n", (string)$text);
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return trim(preg_replace("~\n{3,}~", "\n\n", $text));
+    }
+
     public static function get_activity(int $id): \stdClass {
         global $DB;
         return $DB->get_record('local_ga_activities', ['id' => $id], '*', MUST_EXIST);

@@ -519,7 +519,7 @@ if (in_array($action, $downloadactions, true)) {
     if ($action === 'transfers_csv') {
         $rows = [];
         foreach (manager::list_all_typeb_transfers() as $r) {
-            $rows[] = [fullname($r), $r->email ?? '', trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? '')), round((float)($r->hours ?? 0), 2), format_text((string)($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : ''];
+            $rows[] = [fullname($r), $r->email ?? '', trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? '')), round((float)($r->hours ?? 0), 2), format_text(\local_gestion_actividades\local\manager::reflection_plain($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : ''];
         }
         local_ga_dl_send_csv('traspasos_tipoa_tipob.csv', ['Alumno', 'Email', 'Taller A traspasado', 'Horas', 'Reflexión', 'Fecha traspaso'], $rows);
     }
@@ -681,7 +681,7 @@ if ($viewmode !== '') {
         echo html_writer::div(html_writer::link(local_ga_dl_action_url('transfers_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-3']), 'mb-2');
         $rows = [];
         foreach (manager::list_all_typeb_transfers() as $r) {
-            $rows[] = [fullname($r), s($r->email ?? ''), s(local_ga_dl_student_group((int)$r->userid)), s(trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? ''))), format_float((float)($r->hours ?? 0), 2, true) . ' h', format_text((string)($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : '-'];
+            $rows[] = [fullname($r), s($r->email ?? ''), s(local_ga_dl_student_group((int)$r->userid)), s(trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? ''))), format_float((float)($r->hours ?? 0), 2, true) . ' h', format_text(\local_gestion_actividades\local\manager::reflection_plain($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : '-'];
         }
         echo local_ga_dl_render_table(['Alumno', 'Email', 'Grupo', 'Taller A traspasado', 'Horas', 'Reflexión', 'Fecha traspaso'], $rows);
     }

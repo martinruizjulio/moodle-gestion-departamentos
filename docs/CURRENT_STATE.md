@@ -565,3 +565,16 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 
 - `local_gestion_actividades`: **1.5.151-alpha** (`2026100566`). Último savepoint de esquema: **2026100563**.
 - `block_gestion_hee`: **1.0.27-alpha** (`2026100511`).
+
+## 2026-10-07 · Plugin temporal de demostración `local_hee_demo` 0.1.0-demo + local 1.5.152-alpha
+
+**Cambios**
+- Nueva carpeta `hee_demo/` → plugin **temporal** `local_hee_demo`, separado de Gestión HEE (no forma parte de la versión final; desinstalar tras la demo). Página Administración › Plugins › Locales › «Datos de demostración HEE» (solo `moodle/site:config`).
+  - «Generar demostración»: en las Ediciones elegidas crea N alumnos ficticios (`heedemo001…`, idnumber `HEE_DEMO`, `@example.invalid`, emailstop, contraseña elegida y no guardada), los matricula en el curso, inscribe 40 por taller al azar (se repiten entre talleres), pasa lista (90 % Presente por defecto), crea intentos finalizados con nota en el cuestionario Tipo A (10 % suspensos) y entregas de reflexión en línea Tipo B (90 %). Idempotente: repetir no duplica. Opción de finalizar las Ediciones (emite certificados y horas).
+  - «Borrar demostración»: elimina solo los alumnos demo y todo lo que generaron (certificados y PDF, horas, inscripciones, asistencia, intentos, entregas). Talleres y Ediciones no se tocan.
+- Plantillas de demo `Demo_Plantilla_Talleres_A/B.xlsx` (4 talleres cada una, 13–16/10/2026, 45 plazas).
+- Gestión HEE: `manager::reflection_plain()`; el portafolio, el traspaso A→B y las descargas de gestor mostraban la reflexión con etiquetas `<p>` visibles (el editor guarda HTML). Ahora texto limpio.
+
+**Validación (Moodle 5.0.11 local)**: importación de ambas plantillas (8 talleres), generación 100 alumnos / 320 inscripciones en ~23 s, asistencia y notas coherentes, repetir sin duplicados, al finalizar certificados = elegibles exactos (252) sin duplicados, horas en fichas, login del alumno demo, borrado sin restos; capturas de la página del plugin y del portafolio del alumno.
+
+**Pendiente**: probarlo en el Moodle de Julio; desinstalar `local_hee_demo` tras la presentación.
