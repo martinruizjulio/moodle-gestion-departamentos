@@ -178,8 +178,10 @@ class course_layout {
     }
 
     private static function series_label(\stdClass $series, string $type, bool $history): string {
-        $prefix = $type === 'typeb' ? 'Seminarios Tipo B' : ($type === 'typea' ? 'Seminarios Tipo A' : 'Edición de seminarios');
-        $label = $prefix . ' · ' . trim((string)$series->title);
+        // The parent section is the Edición itself. Type A/B is represented by
+        // its contents and management metadata, not by adding a second label to
+        // the visible section name.
+        $label = trim((string)$series->title);
         return $history ? 'Histórico · ' . $label : $label;
     }
 
