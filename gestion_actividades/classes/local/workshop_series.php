@@ -549,7 +549,7 @@ class workshop_series {
         ]);
 
         if (self::subsections_supported()) {
-            [$calendarcmid, $calendarsectionid] = self::ensure_subsection($course, (int)$section->section, (int)$series->calendarcmid, 'Calendario y resumen de talleres');
+            [$calendarcmid, $calendarsectionid] = self::ensure_subsection($course, (int)$section->section, (int)$series->calendarcmid, 'Calendario y resumen de seminarios');
             if ($calendarcmid !== (int)$series->calendarcmid || $calendarsectionid !== (int)$series->calendarsectionid) {
                 $DB->update_record(self::TABLE, (object)[
                     'id' => $seriesid,
@@ -561,7 +561,7 @@ class workshop_series {
             self::update_calendar_section($calendarsectionid, $seriesid);
 
             foreach (self::items($seriesid) as $item) {
-                $title = sprintf('Taller %02d · %s', (int)$item->sortorder, $item->name);
+                $title = sprintf('TALLER %02d: %s', (int)$item->sortorder, $item->name);
                 [$cmid, $sectionid] = self::ensure_subsection($course, (int)$section->section, (int)$item->subsectioncmid, $title);
                 if ($cmid !== (int)$item->subsectioncmid || $sectionid !== (int)$item->subsectionsectionid) {
                     $DB->update_record(self::ITEMTABLE, (object)[
@@ -571,7 +571,7 @@ class workshop_series {
                         'timemodified' => time(),
                     ]);
                 }
-                self::update_workshop_section($sectionid, $series, $item);
+                self::configure_workshop_subsection($sectionid, $series, $item);
                 self::move_workshop_modules((int)$item->workshopid, $sectionid, (int)$item->notescmid, $series);
             }
         } else {
@@ -736,25 +736,31 @@ class workshop_series {
     }
 
     /**
-     * Put the functional workshop card directly inside its modern subsection.
-     * The Moodle activities belonging to the concrete edition are moved into
-     * the same delegated section immediately afterwards.
+     * Configure the Moodle subsection itself as the visible workshop card.
+     * There is deliberately no duplicate HTML workshop card in its summary:
+     * the real Moodle activities live directly inside the delegated section.
      */
-    private static function update_workshop_section(int $sectionid, \stdClass $series, \stdClass $item): void {
+    private static function configure_workshop_subsection(int $sectionid, \stdClass $series, \stdClass $item): void {
         global $DB;
         if ($sectionid <= 0) {
             return;
         }
         $edition = self::edition_for_series_item($series, $item);
-        if (!$edition) {
-            return;
+        $availability = null;
+        if ($edition && !empty($edition->groupid)) {
+            $availability = json_encode([
+                'op' => '&',
+                'c' => [
+                    ['type' => 'group', 'id' => (int)$edition->groupid],
+                ],
+                'showc' => [true],
+            ], JSON_UNESCAPED_SLASHES);
         }
-        $workshop = manager::get_workshop((int)$item->workshopid);
-        $summary = manager::render_workshop_card($workshop, $edition);
         $DB->update_record('course_sections', (object)[
             'id' => $sectionid,
-            'summary' => $summary,
+            'summary' => '',
             'summaryformat' => FORMAT_HTML,
+            'availability' => $availability ?: null,
             'timemodified' => time(),
         ]);
     }
