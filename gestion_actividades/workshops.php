@@ -14,7 +14,7 @@ workshop_series::ensure_schema();
 
 $type = optional_param('type', 'typea', PARAM_ALPHA);
 $type = $type === 'typeb' ? 'typeb' : 'typea';
-$typetitle = $type === 'typeb' ? 'Seminarios Tipo B' : 'Seminarios Tipo A';
+$typetitle = $type === 'typeb' ? 'Talleres Tipo B' : 'Talleres Tipo A';
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $type]));
@@ -45,7 +45,7 @@ function local_ga_series_workshop_edition(stdClass $series, int $workshopid): ?s
     $matching = [];
     foreach ($editions as $edition) {
         if (!empty($edition->seriesid) && (int)$edition->seriesid !== (int)$series->id) {
-            continue; // Linked to another Edición de seminarios: never borrow it by dates.
+            continue; // Linked to another Edición de talleres: never borrow it by dates.
         }
         $date = (int)($edition->sessiondate ?? 0);
         if ($date > 0 && $date >= (int)$series->datefrom && $date <= (int)$series->dateto) {
@@ -114,7 +114,7 @@ echo $OUTPUT->heading($typetitle);
 echo html_writer::div(
     html_writer::link(
         new moodle_url('/local/gestion_actividades/workshop_series.php'),
-        local_ga_workshops_btn_icon('i/calendar', 'Ediciones de seminarios'),
+        local_ga_workshops_btn_icon('i/calendar', 'Ediciones de talleres'),
         ['class' => 'btn btn-primary me-1 mb-1']
     ) . ' ' .
     html_writer::link(
@@ -132,7 +132,7 @@ echo html_writer::div(
 
 echo html_writer::tag(
     'p',
-    'Los talleres creados manualmente y los importados desde Excel aparecen juntos dentro de su Edición de seminarios. Los datos estructurales se editan aquí; cuestionarios, apuntes y asistencia siguen siendo actividades Moodle editables desde la vista del curso.',
+    'Los talleres creados manualmente y los importados desde Excel aparecen juntos dentro de su Edición de talleres. Los datos estructurales se editan aquí; cuestionarios, apuntes y asistencia siguen siendo actividades Moodle editables desde la vista del curso.',
     ['class' => 'text-muted mb-4']
 );
 
@@ -248,7 +248,7 @@ foreach ($serieslist as $series) {
 }
 
 if ($shownseries === 0) {
-    echo $OUTPUT->notification('Todavía no hay Ediciones de seminarios con talleres de este tipo.', 'info');
+    echo $OUTPUT->notification('Todavía no hay Ediciones de talleres con talleres de este tipo.', 'info');
 }
 
 // Keep legacy or not-yet-attached workshops visible so nothing disappears during the transition.
@@ -260,8 +260,8 @@ foreach (manager::list_workshops(0, $type) as $workshop) {
 }
 
 if ($unlinked) {
-    echo html_writer::tag('h3', 'Talleres sin Edición de seminarios', ['class' => 'h4 mt-4']);
-    echo html_writer::tag('p', 'Registros anteriores o todavía no asociados a una Edición de seminarios. Se mantienen visibles para poder revisarlos y migrarlos sin perder información.', ['class' => 'text-muted']);
+    echo html_writer::tag('h3', 'Talleres sin Edición de talleres', ['class' => 'h4 mt-4']);
+    echo html_writer::tag('p', 'Registros anteriores o todavía no asociados a una Edición de talleres. Se mantienen visibles para poder revisarlos y migrarlos sin perder información.', ['class' => 'text-muted']);
     $legacytable = new html_table();
     $legacytable->attributes['class'] = 'generaltable table-sm';
     $legacytable->head = ['Curso', 'Código', 'Taller', 'Horas', 'Configuración', 'Acciones'];
