@@ -346,7 +346,16 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Nuevo endpoint `unenrol.php` protegido con `sesskey`.
 - Validación estática correcta: `php -l` sobre los PHP afectados y `node --check` sobre AMD source/build.
 
+**Últimos ajustes de la prueba real (2026-10-06):**
+- **Volver al curso** conserva ahora el curso Moodle de origen en sesión y ya no usa como fallback el último taller registrado.
+- La descarga de la plantilla Excel carga explícitamente `lib/filelib.php` antes de llamar a `send_temp_file()`, corrigiendo el error de función no definida.
+- El cuestionario Tipo A generado por HEE permanece visible en Ediciones modernas y se mueve a su subsección `TALLER XX`; solo el flujo legacy conserva el archivado histórico.
+- Se añade una etiqueta Moodle real de **Apuntarme / Desapuntarme** antes de cada subsección de taller, fuera de la restricción de grupo, para que el alumno pueda entrar al grupo antes de acceder al contenido.
+- Las actividades generadas por HEE quedan marcadas mediante `course_modules.idnumber` con prefijo `HEE_`; la limpieza usa esa propiedad y reconoce también restos legacy inequívocos como `Asistencia TXX` y `Cuestionario T-X`.
+- La sección `HEE · Actividades conservadas tras limpieza` elimina automáticamente restos propios de HEE y solo se mantiene si contiene contenido realmente manual/ajeno.
+- No hay cambios de esquema ni savepoint nuevo.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.128-alpha** (`2026100543`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.129-alpha** (`2026100544`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
