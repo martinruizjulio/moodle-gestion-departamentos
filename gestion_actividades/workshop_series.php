@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'status' => optional_param('status', 'active', PARAM_ALPHA),
             ]);
             course_layout::synchronise_course($savedcourseid);
-            $message = 'Edición de seminarios guardada y jerarquía del curso actualizada.';
+            $message = 'Edición de talleres guardada y jerarquía del curso actualizada.';
         } else if ($action === 'finish' && $id > 0) {
             $target = workshop_series::get($id);
             workshop_series::set_finished($id, true);
@@ -72,17 +72,17 @@ if ($record && $courseid <= 0) {
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/workshop_series.php', $id > 0 ? ['id' => $id] : []));
-$PAGE->set_title('Ediciones de seminarios');
+$PAGE->set_title('Ediciones de talleres');
 $PAGE->set_heading('Gestión HEE');
 
 echo $OUTPUT->header();
 echo html_writer::div(
     html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), '← Volver al panel', ['class' => 'btn btn-outline-secondary me-2 mb-3']) .
-    html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Seminarios', ['class' => 'btn btn-outline-secondary mb-3']),
+    html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Talleres', ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
-echo $OUTPUT->heading('Ediciones de seminarios');
-echo html_writer::tag('p', 'Cada edición agrupa seminarios de un único tipo (A o B) en una sección del curso. Primero aparece el calendario HTML y después las subsecciones Seminario 01, 02… Las ediciones finalizadas se ocultan y se conservan debajo de la autoevaluación.', ['class' => 'lead']);
+echo $OUTPUT->heading('Ediciones de talleres');
+echo html_writer::tag('p', 'Cada edición agrupa talleres de un único tipo (A o B) en una sección del curso. Primero aparece el calendario HTML y después las subsecciones Taller 01, 02… Las ediciones finalizadas se ocultan y se conservan debajo de la autoevaluación.', ['class' => 'lead']);
 
 if ($message !== '') echo $OUTPUT->notification($message, 'success');
 if ($error !== '') echo $OUTPUT->notification(s($error), 'error');
@@ -91,7 +91,7 @@ $courseoptions = manager::get_course_options();
 
 echo html_writer::start_div('card mb-4');
 echo html_writer::start_div('card-body');
-echo html_writer::tag('h3', $record ? 'Editar edición de seminarios' : 'Nueva edición de seminarios', ['class' => 'h5']);
+echo html_writer::tag('h3', $record ? 'Editar edición de talleres' : 'Nueva edición de talleres', ['class' => 'h5']);
 echo html_writer::start_tag('form', ['method' => 'post']);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'save']);
@@ -127,7 +127,7 @@ if ($series) {
     echo html_writer::tag('h3', 'Ediciones existentes', ['class' => 'h4']);
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm';
-    $table->head = ['Curso', 'Edición', 'Tipo', 'Fechas', 'Seminarios', 'Estado', 'Acciones'];
+    $table->head = ['Curso', 'Edición', 'Tipo', 'Fechas', 'Talleres', 'Estado', 'Acciones'];
     foreach ($series as $s) {
         $course = $DB->get_record('course', ['id' => $s->courseid], 'id,fullname', IGNORE_MISSING);
         $count = count(workshop_series::items((int)$s->id));
@@ -136,10 +136,10 @@ if ($series) {
         $nextorder = workshop_series::next_sortorder((int)$s->id);
         $actions = html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php', ['id' => $s->id]), 'Editar', ['class' => 'btn btn-sm btn-primary me-1']);
         if ($seriestype === 'typea' || $seriestype === '') {
-            $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/workshop_edit.php', ['type' => 'typea', 'seriesid' => $s->id, 'sortorder' => $nextorder]), $seriestype === '' ? 'Añadir seminario A' : 'Añadir seminario', ['class' => 'btn btn-sm btn-success me-1']);
+            $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/workshop_edit.php', ['type' => 'typea', 'seriesid' => $s->id, 'sortorder' => $nextorder]), $seriestype === '' ? 'Añadir taller A' : 'Añadir taller', ['class' => 'btn btn-sm btn-success me-1']);
         }
         if ($seriestype === 'typeb' || $seriestype === '') {
-            $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/workshop_edit.php', ['type' => 'typeb', 'seriesid' => $s->id, 'sortorder' => $nextorder]), $seriestype === '' ? 'Añadir seminario B' : 'Añadir seminario', ['class' => 'btn btn-sm btn-success me-1']);
+            $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/workshop_edit.php', ['type' => 'typeb', 'seriesid' => $s->id, 'sortorder' => $nextorder]), $seriestype === '' ? 'Añadir taller B' : 'Añadir taller', ['class' => 'btn btn-sm btn-success me-1']);
         }
         $actions .= html_writer::start_tag('form', ['method' => 'post', 'style' => 'display:inline-block']);
         $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
@@ -165,7 +165,7 @@ if ($series) {
         $actions .= html_writer::start_tag('form', [
             'method' => 'post',
             'style' => 'display:inline-block',
-            'onsubmit' => "return confirm('¿Borrar esta Edición de seminarios? Solo es posible si aún no tiene inscripciones ni datos académicos; en ese caso usa Finalizar y ocultar.');",
+            'onsubmit' => "return confirm('¿Borrar esta Edición de talleres? Solo es posible si aún no tiene inscripciones ni datos académicos; en ese caso usa Finalizar y ocultar.');",
         ]);
         $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
         $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $s->id]);
