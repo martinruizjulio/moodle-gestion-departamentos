@@ -8,16 +8,16 @@ Repositorio canónico: `martinruizjulio/moodle-gestion-departamentos`. GitHub es
 
 La presentación HEE del curso queda fijada en este orden:
 
-1. **Seminarios Tipo A**
-   - primera subsección: **Calendario y resumen de seminarios** con la tabla HTML generada desde los datos canónicos;
+1. **Talleres Tipo A**
+   - primera subsección: **Calendario y resumen de talleres** con la tabla HTML generada desde los datos canónicos;
    - después: **TALLER 01: Nombre**, **TALLER 02: Nombre**, etc., cada uno como subsección Moodle cuando `mod_subsection` está disponible (título único definido en `workshop_series::subsection_title()`).
-2. **Seminarios Tipo B**
-   - primera subsección: **Calendario y resumen de seminarios**;
+2. **Talleres Tipo B**
+   - primera subsección: **Calendario y resumen de talleres**;
    - después: **TALLER 01: Nombre**, **TALLER 02: Nombre**, etc.
 3. **Autoevaluación final HEE**
    - sección independiente;
    - el alumnado no debe verla hasta alcanzar **54 horas reconocidas**.
-4. **Ediciones anteriores de seminarios**
+4. **Ediciones anteriores de talleres**
    - se conservan debajo de lo anterior;
    - permanecen ocultas al alumnado;
    - se mantienen para histórico, gestión, certificados y trazabilidad.
@@ -26,29 +26,29 @@ La presentación HEE del curso queda fijada en este orden:
 
 ### Separación obligatoria Tipo A / Tipo B
 
-- Una Edición de seminarios es de **un único tipo**: A o B.
-- No se permite añadir manualmente un seminario B a una edición A ni un A a una edición B.
+- Una Edición de talleres es de **un único tipo**: A o B.
+- No se permite añadir manualmente un taller B a una edición A ni un A a una edición B.
 - La importación Excel rechaza una plantilla que mezcle filas A y B antes de crear la sección padre; deben hacerse dos importaciones.
-- Una edición vacía adquiere su tipo al añadir el primer seminario.
+- Una edición vacía adquiere su tipo al añadir el primer taller.
 - Una edición histórica heredada que ya contenga mezcla A/B no se modifica destructivamente; queda identificada como caso legacy y no admite nuevas mezclas.
 
-Internamente se conservan los nombres históricos `workshop`, `workshop_series` y tablas `local_ga_*` para no romper compatibilidad. En la interfaz nueva se prioriza el término **seminario**.
+Internamente se conservan los nombres históricos `workshop`, `workshop_series` y tablas `local_ga_*` para no romper compatibilidad. En la interfaz nueva se prioriza el término **taller**.
 
-## Ediciones de seminarios
+## Ediciones de talleres
 
 - `classes/local/workshop_series.php` sigue siendo el modelo canónico de una edición: título, rango de fechas, sección padre, calendario y subsecciones.
-- `local_ga_workshop_editions.seriesid` vincula explícitamente cada edición concreta con su Edición de seminarios; la resolución por fechas queda como respaldo legacy.
+- `local_ga_workshop_editions.seriesid` vincula explícitamente cada edición concreta con su Edición de talleres; la resolución por fechas queda como respaldo legacy.
 - Manual y Excel desembocan en los mismos objetos.
-- Se impiden solapamientos de rango para reutilizaciones incompatibles del mismo seminario base.
+- Se impiden solapamientos de rango para reutilizaciones incompatibles del mismo taller base.
 - Las fechas de formularios/Excel se interpretan con la zona horaria del usuario mediante `date_helper`.
-- Una Edición de seminarios se considera finalizada **solo cuando su estado se cambia expresamente a `finished`**; superar `dateto` no la finaliza ni la archiva automáticamente.
+- Una Edición de talleres se considera finalizada **solo cuando su estado se cambia expresamente a `finished`**; superar `dateto` no la finaliza ni la archiva automáticamente.
 - Al finalizarla expresamente, la sección completa se oculta y la jerarquía HEE la coloca en el histórico inferior.
 - Al reabrirla vuelve a la zona activa correspondiente A o B.
 
 ## Tipo A
 
-- Arquitectura: Edición Tipo A → calendario → subsecciones de seminario → grupo/inscripción.
-- **Actividad predeterminada para cualquier seminario Tipo A nuevo: Cuestionario Moodle.**
+- Arquitectura: Edición Tipo A → calendario → subsecciones de taller → grupo/inscripción.
+- **Actividad predeterminada para cualquier taller Tipo A nuevo: Cuestionario Moodle.**
 - La creación manual marca las nuevas ediciones como `quiz` desde el inicio lógico; editar una edición antigua conserva el tipo de actividad que ya tuviera configurado.
 - La importación masiva también deja toda edición Tipo A nueva en modo `quiz` aunque en esa fila no se duplique todavía un cuestionario modelo; si «Crear cuestionario» = Sí, se duplica el modelo seleccionado y queda vinculado.
 - Un gestor con permisos Moodle adecuados puede posteriormente vincular/cambiar la actividad obligatoria si existe una excepción; el valor por defecto sigue siendo cuestionario.
@@ -64,7 +64,7 @@ Internamente se conservan los nombres históricos `workshop`, `workshop_series` 
 - La última entrega Moodle en estado `submitted` es la fuente de verdad; la tabla legacy `local_ga_typeb_reflections` no puede rescatar una entrega eliminada.
 - Al finalizar/archivar la edición se cierra la entrega de nuevas reflexiones.
 - Profesor HEE o Gestor HEE puede conceder a un alumno concreto una prórroga de 7 días mediante la extensión nativa de `assign` y retirarla.
-- Si la Edición de seminarios ya está finalizada, la prórroga no reabre la edición: su sección padre queda técnicamente visible solo mientras exista una extensión vigente, restringida por el grupo de la edición y por la fecha límite. Así el enlace directo a la reflexión sigue funcionando sin exponer el histórico al resto del curso; al vencer la fecha, la disponibilidad temporal bloquea de nuevo el acceso.
+- Si la Edición de talleres ya está finalizada, la prórroga no reabre la edición: su sección padre queda técnicamente visible solo mientras exista una extensión vigente, restringida por el grupo de la edición y por la fecha límite. Así el enlace directo a la reflexión sigue funcionando sin exponer el histórico al resto del curso; al vencer la fecha, la disponibilidad temporal bloquea de nuevo el acceso.
 - El certificado solo puede generarse/regenerarse cuando se cumplen asistencia y reflexión.
 
 ## Tipo B externo
@@ -100,8 +100,8 @@ Reglas:
 ## Portafolio del alumno
 
 - `portfolio.php` usa `hours_calculator` para que las cifras de Tipo A, Tipo B y total coincidan con bloque, informes y libro de calificaciones.
-- La pantalla queda organizada como: resumen de horas → calificaciones HEE → Seminarios Tipo A → Seminarios Tipo B internos → Formación externa Tipo B → reconocimiento institucional → traspasos A→B → descargas PDF/ZIP.
-- Tipo A ya no se describe como tarea por defecto: la interfaz indica que el **Cuestionario Moodle** es la actividad predeterminada de los seminarios nuevos, manteniendo compatibilidad con actividades históricas.
+- La pantalla queda organizada como: resumen de horas → calificaciones HEE → Talleres Tipo A → Talleres Tipo B internos → Formación externa Tipo B → reconocimiento institucional → traspasos A→B → descargas PDF/ZIP.
+- Tipo A ya no se describe como tarea por defecto: la interfaz indica que el **Cuestionario Moodle** es la actividad predeterminada de los talleres nuevos, manteniendo compatibilidad con actividades históricas.
 - La formación externa Tipo B vuelve a mostrarse en el portafolio del alumno con todos sus estados: pendiente de validar, validado pendiente de reflexión, validado y completado, o rechazado.
 - Cuando falta la reflexión de una formación externa ya validada, el portafolio muestra **Completar reflexión** y enlaza al flujo canónico `typeb_upload.php`.
 - El alumno puede abrir el certificado externo aportado y consultar el comentario del gestor desde su propio portafolio.
@@ -127,22 +127,22 @@ Reglas:
 - Gestiona únicamente sus ediciones asignadas: alumnado, asistencia, materiales y seguimiento.
 - No obtiene edición general del curso ni acceso global al panel.
 - Los permisos sensibles y ficheros se validan contra la edición concreta.
-- `closed_full` significa lleno, no finalizado, por lo que permanece entre los seminarios vigentes.
+- `closed_full` significa lleno, no finalizado, por lo que permanece entre los talleres vigentes.
 - La caché del bloque se invalida al cerrar/reabrir series, archivar/borrar ediciones, reasignar docentes y cambiar reflexiones relevantes.
 - `authorized_users.php` invalida explícitamente la caché docente al asignar o retirar un Profesor HEE, de modo que el bloque lateral refleja el cambio sin esperar al TTL.
-- En la vista visual del seminario, Profesor HEE/Gestor HEE dispone de **Listado de apuntados**. Abre `edition_roster.php`, visible solo para quien puede gestionar esa edición concreta.
+- En la vista visual del taller, Profesor HEE/Gestor HEE dispone de **Listado de apuntados**. Abre `edition_roster.php`, visible solo para quien puede gestionar esa edición concreta.
 - El listado usa la misma fuente de inscritos que la gestión de asistencia, ordena por apellidos/nombre y ofrece una vista preparada para imprimir en papel con columnas de asistencia/firma y observaciones. No expone el listado al alumnado.
 
 ## Panel de Gestión HEE
 
 - El panel mantiene sus opciones funcionales existentes; no se ha rediseñado ni reducido por el recuento histórico de “9 opciones”.
-- Las descripciones visibles se han actualizado a la terminología y reglas actuales: **seminarios**, Tipo A con cuestionario predeterminado, Tipo B con reflexión Moodle, autoevaluación a 54 h, portafolio y validación externa Tipo B.
+- Las descripciones visibles se han actualizado a la terminología y reglas actuales: **talleres**, Tipo A con cuestionario predeterminado, Tipo B con reflexión Moodle, autoevaluación a 54 h, portafolio y validación externa Tipo B.
 - La vista general del panel prioriza `seriesid` para resolver la edición concreta y usa las fechas solo como respaldo legacy.
-- `closed_full` se interpreta como seminario completo pero todavía vigente, no como finalizado.
+- `closed_full` se interpreta como taller completo pero todavía vigente, no como finalizado.
 - `workshop_report.php` se ha actualizado para mostrar **Actividad / Estado actividad / Resultado / Asistencia**: cuestionario Moodle y nota reescalada en Tipo A, reflexión Moodle en Tipo B y compatibilidad con tareas Tipo A históricas.
-- La nomenclatura visible del listado personalizado y del panel se ha cambiado a **seminario** sin renombrar internamente tablas/clases `workshop*`.
-- `manager_downloads.php` se ha limpiado para el modelo actual: en Tipo A ya no muestra columnas heredadas de “tarea” como regla general, sino **Actividad / Estado-calificación / Resultado**. Los seminarios nuevos leen el Cuestionario Moodle real y las ediciones históricas conservan soporte para Tarea Moodle.
-- Los listados/CSV administrativos usan la terminología **seminario**, **reflexión** y **Edición de seminarios**. El PDF del portafolio también usa la nomenclatura actual y el reconocimiento institucional Tipo A se presenta como **actividad evaluada**.
+- La nomenclatura visible del listado personalizado y del panel se ha cambiado a **taller** sin renombrar internamente tablas/clases `workshop*`.
+- `manager_downloads.php` se ha limpiado para el modelo actual: en Tipo A ya no muestra columnas heredadas de “tarea” como regla general, sino **Actividad / Estado-calificación / Resultado**. Los talleres nuevos leen el Cuestionario Moodle real y las ediciones históricas conservan soporte para Tarea Moodle.
+- Los listados/CSV administrativos usan la terminología **taller**, **reflexión** y **Edición de talleres**. El PDF del portafolio también usa la nomenclatura actual y el reconocimiento institucional Tipo A se presenta como **actividad evaluada**.
 - La limpieza de informes no cambia el esquema de base de datos ni las reglas académicas; solo alinea lectura y presentación con las fuentes canónicas actuales.
 
 ## Bloque lateral Gestión HEE
@@ -151,7 +151,7 @@ Reglas:
 - Tipo B externo exige validación + reflexión.
 - Los traspasos no cambian las horas totales.
 - Los contadores de Profesor HEE y `my_workshops.php` comparten criterio de vigente/finalizado.
-- Una Edición de seminarios padre finalizada mueve sus seminarios a finalizados aunque las ediciones hijas conserven datos históricos.
+- Una Edición de talleres padre finalizada mueve sus talleres a finalizados aunque las ediciones hijas conserven datos históricos.
 - Debajo del resumen de horas del alumno aparece un botón destacado **INSTRUCCIONES PARA ALUMNOS** que abre un modal de apoyo sin abandonar la página.
 - La guía explica inscripción («Apuntarme/Apuntado»), requisitos de Tipo A, Tipo B interno, reconocimiento Tipo B externo, certificados/portafolio, traspasos A→B y desbloqueo de la autoevaluación al alcanzar 54 horas.
 - El contenido de ayuda está en strings `es`/`en` del bloque y el modal utiliza componentes Bootstrap 5 de Moodle; no almacena datos ni cambia reglas académicas.
@@ -189,8 +189,8 @@ Se cerró una revisión estática adicional del plugin principal y del bloque la
 Correcciones confirmadas en esta ronda:
 - política de finalización unificada: las fechas no archivan/finalizan automáticamente; solo el estado explícito `finished`;
 - `workshops.php` y `archive.php` priorizan `edition.seriesid` y usan fechas solo como fallback legacy;
-- `manager_downloads.php` evita asociar una edición concreta con series históricas distintas del mismo seminario base cuando existe `edition.seriesid`, en todos los listados que reutilizan esa unión;
-- el ítem visible del libro de calificaciones y sus informes se denomina **Nota Seminarios A**;
+- `manager_downloads.php` evita asociar una edición concreta con series históricas distintas del mismo taller base cuando existe `edition.seriesid`, en todos los listados que reutilizan esa unión;
+- el ítem visible del libro de calificaciones y sus informes se denomina **Nota Talleres A**;
 - la prórroga de reflexión Tipo B exige una inscripción válida actual (`enrolled`, `attended` o `manual`);
 - el acceso directo a una edición cerrada ya filtraba previamente estados de inscripción válidos en `workshop_view.php`; ese hallazgo preliminar queda descartado;
 - `move_section_to()` se mantiene deliberadamente por compatibilidad y queda pendiente de validación/runtime Moodle 5 antes de migrar a una API distinta.
@@ -201,23 +201,23 @@ Esta auditoría es estática. Siguen siendo obligatorias las pruebas de runtime 
 
 Punto de partida verificado: `e9ca208`, local 1.5.115-alpha (`2026100530`), bloque 1.0.24-alpha (`2026100508`). Correcciones (un commit por tema):
 
-- **Bloqueante — creación de la sección de una Edición de seminarios**: `workshop_series::ensure_course_structure()` llamaba a `course_create_section($course, 0, true)`. Desde Moodle 4.4 (`sectionactions`) eso inserta una sección con número 0, que choca con la sección 0 del curso (índice único curso+sección): crear una edición nueva fallaba en Moodle 4.4/4.5/5.x. Ahora `course_create_section($course, 0)`.
+- **Bloqueante — creación de la sección de una Edición de talleres**: `workshop_series::ensure_course_structure()` llamaba a `course_create_section($course, 0, true)`. Desde Moodle 4.4 (`sectionactions`) eso inserta una sección con número 0, que choca con la sección 0 del curso (índice único curso+sección): crear una edición nueva fallaba en Moodle 4.4/4.5/5.x. Ahora `course_create_section($course, 0)`.
 - **Subsecciones (`mod_subsection`)**: Moodle mantiene las secciones delegadas al final. `course_layout`, el traslado de la autoevaluación, el generador de autoevaluación y el helper heredado de secciones usaban `MAX(section)` del curso entero, colocando o creando secciones HEE detrás de las delegadas. Ahora se usa la última sección regular (`course_layout::last_regular_section_number()`) y `course_create_section()` devuelve la sección real.
 - **Seguridad — ficheros de alumnado**: `typeb_view.php` mostraba siempre en línea la evidencia Tipo B externa; las subidas anteriores al filepicker no se validaban en servidor (HTML/SVG → XSS almacenado contra gestores). Igual con las entregas internas vía `pluginfile`. Solo PDF/JPEG/PNG/GIF se muestran en línea; el resto se descarga.
 - **Inscripción activa única**: `manager::is_active_enrolment()` / `active_enrolment_sql()` (= `enrolled`, `attended`, `manual`, más estado vacío legacy). Antes: plazas, tarjetas del curso y acceso a materiales ignoraban `manual`; una marca de asistencia antigua en un registro cancelado/rechazado seguía contando; el listado personalizado y los listados/CSV A/B incluían `blocked_repeat`, `over_places` o rechazados; volver a añadir a un alumno ya «attended» le devolvía a «enrolled» y una reincorporación manual repetida sumaba otra plaza.
 - **Finalizar desde el formulario de la edición**: guardar con estado «Finalizada» no cerraba las reflexiones Tipo B ni refrescaba el bloque docente como el botón «Finalizar». Ahora comparten `apply_status_side_effects()`.
 - **Resolución edición↔serie** en `dashboard.php`, `archive.php` y `workshops.php`: el respaldo por fechas (y el respaldo final a la edición principal) podía tomar una edición enlazada explícitamente a otra serie. Ahora solo se usan ediciones de esa serie o sin enlazar.
 - **Bloque — modal de instrucciones**: el modal vivía dentro del cajón de bloques (con `transform`), por lo que quedaba recortado y tapado por su fondo. Se mueve a `<body>` al cargar y se añaden también los atributos de Bootstrap 4.
-- **Terminología**: restos visibles de «Talleres A» → «Seminarios A» (nota final, exportación PDF de notas, informe de horas, portafolio del gestor, traspasos, importación institucional y strings de horas). No se tocan nombres internos ni la plantilla de certificado ya almacenada.
+- **Terminología**: restos visibles de «Talleres A» → «Talleres A» (nota final, exportación PDF de notas, informe de horas, portafolio del gestor, traspasos, importación institucional y strings de horas). No se tocan nombres internos ni la plantilla de certificado ya almacenada.
 
 **Ampliación (petición de Julio):**
 - **Baja de alumnos y plaza manual**: `edition_students.php` incorpora «Dar de baja» (POST + sesskey + confirmación) para Profesor HEE / Gestor HEE de la edición. `manager::unenrol_user_from_edition()` conserva el registro como `cancelled`, borra su asistencia, lo saca del grupo Moodle y actualiza el bloque; no permite la baja si ya tiene certificado. Las incorporaciones manuales que crean plaza extra se marcan (`reason = MANUAL_SEAT_REASON`) y, al darlas de baja, se resta esa plaza de forma atómica (nunca por debajo de 1). Las plazas manuales creadas antes de esta versión no llevan marca y no se restan.
-- **Archivado de actividades**: el «hard archive» heredado sacaba la actividad de la secuencia de su sección; Moodle deja entonces de resolverla (sin acceso, sin revisión, sin enlace) y no la recupera al reconstruir la caché. Además se aplicaba a todo el curso, dejando inaccesibles los cuestionarios/reflexiones de otras ediciones activas al finalizar una edición o vincular una actividad, y la limpieza por nombre podía borrar apuntes de otras ediciones del mismo seminario base. Ahora: el contenido de una Edición de seminarios nunca se saca de la secuencia ni se borra por esas limpiezas; al finalizar una edición sus actividades se **ocultan y se mueven al final de su sección**; la reflexión Tipo B queda accesible (oculta en la página si el sitio permite actividades «stealth») para la prórroga individual; `move_workshop_modules()` repara módulos huérfanos de versiones anteriores. Las ediciones heredadas fuera de una serie mantienen el comportamiento anterior.
-- **Ampliación automática de la Edición de seminarios**: si al editar o añadir un seminario su fecha/horario queda fuera del rango de su Edición, la Edición se amplía automáticamente (`workshop_series::extend_to_cover()`) con aviso, en lugar de rechazar el cambio. Aplica al formulario del seminario, a `attach_workshop()` y a la importación Excel (la previsualización avisa de las filas que ampliarán la Edición). No cambia el estado de la Edición y sigue impidiendo solapamientos con otra Edición que contenga el mismo seminario base.
+- **Archivado de actividades**: el «hard archive» heredado sacaba la actividad de la secuencia de su sección; Moodle deja entonces de resolverla (sin acceso, sin revisión, sin enlace) y no la recupera al reconstruir la caché. Además se aplicaba a todo el curso, dejando inaccesibles los cuestionarios/reflexiones de otras ediciones activas al finalizar una edición o vincular una actividad, y la limpieza por nombre podía borrar apuntes de otras ediciones del mismo taller base. Ahora: el contenido de una Edición de talleres nunca se saca de la secuencia ni se borra por esas limpiezas; al finalizar una edición sus actividades se **ocultan y se mueven al final de su sección**; la reflexión Tipo B queda accesible (oculta en la página si el sitio permite actividades «stealth») para la prórroga individual; `move_workshop_modules()` repara módulos huérfanos de versiones anteriores. Las ediciones heredadas fuera de una serie mantienen el comportamiento anterior.
+- **Ampliación automática de la Edición de talleres**: si al editar o añadir un taller su fecha/horario queda fuera del rango de su Edición, la Edición se amplía automáticamente (`workshop_series::extend_to_cover()`) con aviso, en lugar de rechazar el cambio. Aplica al formulario del taller, a `attach_workshop()` y a la importación Excel (la previsualización avisa de las filas que ampliarán la Edición). No cambia el estado de la Edición y sigue impidiendo solapamientos con otra Edición que contenga el mismo taller base.
 - **Prórroga Tipo B tras finalizar la Edición — resuelta 2026-10-06:** Moodle bloquea una actividad si su sección padre está oculta, aunque exista `assign_user_flags.extensionduedate`. `workshop_series::section_access_state()` mantiene el histórico oculto normalmente, pero cuando hay una extensión vigente habilita técnicamente la sección con disponibilidad Moodle restringida por **grupo de la edición + fecha de fin de la extensión**. `typeb_certificate_policy::set_late_reflection_permission()` garantiza/sincroniza el grupo y refresca ese acceso al conceder o retirar el permiso. La edición sigue en estado `finished`; no vuelve a vigente. Pendiente de confirmar este flujo en Moodle 5 real.
 
 **Correcciones tras la primera prueba Moodle 5 real (2026-10-06):**
-- **Estructura visual de la Edición**: la sección padre usa exactamente el título de la Edición de seminarios. La primera subsección es **Calendario y resumen de seminarios** y después aparecen los talleres como subsecciones Moodle nativas con nombre `TALLER 01: …`, `TALLER 02: …`, etc.
+- **Estructura visual de la Edición**: la sección padre usa exactamente el título de la Edición de talleres. La primera subsección es **Calendario y resumen de talleres** y después aparecen los talleres como subsecciones Moodle nativas con nombre `TALLER 01: …`, `TALLER 02: …`, etc.
 - **Sin tarjeta legacy dentro de la subsección**: se elimina el resumen HTML duplicado del taller. Cada subsección actúa como contenedor visual y muestra directamente las actividades Moodle reales (asistencia, apuntes, cuestionario/reflexión, certificado cuando proceda), como en el diseño validado en la prueba.
 - **Restricción por grupo**: la subsección del taller hereda disponibilidad por el grupo propio de la edición cuando existe, de modo que Moodle muestra la restricción de pertenencia al grupo y mantiene el contenido protegido.
 - **Secciones legacy `TALLERES TIPO A/B`**: si el curso ya utiliza Ediciones modernas para ese tipo, la salida legacy se limpia y oculta. Esto corrige la falsa impresión de que al importar un Excel se cargan también talleres antiguos: no era el Excel, sino la reconstrucción del listado legacy de todos los talleres publicables.
@@ -232,12 +232,12 @@ Punto de partida verificado: `e9ca208`, local 1.5.115-alpha (`2026100530`), bloq
 - **AMD sin compilar**: `amd/build/card_status*.min.js` seguían con el código anterior (Moodle sirve `build/` en producción), por lo que el cambio de `src/` que añade el `sesskey` no llegaba al navegador. Se sincronizan con `src/`.
 - **Sin punto de inscripción en Ediciones modernas (bloqueante funcional)**: la subsección del taller no tiene resumen, está restringida al grupo y el calendario no tenía enlaces; la sección legacy quedaba oculta. El alumno no podía apuntarse desde el curso. El calendario incluye ahora la columna **Acceso** con «Ver / Inscribirme» → `workshop_view.php?id=…&editionid=…` (enlace no mutante; la página muestra el estado propio y el botón con sesskey). Etiqueta constante para que el HTML cacheado no quede obsoleto.
 - **Autoinscripción en edición cerrada**: `enrol_user_in_edition()` rechaza ahora la autoinscripción (no la manual) en ediciones archivadas/finalizadas o de una Edición finalizada; antes solo `workshop_view.php` lo impedía y `enrol.php` era accesible directamente.
-- **Títulos de subsección contradictorios**: `course_layout::rename_series_subsections()` renombraba a `Seminario 01 · …` y `ensure_course_structure()` a `TALLER 01: …` (cada sincronización deshacía la otra). Título único `workshop_series::subsection_title()`; además se alinea el nombre de la instancia `mod_subsection`.
+- **Títulos de subsección contradictorios**: `course_layout::rename_series_subsections()` renombraba a `Taller 01 · …` y `ensure_course_structure()` a `TALLER 01: …` (cada sincronización deshacía la otra). Título único `workshop_series::subsection_title()`; además se alinea el nombre de la instancia `mod_subsection`.
 - **Orden dentro de la sección padre**: no se garantizaba que el calendario fuera el primero ni el orden de talleres (dependía del orden de creación). `order_parent_section()` reordena solo la secuencia: calendario, TALLER 01, 02…; otros módulos añadidos por el docente quedan detrás sin moverse de sección.
 - **Excel creaba la sección legacy `TALLERES TIPO A`**: al guardar cada edición importada (aún sin `seriesid`) se reconstruía la superficie legacy y, en la primera importación, se creaba la sección; la actividad obligatoria Tipo A/B también se creaba en `TALLERES TIPO A` (incluso para Tipo B). Ahora la edición se vincula a su Edición al crearse, la reconstrucción legacy se suspende durante la importación y `create_required_activity_for_edition()` crea la actividad en la sección de la Edición si existe (legacy sin cambios).
 - **Cursos mixtos**: la versión anterior dejaba sin tarjeta a cualquier edición legacy abierta si el curso tenía ya una Edición moderna del mismo tipo. Ahora, en ese caso, solo se mantienen tarjetas de ediciones legacy con inscripción todavía abierta y sin Edición; los talleres antiguos no reaparecen. Cursos solo legacy: sin cambios.
 - **Borrado de Edición conservador**: `delete_series()` se niega si alguna edición tiene inscripciones, horas, certificados, reflexiones, entregas o traspasos, e indica usar «Finalizar y ocultar». Solo una Edición vacía se retira (ediciones archivadas, sección oculta y renombrada «Eliminada · …», nunca se borran secciones ni actividades).
-- **Terminología de gestión**: «Edición de talleres» → «Edición de seminarios» en páginas de gestión; dashboard muestra `TALLER 01`.
+- **Terminología de gestión**: «Edición de talleres» → «Edición de talleres» en páginas de gestión; dashboard muestra `TALLER 01`.
 
 *Validación estática:* `php -l` en todos los PHP de ambos plugins sin errores; XML bien formado; `node --check` en los AMD; strings es/en con las mismas claves en ambos plugins; sin ficheros temporales ni workflows en el repositorio. **Sin ejecución en Moodle real.**
 
@@ -262,7 +262,7 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Instalación limpia y upgrade desde una instalación existente.
 - Confirmar visualmente el orden exacto y el diseño corregido:
   1. sección padre con el **título exacto de la Edición**;
-  2. primera subsección **Calendario y resumen de seminarios**;
+  2. primera subsección **Calendario y resumen de talleres**;
   3. subsecciones `TALLER 01: …`, `TALLER 02: …` con las actividades Moodle reales dentro y sin tarjeta HTML legacy;
   4. no debe aparecer una sección paralela `TALLERES TIPO A/B` cuando el curso usa Ediciones modernas;
   5. repetir el mismo patrón para Tipo B;
@@ -272,7 +272,7 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Importar un Excel en un curso nuevo: no debe aparecer ninguna sección `TALLERES TIPO A/B`; calendario primero y talleres en el orden del Excel con sus actividades dentro.
 - Intentar «Borrar edición» con inscritos (debe negarse) y con una Edición vacía (debe ocultarse).
 - Crear edición A manual e intentar añadir B: debe rechazarse; repetir a la inversa.
-- Crear un seminario Tipo A manual nuevo y comprobar que queda configurado como **Cuestionario Moodle** por defecto; editar después sus datos y verificar que conserva el cuestionario.
+- Crear un taller Tipo A manual nuevo y comprobar que queda configurado como **Cuestionario Moodle** por defecto; editar después sus datos y verificar que conserva el cuestionario.
 - Importar Excel Tipo A con «Crear cuestionario = Sí» y comprobar duplicación/vínculo del modelo; importar otra fila Tipo A sin duplicarlo y verificar que la edición queda igualmente en modo `quiz`, pendiente de vincular/crear el cuestionario.
 - Verificar que una edición histórica Tipo A que ya use tarea mantiene esa tarea al editar metadatos.
 - Importar Excel solo A y solo B; un Excel mixto debe rechazarse antes de crear la sección.
@@ -281,7 +281,7 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Verificar con 53,9 h que no aparece autoevaluación y con 54 h que aparece.
 - Verificar cuestionario auto-generado y cuestionario existente seleccionado manualmente.
 - Tipo A: cuestionario, nota mínima y certificados.
-- Tipo B interno: reflexión texto/archivo, eliminación/reenvío, prórroga y certificado. Probar expresamente una prórroga concedida **después de finalizar la Edición de seminarios**: solo el grupo de la edición debe poder alcanzar la sección durante la ventana temporal y el alumno con extensión debe poder abrir/entregar la tarea; al vencer o retirar el permiso debe quedar de nuevo inaccesible.
+- Tipo B interno: reflexión texto/archivo, eliminación/reenvío, prórroga y certificado. Probar expresamente una prórroga concedida **después de finalizar la Edición de talleres**: solo el grupo de la edición debe poder alcanzar la sección durante la ventana temporal y el alumno con extensión debe poder abrir/entregar la tarea; al vencer o retirar el permiso debe quedar de nuevo inaccesible.
 - Tipo B externo: subida → validación → reflexión → horas.
 - Portafolio alumno: comprobar que A/B/total coinciden con el bloque, que aparecen todos los estados Tipo B externo, que **Completar reflexión** abre el flujo correcto y que tras guardar la reflexión se actualizan horas/estado.
 - Portafolio alumno: comprobar PDF y ZIP desde la nueva zona de descargas y que los documentos mantienen los mismos totales canónicos.
