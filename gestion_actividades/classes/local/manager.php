@@ -639,7 +639,12 @@ class manager {
         // A historical Type A edition configured with an assignment keeps it:
         // editing it must never add a quiz or switch its required activity.
         $edition = self::get_workshop_edition($editionid);
-        if ((string)($edition->requiredmodname ?? '') === 'assign' || !empty($edition->requiredassigncmid)) {
+        // Only an assignment that really exists and is linked counts as
+        // "historical with assignment" (requiredmodname alone defaults to
+        // 'assign' in save_workshop_edition() for any Type A edition).
+        $linkedassign = !empty($edition->requiredassigncmid) ? (int)$edition->requiredassigncmid
+            : ((string)($edition->requiredmodname ?? '') === 'assign' ? (int)($edition->requiredcmid ?? 0) : 0);
+        if ($linkedassign > 0 && self::get_module_name_from_cmid($linkedassign) === 'assign') {
             return (object)[
                 'success' => true,
                 'message' => 'Edición Tipo A histórica con tarea: se conserva su actividad.',
@@ -6695,6 +6700,13 @@ class manager {
         } catch (\Throwable $e) {
             return false;
         }
+    }
+
+    /**
+     * Public wrapper used by the automatic certificate run.
+     */
+    public static function notify_new_certificate(\stdClass $user, \stdClass $workshop, \stdClass $edition, \stdClass $certificate): bool {
+        return self::notify_certificate_available($user, $workshop, $edition, $certificate);
     }
 
     protected static function notify_certificate_available(\stdClass $user, \stdClass $workshop, \stdClass $edition, ?\stdClass $certificate): bool {

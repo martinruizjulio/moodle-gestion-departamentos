@@ -20,21 +20,13 @@ if (!manager::can_manage_edition((int)$edition->id, (int)$USER->id)) {
 
 require_sesskey();
 
-$certcount = manager::count_edition_certificates((int)$edition->id);
-$enrolledcount = count(manager::list_edition_enrolled_users_ultrasafe((int)$edition->id));
-if ($certcount <= 0 && $enrolledcount > 0) {
-    redirect(
-        new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]),
-        'Antes de terminar y archivar debes generar los certificados.',
-        null,
-        \core\output\notification::NOTIFY_WARNING
-    );
-}
-
+// Finishing issues the pending certificates itself (attendance + quiz >= 5/10
+// for Type A, attendance + reflection for Type B) and records the hours.
 try {
-    manager::refresh_completed_hours_for_edition((int)$edition->id);
+    \local_gestion_actividades\local\auto_certificates::process_edition((int)$edition->id);
 } catch (Throwable $e) {
-    // Archiving must remain available; completed hours can be rebuilt from management tools.
+    // Archiving must remain available; certificates can be generated later.
+    debugging('No se pudieron emitir los certificados al finalizar: ' . $e->getMessage(), DEBUG_DEVELOPER);
 }
 manager::archive_finished_workshop_edition((int)$edition->id);
 

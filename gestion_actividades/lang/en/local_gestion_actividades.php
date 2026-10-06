@@ -454,3 +454,4 @@ $string['createmissingusers_help'] = 'If enabled, the plugin tries to create man
 $string['userscsvfile_help'] = 'CSV with columns email, firstname/nombre, lastname/apellidos. Optional: username, idnumber, nota, city, country, password.';
 $string['updateexistingusers_help'] = 'If enabled, when the email or username already exists in Moodle, first name, last name and idnumber are updated (site administrators are never modified). Otherwise existing users are skipped.';
 $string['errormissingusercolumns'] = 'The users CSV must include email, firstname/nombre and lastname/apellidos.';
+$string['task_generate_workshop_certificates'] = 'Issue certificates and record hours when workshops finish';

@@ -456,3 +456,4 @@ $string['enrolmentclosed'] = 'Taller cerrado para inscripción';
 $string['enrolledbutton'] = 'Inscrito/a';
 
 $string['enrolmentstatus'] = 'Estado de inscripción';
+$string['task_generate_workshop_certificates'] = 'Emitir certificados y registrar horas al finalizar los talleres';

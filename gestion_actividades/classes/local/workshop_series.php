@@ -530,6 +530,17 @@ class workshop_series {
     public static function set_finished(int $seriesid, bool $finished): void {
         global $DB;
         self::ensure_schema();
+        if ($finished && self::editions_have_seriesid()) {
+            // Finishing the Edición issues every pending certificate first
+            // (and records the hours), as when each taller finishes.
+            foreach ($DB->get_fieldset_select('local_ga_workshop_editions', 'id', 'seriesid = :s', ['s' => $seriesid]) as $eid) {
+                try {
+                    auto_certificates::process_edition((int)$eid);
+                } catch (\Throwable $e) {
+                    debugging('No se pudieron emitir los certificados de la edición ' . (int)$eid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+        }
         $DB->update_record(self::TABLE, (object)[
             'id' => $seriesid,
             'status' => $finished ? 'finished' : 'active',
