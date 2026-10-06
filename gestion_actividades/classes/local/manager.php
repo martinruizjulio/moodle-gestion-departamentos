@@ -968,20 +968,63 @@ class manager {
         return false;
     }
 
+    /**
+     * Shared workshop card used inside the modern seminar subsection and, for
+     * legacy editions only, in the old TALLERES TIPO A/B section.
+     *
+     * The summary HTML is shared by all course users, so the initial enrol link
+     * is deliberately non-mutating (it opens the seminar). Per-user JS replaces
+     * it with the sesskey-protected enrol URL for students who may enrol.
+     */
+    public static function render_workshop_card(\stdClass $workshop, \stdClass $edition): string {
+        $viewurl = new \moodle_url('/local/gestion_actividades/workshop_view.php', [
+            'id' => (int)$workshop->id,
+            'editionid' => (int)$edition->id,
+        ]);
+        $date = !empty($edition->sessiondate) ? self::format_workshop_date((int)$edition->sessiondate) : '-';
+        $hours = isset($workshop->hours) && $workshop->hours !== null ? round((float)$workshop->hours, 2) . ' h' : '-';
+        $remaining = self::get_edition_remaining_places($edition);
+        $remainingtext = $remaining === null ? get_string('unlimitedplaces', 'local_gestion_actividades') : (string)$remaining;
+        $title = trim((string)$workshop->code . ' - ' . (string)$workshop->name);
+
+        $card = '<div class="local-ga-course-workshop" style="padding:1rem 1.1rem;border:1px solid #d8dee9;border-left:4px solid #0f6cbf;border-radius:10px;background:#fff;margin:.65rem 0;">';
+        $card .= '<div style="font-weight:700;font-size:1.08rem;">' . s($title) . '</div>';
+        if (!empty($workshop->description)) {
+            $card .= '<div style="margin-top:.3rem;">' . s(trim((string)$workshop->description)) . '</div>';
+        }
+        $card .= '<div style="margin-top:.45rem;color:#444;">';
+        $card .= '<strong>' . get_string('date') . ':</strong> ' . s($date);
+        $card .= ' · <strong>' . get_string('workshophours', 'local_gestion_actividades') . ':</strong> ' . s($hours);
+        $card .= ' · <strong>' . get_string('remainingplaces', 'local_gestion_actividades') . ':</strong> ' . s($remainingtext);
+        $card .= '</div>';
+        $card .= '<div class="local-ga-card-actions" data-editionid="' . (int)$edition->id . '" style="margin-top:.65rem;display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;">';
+        if (self::is_edition_enrolment_closed($edition)) {
+            $card .= '<span class="btn disabled local-ga-enrol-status" data-editionid="' . (int)$edition->id . '" '
+                . 'style="background:#fff0d5;border:1px solid #efbd68;color:#8a4b00;font-weight:600;" '
+                . 'aria-disabled="true">' . get_string('enrolmentclosed', 'local_gestion_actividades') . '</span>';
+        } else {
+            // Safe fallback: if per-user JS cannot run, the button opens the
+            // seminar where enrolment is available with the current sesskey.
+            $card .= '<a class="btn btn-primary local-ga-enrol-status" data-editionid="' . (int)$edition->id . '" '
+                . 'href="' . $viewurl->out(false) . '">' . get_string('enrolme', 'local_gestion_actividades') . '</a>';
+        }
+        $card .= '<a class="btn btn-secondary" href="' . $viewurl->out(false) . '">' . get_string('viewworkshop', 'local_gestion_actividades') . '</a>';
+        $card .= '</div></div>';
+        return $card;
+    }
+
+    /**
+     * Keep the old TALLERES TIPO A/B section only for editions that are not
+     * attached to a modern Edición de seminarios. Modern series render their
+     * card inside their own subsection instead, avoiding duplicate old/new UI.
+     */
     public static function sync_workshop_section_summary(int $courseid, string $type = 'typea'): bool {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/course/lib.php');
 
         $sectionname = self::get_main_workshop_section_name_for_type($type);
-        $sectionnum = self::get_or_create_course_section($courseid, $sectionname);
-        $section = $DB->get_record('course_sections', [
-            'course' => $courseid,
-            'section' => $sectionnum,
-        ], '*', MUST_EXIST);
-
-        $workshops = self::list_workshops($courseid, $type);
         $cards = '';
-        foreach ($workshops as $workshop) {
+        foreach (self::list_workshops($courseid, $type) as $workshop) {
             if (!self::is_workshop_publishable($workshop)) {
                 continue;
             }
@@ -989,48 +1032,49 @@ class manager {
             if (!$edition) {
                 continue;
             }
-            $viewurl = new \moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => (int)$workshop->id, 'editionid' => (int)$edition->id]);
-            $enrolurl = new \moodle_url('/local/gestion_actividades/enrol.php', ['id' => (int)$edition->id]);
-            $date = !empty($edition->sessiondate) ? self::format_workshop_date((int)$edition->sessiondate) : '-';
-            $hours = isset($workshop->hours) && $workshop->hours !== null ? round((float)$workshop->hours, 2) . ' h' : '-';
-            $remaining = self::get_edition_remaining_places($edition);
-            $remainingtext = $remaining === null ? get_string('unlimitedplaces', 'local_gestion_actividades') : (string)$remaining;
-            $title = trim((string)$workshop->code . ' - ' . (string)$workshop->name);
-
-            $cards .= '<div class="local-ga-course-workshop" style="padding:1rem 1.1rem;border:1px solid #d8dee9;border-left:4px solid #0f6cbf;border-radius:10px;background:#fff;margin:.65rem 0;">';
-            $cards .= '<div style="font-weight:700;font-size:1.08rem;">' . s($title) . '</div>';
-            if (!empty($workshop->description)) {
-                $cards .= '<div style="margin-top:.3rem;">' . s(trim((string)$workshop->description)) . '</div>';
+            // seriesid is canonical for modern editions. Do not duplicate their
+            // cards in the legacy TALLERES TIPO A/B section.
+            if (property_exists($edition, 'seriesid') && (int)$edition->seriesid > 0) {
+                continue;
             }
-            $cards .= '<div style="margin-top:.45rem;color:#444;">';
-            $cards .= '<strong>' . get_string('date') . ':</strong> ' . s($date);
-            $cards .= ' · <strong>' . get_string('workshophours', 'local_gestion_actividades') . ':</strong> ' . s($hours);
-            $cards .= ' · <strong>' . get_string('remainingplaces', 'local_gestion_actividades') . ':</strong> ' . s($remainingtext);
-            $cards .= '</div>';
-            $cards .= '<div class="local-ga-card-actions" data-editionid="' . (int)$edition->id . '" style="margin-top:.65rem;display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;">';
-            if (self::is_edition_enrolment_closed($edition)) {
-                // El cierre por fecha es común para todo el curso y puede renderizarse directamente.
-                $cards .= '<span class="btn disabled local-ga-enrol-status" data-editionid="' . (int)$edition->id . '" '
-                    . 'style="background:#fff0d5;border:1px solid #efbd68;color:#8a4b00;font-weight:600;" '
-                    . 'aria-disabled="true">' . get_string('enrolmentclosed', 'local_gestion_actividades') . '</span>';
-            } else {
-                // El resumen de sección es compartido. Se deja un control HTML válido que Moodle no elimina;
-                // el módulo AMD sustituye su texto y estilo según el usuario conectado.
-                $cards .= '<a class="btn btn-primary local-ga-enrol-status" data-editionid="' . (int)$edition->id . '" '
-                    . 'href="' . $enrolurl->out(false) . '">' . get_string('enrolme', 'local_gestion_actividades') . '</a>';
-            }
-            $cards .= '<a class="btn btn-secondary" href="' . $viewurl->out(false) . '">' . get_string('viewworkshop', 'local_gestion_actividades') . '</a>';
-            $cards .= '</div></div>';
+            $cards .= self::render_workshop_card($workshop, $edition);
         }
 
-        $summary = $cards;
-        if ($summary === '') {
-            $summary = '<div class="alert alert-info mb-0">No hay talleres disponibles en este momento.</div>';
+        $section = null;
+        foreach ($DB->get_records('course_sections', ['course' => $courseid], 'section ASC') as $candidate) {
+            if (trim((string)($candidate->name ?? '')) === $sectionname) {
+                $section = $candidate;
+                break;
+            }
         }
 
-        if ((string)($section->summary ?? '') !== $summary || (int)($section->summaryformat ?? FORMAT_HTML) !== FORMAT_HTML || empty($section->visible)) {
+        // No legacy cards: do not create the legacy section. If an older build
+        // already created it, clear and hide it so only the modern Edición is
+        // visible in the course.
+        if ($cards === '') {
+            if ($section) {
+                course_update_section($courseid, $section, [
+                    'summary' => '',
+                    'summaryformat' => FORMAT_HTML,
+                    'visible' => 0,
+                ]);
+            }
+            return true;
+        }
+
+        if (!$section) {
+            $sectionnum = self::get_or_create_course_section($courseid, $sectionname);
+            $section = $DB->get_record('course_sections', [
+                'course' => $courseid,
+                'section' => $sectionnum,
+            ], '*', MUST_EXIST);
+        }
+
+        if ((string)($section->summary ?? '') !== $cards
+                || (int)($section->summaryformat ?? FORMAT_HTML) !== FORMAT_HTML
+                || empty($section->visible)) {
             course_update_section($courseid, $section, [
-                'summary' => $summary,
+                'summary' => $cards,
                 'summaryformat' => FORMAT_HTML,
                 'visible' => 1,
             ]);
