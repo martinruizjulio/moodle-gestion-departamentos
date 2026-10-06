@@ -123,7 +123,7 @@ if ($selecteduser) {
     echo html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_package_download.php', ['userid' => $selecteduser->id]), local_ga_btn_icon('t/download', 'Descargar expediente completo ZIP'), ['class' => 'btn btn-primary']);
     echo html_writer::end_div();
 
-    echo html_writer::tag('h3', 'Seminarios Tipo A');
+    echo html_writer::tag('h3', 'Talleres Tipo A');
     if ($typeacerts) {
         $table = new html_table();
         $table->head = ['Taller', 'Horas', 'Fecha emisión', 'Estado', 'Acciones'];
