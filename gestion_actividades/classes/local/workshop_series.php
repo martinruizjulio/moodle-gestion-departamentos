@@ -410,6 +410,111 @@ class workshop_series {
      * A workshop base may be reused by historical editions. Refresh every
      * series that references it instead of arbitrarily picking one.
      */
+    /**
+     * Remove all Moodle subsection containers belonging to one workshop before
+     * the workshop record itself is deleted.
+     *
+     * Remaining modules are moved to the hidden conservation section so only
+     * the generated HEE container disappears. The series item row is removed
+     * and each affected parent series is rebuilt immediately.
+     */
+    public static function remove_workshop_structure(int $workshopid): void {
+        global $DB, $CFG;
+
+        self::ensure_schema();
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $items = $DB->get_records(self::ITEMTABLE, ['workshopid' => $workshopid]);
+        if (!$items) {
+            return;
+        }
+
+        $seriesids = [];
+        foreach ($items as $item) {
+            $seriesids[(int)$item->seriesid] = (int)$item->seriesid;
+            $series = $DB->get_record(self::TABLE, ['id' => (int)$item->seriesid], '*', IGNORE_MISSING);
+            if (!$series) {
+                $DB->delete_records(self::ITEMTABLE, ['id' => (int)$item->id]);
+                continue;
+            }
+
+            $courseid = (int)$series->courseid;
+            $subsectioncmid = (int)($item->subsectioncmid ?? 0);
+            $subsectionsectionid = (int)($item->subsectionsectionid ?? 0);
+
+            if ($subsectioncmid > 0 && $DB->record_exists('course_modules', [
+                    'id' => $subsectioncmid,
+                    'course' => $courseid,
+                ])) {
+                $delegated = $subsectionsectionid > 0
+                    ? $DB->get_record('course_sections', [
+                        'id' => $subsectionsectionid,
+                        'course' => $courseid,
+                    ], '*', IGNORE_MISSING)
+                    : null;
+
+                if ($delegated && trim((string)($delegated->sequence ?? '')) !== '') {
+                    $keepsectionnum = manager::get_or_create_course_section(
+                        $courseid,
+                        'HEE · Actividades conservadas tras limpieza'
+                    );
+                    $keepsection = $DB->get_record('course_sections', [
+                        'course' => $courseid,
+                        'section' => $keepsectionnum,
+                    ], '*', MUST_EXIST);
+                    if (!empty($keepsection->visible)) {
+                        course_update_section($courseid, $keepsection, ['visible' => 0]);
+                        $keepsection = $DB->get_record('course_sections', ['id' => $keepsection->id], '*', MUST_EXIST);
+                    }
+
+                    $innercmids = array_values(array_filter(array_map(
+                        'intval',
+                        explode(',', (string)$delegated->sequence)
+                    )));
+                    foreach ($innercmids as $innercmid) {
+                        $innercm = get_coursemodule_from_id('', $innercmid, $courseid, false, IGNORE_MISSING);
+                        if (!$innercm) {
+                            continue;
+                        }
+                        try {
+                            moveto_module($innercm, $keepsection, null);
+                        } catch (\Throwable $e) {
+                            debugging(
+                                'No se pudo conservar el módulo ' . $innercmid
+                                . ' antes de borrar la subsección del taller: ' . $e->getMessage(),
+                                DEBUG_DEVELOPER
+                            );
+                        }
+                    }
+                }
+
+                $delegated = $subsectionsectionid > 0
+                    ? $DB->get_record('course_sections', ['id' => $subsectionsectionid], '*', IGNORE_MISSING)
+                    : null;
+                if (!$delegated || trim((string)($delegated->sequence ?? '')) === '') {
+                    try {
+                        course_delete_module($subsectioncmid);
+                    } catch (\Throwable $e) {
+                        debugging(
+                            'No se pudo borrar la subsección HEE del taller ' . $workshopid
+                            . ': ' . $e->getMessage(),
+                            DEBUG_DEVELOPER
+                        );
+                    }
+                }
+            }
+
+            $DB->delete_records(self::ITEMTABLE, ['id' => (int)$item->id]);
+        }
+
+        foreach ($seriesids as $seriesid) {
+            if (!$DB->record_exists(self::TABLE, ['id' => $seriesid])) {
+                continue;
+            }
+            self::ensure_course_structure($seriesid);
+        }
+    }
+
     public static function refresh_for_workshop(int $workshopid): void {
         global $DB;
         self::ensure_schema();
