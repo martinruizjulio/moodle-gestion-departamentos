@@ -43,7 +43,7 @@ $transfers = manager::list_user_typeb_transfers($userid);
 echo $OUTPUT->header();
 echo html_writer::div(local_ga_transfer_return_button(), 'mb-3');
 echo html_writer::tag('h2', 'Traspasar horas Tipo A a Tipo B');
-echo html_writer::tag('p', 'Puedes traspasar talleres Tipo A ya certificados a Tipo B solo cuando superas las 32 horas Tipo A y todavía no has completado las 22 horas Tipo B. El traspaso no duplica horas: el taller completo deja de contar como Tipo A y pasa a contar como Tipo B. No se permiten traspasos parciales y su nota deja de formar parte de la media de Seminarios A.', ['class' => 'text-muted']);
+echo html_writer::tag('p', 'Puedes traspasar talleres Tipo A ya certificados a Tipo B solo cuando superas las 32 horas Tipo A y todavía no has completado las 22 horas Tipo B. El traspaso no duplica horas: el taller completo deja de contar como Tipo A y pasa a contar como Tipo B. No se permiten traspasos parciales y su nota deja de formar parte de la media de Talleres A.', ['class' => 'text-muted']);
 
 if ($message !== '') {
     echo $OUTPUT->notification($message, $messagetype);
@@ -100,7 +100,7 @@ echo html_writer::tag('h3', 'Traspasos realizados', ['class' => 'h4 mt-4']);
 if ($transfers) {
     $t = new html_table();
     $t->attributes['class'] = 'generaltable table-sm';
-    $t->head = ['Seminario A traspasado', 'Horas traspasadas', 'Texto obligatorio', 'Fecha'];
+    $t->head = ['Taller A traspasado', 'Horas traspasadas', 'Texto obligatorio', 'Fecha'];
     foreach ($transfers as $row) {
         $name = trim((string)($row->workshopcode ?? '') . ' - ' . (string)($row->workshopname ?? ''));
         $t->data[] = [
