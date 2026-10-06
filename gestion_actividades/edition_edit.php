@@ -172,7 +172,17 @@ if (data_submitted() && confirm_sesskey()) {
     }
 
     if ($seriesid > 0) {
+        // Link first so generated Moodle activities are born as modern
+        // series-owned content rather than falling through the legacy path.
         workshop_series::attach_workshop($seriesid, $workshopid, $sortorder, 0, $sessionenddate, $savededitionid);
+
+        if (!$istypebworkshop) {
+            $defaults = manager::ensure_typea_default_activities($savededitionid, $sortorder);
+            if (empty($defaults->success)) {
+                throw new moodle_exception('invaliddata', 'error', '', (string)$defaults->message);
+            }
+            workshop_series::ensure_course_structure($seriesid);
+        }
     } else {
         workshop_series::refresh_for_workshop($workshopid);
     }
