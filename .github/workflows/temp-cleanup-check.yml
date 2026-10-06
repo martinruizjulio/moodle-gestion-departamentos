@@ -1,0 +1,21 @@
+name: Temporary cleanup syntax check
+
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-cleanup-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          php -l gestion_actividades/classes/local/manager.php
+          php -l gestion_actividades/test_cleanup.php
+          php -l gestion_actividades/workshop_series.php
+          php -l gestion_actividades/workshops.php
