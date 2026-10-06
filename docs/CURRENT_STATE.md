@@ -482,7 +482,16 @@ Decisión de Julio: los archivos de un taller solo los ve el alumnado apuntado a
 - Prueba real (Moodle 5.0.11, 8 talleres A/B manual y Excel): carpeta creada en su subsección; apuntado antes del inicio → «Disponible a partir de…» sin acceso; taller empezado → acceso; alumno no apuntado → no la ve; al fijar/adelantar el cierre del cuestionario o del plazo de reflexión la carpeta se limita y, cerrado, deja de estar accesible. 303 comprobaciones correctas en total.
 - Los materiales subidos por «Añadir material» de Gestión HEE mantienen su regla anterior (apuntado y desde el inicio, sin límite final).
 
+## «Guardar cambios» del taller (2026-10-06, 1.5.143-alpha / `2026100558`)
+
+Informe de Julio: «Guardar cambios» daba error y había que guardar, volver y pulsar «Publicar en curso».
+
+- **Guardar ya publica y se queda en la misma pantalla**: tras guardar se ejecutan los mismos pasos que «Publicar en curso» y se vuelve al formulario del taller con «Cambios guardados y publicados en el curso.». «Publicar en curso» también vuelve al formulario.
+- **Tipo B: cada guardado creaba una reflexión nueva** (`save_workshop_edition()` desvinculaba siempre la tarea de los Tipo B; después se creaba otra y las entregas quedaban en la anterior). Ahora se conserva la reflexión vinculada. Ediciones guardadas con versiones anteriores pueden tener tareas «Reflexión · …» duplicadas en su subsección: la vinculada es la última; revisar antes de borrar ninguna si ya hay entregas.
+- **Avisos que rompían la redirección con depuración activada**: `cmidnumber` ausente al crear asistencia/cuestionario/reflexión/subsección (aviso PHP de `add_moduleinfo()`), campos de nombre incompletos en el profesorado del calendario (`fullname()`), y callbacks antiguos de `lib.php` que Moodle 4.4+ marca como obsoletos en cada página. Nuevos `db/hooks.php` + `classes/hook_callbacks.php` (Moodle 4.4+; en versiones anteriores siguen los callbacks de `lib.php`).
+- Prueba real (Moodle 5.0.11, depuración DEVELOPER activada): guardar ediciones A y B repetidas veces → misma pantalla, mensaje de guardado y publicado, sin avisos y sin crear actividades duplicadas; prueba completa de 303 comprobaciones correcta.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.142-alpha** (`2026100557`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.143-alpha** (`2026100558`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
