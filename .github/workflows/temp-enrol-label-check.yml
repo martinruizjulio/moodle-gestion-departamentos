@@ -1,0 +1,21 @@
+name: Temporary enrol label check
+
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-enrol-label-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          php -l gestion_actividades/classes/local/workshop_series.php
+          php -l gestion_actividades/classes/local/manager.php
+          php -l gestion_actividades/card_status.php
+          php -l gestion_actividades/lib.php
