@@ -18,7 +18,7 @@ class workshop_series {
         global $DB;
         if (!$DB->get_manager()->table_exists(new \xmldb_table(self::TABLE))
                 || !$DB->get_manager()->table_exists(new \xmldb_table(self::ITEMTABLE))) {
-            throw new \coding_exception('El esquema de Ediciones de seminarios no está instalado. Ejecuta la actualización de Moodle.');
+            throw new \coding_exception('El esquema de Ediciones de talleres no está instalado. Ejecuta la actualización de Moodle.');
         }
     }
 
@@ -183,7 +183,7 @@ class workshop_series {
     }
 
     /**
-     * Widen an Edición de seminarios so that [$start, $end] fits inside it.
+     * Widen an Edición de talleres so that [$start, $end] fits inside it.
      *
      * Used when a seminar's date/time is edited (or added) outside the range of
      * its Edición: instead of rejecting the change, the Edición is extended so
@@ -238,7 +238,7 @@ class workshop_series {
             return '';
         }
         $format = get_string('strftimedatetimeshort', 'langconfig');
-        return 'La Edición de seminarios «' . $extension->title . '» se ha ampliado automáticamente para incluir el seminario: '
+        return 'La Edición de talleres «' . $extension->title . '» se ha ampliado automáticamente para incluir el taller: '
             . userdate($extension->datefrom, $format) . ' – ' . userdate($extension->dateto, $format) . '.';
     }
 
@@ -258,12 +258,12 @@ class workshop_series {
             'dateto' => $dateto,
         ], IGNORE_MULTIPLE);
         if ($conflict) {
-            throw new \RuntimeException('Este taller ya pertenece a otra Edición de seminarios cuyo rango de fechas se solapa: ' . $conflict->title . '.');
+            throw new \RuntimeException('Este taller ya pertenece a otra Edición de talleres cuyo rango de fechas se solapa: ' . $conflict->title . '.');
         }
     }
 
     /**
-     * Remove an Edición de seminarios from active management. Only allowed
+     * Remove an Edición de talleres from active management. Only allowed
      * while its editions have no academic evidence (enrolments, hours,
      * certificates, reflections, submissions, transfers); otherwise the
      * manager must use "Finalizar y ocultar", which keeps everything. When
@@ -596,7 +596,7 @@ class workshop_series {
         ]);
 
         if (self::subsections_supported()) {
-            [$calendarcmid, $calendarsectionid] = self::ensure_subsection($course, (int)$section->section, (int)$series->calendarcmid, 'Calendario y resumen de seminarios');
+            [$calendarcmid, $calendarsectionid] = self::ensure_subsection($course, (int)$section->section, (int)$series->calendarcmid, 'Calendario y resumen de talleres');
             if ($calendarcmid !== (int)$series->calendarcmid || $calendarsectionid !== (int)$series->calendarsectionid) {
                 $DB->update_record(self::TABLE, (object)[
                     'id' => $seriesid,
