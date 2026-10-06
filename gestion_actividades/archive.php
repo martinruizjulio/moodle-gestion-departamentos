@@ -36,7 +36,7 @@ function local_ga_archive_series_edition(stdClass $series, int $workshopid): ?st
     $matching = [];
     foreach ($editions as $edition) {
         if (!empty($edition->seriesid) && (int)$edition->seriesid !== (int)$series->id) {
-            continue; // Linked to another Edición de seminarios: never borrow it by dates.
+            continue; // Linked to another Edición de talleres: never borrow it by dates.
         }
         $date = (int)($edition->sessiondate ?? 0);
         if ($date > 0 && $date >= (int)$series->datefrom && $date <= (int)$series->dateto) { $matching[] = $edition; }
@@ -73,7 +73,7 @@ if (optional_param('archive_due', 0, PARAM_BOOL) && confirm_sesskey()) {
 echo $OUTPUT->header();
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo $OUTPUT->heading(get_string('workshoparchive', 'local_gestion_actividades'));
-echo html_writer::tag('p', 'Las Ediciones de seminarios finalizadas expresamente se muestran agrupadas de la más reciente a la más antigua. Los seminarios del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
+echo html_writer::tag('p', 'Las Ediciones de talleres finalizadas expresamente se muestran agrupadas de la más reciente a la más antigua. Los talleres del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
 
 $serieslist = workshop_series::list_for_course(0);
 $alllinkedworkshops = [];
@@ -138,8 +138,8 @@ foreach (manager::get_workshop_overview_rows() as $row) {
     if (($row->computedstatus ?? '') === 'archived') { $legacyarchived[] = $row; }
 }
 if ($legacyarchived) {
-    echo html_writer::tag('h3', 'Talleres anteriores sin Edición de seminarios', ['class' => 'h4 mt-4']);
-    echo html_writer::tag('p', 'Registros archivados del modelo anterior. Se mantienen disponibles para consulta y modificación de notas sin mezclarlos con las nuevas Ediciones de seminarios.', ['class' => 'text-muted']);
+    echo html_writer::tag('h3', 'Talleres anteriores sin Edición de talleres', ['class' => 'h4 mt-4']);
+    echo html_writer::tag('p', 'Registros archivados del modelo anterior. Se mantienen disponibles para consulta y modificación de notas sin mezclarlos con las nuevas Ediciones de talleres.', ['class' => 'text-muted']);
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm';
     $table->head = ['Tipo', 'Código', 'Taller', 'Código de edición', 'Fecha', 'Plazas', 'Inscritos', 'Profesor/es', 'Grupo', 'Acciones'];
