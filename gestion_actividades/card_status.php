@@ -26,7 +26,7 @@ foreach (['typea', 'typeb'] as $type) {
             'enrolled' => $isenrolled,
             'closed' => $closed,
             'label' => $isenrolled
-                ? get_string('enrolledbutton', 'local_gestion_actividades')
+                ? 'Desinscribirme'
                 : ($closed ? get_string('enrolmentclosed', 'local_gestion_actividades') : get_string('enrolme', 'local_gestion_actividades')),
         ];
     }
