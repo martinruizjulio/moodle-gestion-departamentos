@@ -175,7 +175,6 @@ if ($token !== '' && $courseid > 0) {
     $table->attributes['class'] = 'generaltable table-sm';
     $table->head = ['Orden', 'Taller', 'Tipo', 'Fecha y horario', 'Horas', 'Plazas', 'Cierre inscripción', 'Profesor', 'Apuntes', 'Cuestionario', 'Estado'];
     $valid = 0;
-    $needsquiz = false;
     $order = 1;
     foreach ($preview as $row) {
         $rowvalid = !empty($row['ok']);
@@ -186,7 +185,6 @@ if ($token !== '' && $courseid > 0) {
             $messages[] = html_writer::span('Fuera de las fechas indicadas: la Edición de talleres se ampliará automáticamente para incluirlo.', 'text-warning d-block');
         }
         if ($rowvalid) $valid++;
-        if (!empty($row['createquiz'])) $needsquiz = true;
         if (!$messages) $messages[] = html_writer::span('Preparado', 'badge bg-success');
         $schedule = '-';
         if (!empty($row['sessiondate'])) {
@@ -205,7 +203,7 @@ if ($token !== '' && $courseid > 0) {
             !empty($row['enrolenddate']) ? userdate((int)$row['enrolenddate'], '%d/%m/%Y %H:%M') : '-',
             s($row['teacheremail'] ?: '-'),
             !empty($row['createnotes']) ? 'Sí' : 'No',
-            !empty($row['createquiz']) ? 'Sí' : 'No',
+            $row['type'] === 'typea' ? 'Sí, vacío por defecto' : 'No',
             implode('', $messages),
         ];
     }
@@ -214,7 +212,7 @@ if ($token !== '' && $courseid > 0) {
     echo html_writer::start_div('card mb-4');
     echo html_writer::start_div('card-body');
     echo html_writer::tag('h3', '4. Modelos Moodle y confirmación', ['class' => 'h5']);
-    echo html_writer::tag('p', 'El cuestionario se duplica desde un cuestionario Moodle modelo. Las preguntas se seguirán creando o importando después mediante las herramientas normales de Moodle.', ['class' => 'text-muted']);
+    echo html_writer::tag('p', 'Cada Taller Tipo A creará automáticamente un cuestionario Moodle vacío. Solo selecciona un modelo si quieres duplicarlo expresamente en lugar del cuestionario vacío.', ['class' => 'text-muted']);
     echo html_writer::start_tag('form', ['method' => 'post']);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'confirm']);
@@ -223,8 +221,8 @@ if ($token !== '' && $courseid > 0) {
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'seriestitle', 'value' => $seriestitle]);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'seriesfrom_text', 'value' => $seriesfromtext]);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'seriesto_text', 'value' => $seriestotext]);
-    echo html_writer::label('Cuestionario Moodle modelo', 'quiztemplatecmid');
-    echo html_writer::select($quizoptions, 'quiztemplatecmid', $quiztemplatecmid, false, ['class' => 'form-select mb-3', 'required' => $needsquiz ? 'required' : null]);
+    echo html_writer::label('Cuestionario modelo (opcional)', 'quiztemplatecmid');
+    echo html_writer::select($quizoptions, 'quiztemplatecmid', $quiztemplatecmid, false, ['class' => 'form-select mb-3']);
     echo html_writer::label('Recurso/carpeta modelo para Apuntes (opcional)', 'notestemplatecmid');
     echo html_writer::select($notesoptions, 'notestemplatecmid', $notestemplatecmid, false, ['class' => 'form-select mb-3']);
     echo html_writer::tag('div', '<strong>' . $valid . '</strong> de ' . count($preview) . ' fila(s) están preparadas para crear.', ['class' => 'alert alert-secondary']);
