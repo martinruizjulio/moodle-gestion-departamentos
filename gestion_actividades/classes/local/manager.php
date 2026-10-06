@@ -2764,6 +2764,27 @@ class manager {
                     continue;
                 }
 
+                // Generated enrolment labels are HEE-owned and should
+                // disappear with the test structure rather than be preserved.
+                if ($modname === 'label') {
+                    $labelname = (string)$DB->get_field_sql(
+                        "SELECT l.name
+                           FROM {course_modules} cm
+                           JOIN {label} l ON l.id = cm.instance
+                          WHERE cm.id = :cmid",
+                        ['cmid' => $candidatecmid]
+                    );
+                    if (strpos($labelname, 'HEE_ENROL_EDITION_') === 0) {
+                        try {
+                            course_delete_module((int)$candidatecmid);
+                            $summary->modulesdeleted++;
+                        } catch (\Throwable $e) {
+                            debugging('No se pudo borrar la etiqueta HEE de inscripción ' . $candidatecmid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                        }
+                        continue;
+                    }
+                }
+
                 // A non-subsection module inside one of these generated parent
                 // sections may be course content added manually. Preserve it.
                 if ($keepsection === null) {
