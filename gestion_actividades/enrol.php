@@ -13,12 +13,18 @@ if (isguestuser()) {
     throw new require_login_exception('guestsarenotallowed');
 }
 
-$returnurl = new moodle_url('/local/gestion_actividades/workshop_view.php', ['id' => $workshop->id]);
+$returnurl = new moodle_url('/local/gestion_actividades/workshop_view.php', [
+    'id' => $workshop->id,
+    'editionid' => $editionid,
+]);
 
 // The enrol link is also stored in shared section HTML, where a per-session
 // sesskey cannot be embedded. Without a valid sesskey, ask for confirmation
 // instead of enrolling on a plain GET (CSRF protection).
-if (!confirm_sesskey()) {
+// confirm_sesskey() without argument calls required_param('sesskey') and
+// throws "missing parameter" for links without it, so read it optionally.
+$sesskey = optional_param('sesskey', '', PARAM_RAW);
+if ($sesskey === '' || !confirm_sesskey($sesskey)) {
     $context = context_course::instance((int)$course->id);
     $PAGE->set_context($context);
     $PAGE->set_course($course);

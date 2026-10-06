@@ -21,6 +21,13 @@ define([], function() {
             action.removeAttribute('href');
         } else {
             action.classList.add('btn', 'btn-primary');
+            var editionid = action.getAttribute('data-editionid');
+            var root = (window.M && M.cfg && M.cfg.wwwroot) ? M.cfg.wwwroot : '';
+            var key = (window.M && M.cfg && M.cfg.sesskey) ? M.cfg.sesskey : '';
+            if (editionid && key) {
+                action.setAttribute('href', root + '/local/gestion_actividades/enrol.php?id='
+                    + encodeURIComponent(editionid) + '&sesskey=' + encodeURIComponent(key));
+            }
         }
     }
 
