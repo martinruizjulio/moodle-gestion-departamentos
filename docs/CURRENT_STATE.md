@@ -457,7 +457,18 @@ Todo taller nuevo pertenece a una Edición (el formulario rechaza crear un talle
 
 Prueba real (Moodle 5.0.11): manual A, manual B, Excel A, Excel B y Excel A con cuestionario modelo — 239 comprobaciones correctas, incluidas apuntarse → entra al grupo y accede; desapuntarse → sale del grupo y pierde acceso; volver a apuntarse; 8 talleres con 8 grupos y 8 actividades distintas; botón de cada subsección asociado a su edición.
 
+## Apuntarme / Desapuntarme sin salir del curso (2026-10-06, 1.5.140-alpha / `2026100555`)
+
+- Nuevo `enrol_toggle.php` (AJAX, POST + `sesskey`): apunta o desapunta y devuelve el nuevo estado; mismas reglas que antes (edición finalizada, plazas, cierre, no desapuntarse una vez empezado el taller).
+- Script único en `lib.php` (`local_gestion_actividades_card_script()`), protegido contra doble instalación (`window.localGaCards`): pinta todos los botones del taller (subsección y calendario), intercepta el clic, pide confirmación solo para desapuntarse y cambia el botón en el sitio con un aviso breve. Sin JavaScript el botón sigue llevando a la página del taller.
+- Estado del botón centralizado en `manager::enrol_button_status()` (usado por `card_status.php`, la carga inicial y el nuevo endpoint).
+- Los módulos AMD antiguos no actúan cuando el script único está presente.
+- Corregido un bucle del observador de cambios del DOM que podía colgar la página.
+- Las actividades restringidas al grupo se desbloquean al recargar la página (Moodle calcula el acceso al generar la página); el aviso lo indica.
+
+Prueba real en navegador (Chromium + Moodle 5.0.11, alumno real): Apuntarme → «Desapuntarme» sin cambiar de página, los 2 botones del taller cambian, se guarda inscripción y grupo; Desapuntarme con confirmación → vuelve a «Apuntarme»; cancelar no desapunta; el estado persiste al recargar; sin errores JavaScript.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.139-alpha** (`2026100554`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.140-alpha** (`2026100555`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
