@@ -10,10 +10,10 @@ La presentación HEE del curso queda fijada en este orden:
 
 1. **Seminarios Tipo A**
    - primera subsección: **Calendario y resumen de seminarios** con la tabla HTML generada desde los datos canónicos;
-   - después: **Seminario 01**, **Seminario 02**, etc., cada uno como subsección Moodle cuando `mod_subsection` está disponible.
+   - después: **TALLER 01: Nombre**, **TALLER 02: Nombre**, etc., cada uno como subsección Moodle cuando `mod_subsection` está disponible (título único definido en `workshop_series::subsection_title()`).
 2. **Seminarios Tipo B**
    - primera subsección: **Calendario y resumen de seminarios**;
-   - después: **Seminario 01**, **Seminario 02**, etc.
+   - después: **TALLER 01: Nombre**, **TALLER 02: Nombre**, etc.
 3. **Autoevaluación final HEE**
    - sección independiente;
    - el alumnado no debe verla hasta alcanzar **54 horas reconocidas**.
@@ -222,8 +222,30 @@ Punto de partida verificado: `e9ca208`, local 1.5.115-alpha (`2026100530`), bloq
 - **Restricción por grupo**: la subsección del taller hereda disponibilidad por el grupo propio de la edición cuando existe, de modo que Moodle muestra la restricción de pertenencia al grupo y mantiene el contenido protegido.
 - **Secciones legacy `TALLERES TIPO A/B`**: si el curso ya utiliza Ediciones modernas para ese tipo, la salida legacy se limpia y oculta. Esto corrige la falsa impresión de que al importar un Excel se cargan también talleres antiguos: no era el Excel, sino la reconstrucción del listado legacy de todos los talleres publicables.
 - **Inscripción desde tarjeta legacy**: los módulos AMD añaden el `sesskey` actual al enlace de inscripción cuando esa superficie legacy siga existiendo en cursos antiguos. En cursos con Edición moderna esa superficie ya no se muestra.
-- **Borrado de Edición**: `workshop_series.php` incorpora **Borrar edición** con POST + `sesskey` + confirmación. El borrado es conservador: retira la Edición de la gestión activa y oculta su sección, pero conserva los datos académicos archivados.
+- **Borrado de Edición**: `workshop_series.php` incorpora **Borrar edición** con POST + `sesskey` + confirmación. (Endurecido en la auditoría posterior: ver abajo.)
 - Validación puntual tras estos cambios: `php -l` correcto en `manager.php`, `workshop_series.php` (clase y página), `course_layout.php` y `enrol.php`. Falta aún repetir la comprobación visual/funcional en el Moodle 5 real.
+
+**Auditoría independiente de Claude tras la primera prueba real (2026-10-06, base `f9ec3ec`, local 1.5.120-alpha):**
+
+*Correcciones aplicadas (local 1.5.121-alpha / `2026100536`, sin cambio de esquema; savepoint sigue en `2026100516`):*
+- **Bloqueante — error «Un parámetro necesario (sesskey) faltaba» al pulsar «Inscribirme»**: `enrol.php` llamaba a `confirm_sesskey()` sin argumento, que internamente hace `required_param('sesskey')` y lanza la excepción cuando el enlace (tarjeta antigua guardada en el resumen de sección) no lleva sesskey. Ahora se lee con `optional_param()`: sin sesskey válido se muestra una página de confirmación (CSRF intacto) y, al confirmar, se inscribe. Vuelve a la vista de la edición exacta (`editionid`).
+- **AMD sin compilar**: `amd/build/card_status*.min.js` seguían con el código anterior (Moodle sirve `build/` en producción), por lo que el cambio de `src/` que añade el `sesskey` no llegaba al navegador. Se sincronizan con `src/`.
+- **Sin punto de inscripción en Ediciones modernas (bloqueante funcional)**: la subsección del taller no tiene resumen, está restringida al grupo y el calendario no tenía enlaces; la sección legacy quedaba oculta. El alumno no podía apuntarse desde el curso. El calendario incluye ahora la columna **Acceso** con «Ver / Inscribirme» → `workshop_view.php?id=…&editionid=…` (enlace no mutante; la página muestra el estado propio y el botón con sesskey). Etiqueta constante para que el HTML cacheado no quede obsoleto.
+- **Autoinscripción en edición cerrada**: `enrol_user_in_edition()` rechaza ahora la autoinscripción (no la manual) en ediciones archivadas/finalizadas o de una Edición finalizada; antes solo `workshop_view.php` lo impedía y `enrol.php` era accesible directamente.
+- **Títulos de subsección contradictorios**: `course_layout::rename_series_subsections()` renombraba a `Seminario 01 · …` y `ensure_course_structure()` a `TALLER 01: …` (cada sincronización deshacía la otra). Título único `workshop_series::subsection_title()`; además se alinea el nombre de la instancia `mod_subsection`.
+- **Orden dentro de la sección padre**: no se garantizaba que el calendario fuera el primero ni el orden de talleres (dependía del orden de creación). `order_parent_section()` reordena solo la secuencia: calendario, TALLER 01, 02…; otros módulos añadidos por el docente quedan detrás sin moverse de sección.
+- **Excel creaba la sección legacy `TALLERES TIPO A`**: al guardar cada edición importada (aún sin `seriesid`) se reconstruía la superficie legacy y, en la primera importación, se creaba la sección; la actividad obligatoria Tipo A/B también se creaba en `TALLERES TIPO A` (incluso para Tipo B). Ahora la edición se vincula a su Edición al crearse, la reconstrucción legacy se suspende durante la importación y `create_required_activity_for_edition()` crea la actividad en la sección de la Edición si existe (legacy sin cambios).
+- **Cursos mixtos**: la versión anterior dejaba sin tarjeta a cualquier edición legacy abierta si el curso tenía ya una Edición moderna del mismo tipo. Ahora, en ese caso, solo se mantienen tarjetas de ediciones legacy con inscripción todavía abierta y sin Edición; los talleres antiguos no reaparecen. Cursos solo legacy: sin cambios.
+- **Borrado de Edición conservador**: `delete_series()` se niega si alguna edición tiene inscripciones, horas, certificados, reflexiones, entregas o traspasos, e indica usar «Finalizar y ocultar». Solo una Edición vacía se retira (ediciones archivadas, sección oculta y renombrada «Eliminada · …», nunca se borran secciones ni actividades).
+- **Terminología de gestión**: «Edición de talleres» → «Edición de seminarios» en páginas de gestión; dashboard muestra `TALLER 01`.
+
+*Validación estática:* `php -l` en todos los PHP de ambos plugins sin errores; XML bien formado; `node --check` en los AMD; strings es/en con las mismas claves en ambos plugins; sin ficheros temporales ni workflows en el repositorio. **Sin ejecución en Moodle real.**
+
+*Riesgos/pendientes Moodle real:*
+- Profesor HEE sin `moodle/site:accessallgroups` (p. ej. profesor sin permiso de edición) no es miembro del grupo de la edición: ve la subsección restringida en el curso; gestiona desde las páginas del plugin. No se añade a profesores al grupo para no contaminar listados ni sincronizaciones grupo→inscripción (sería un cambio de modelo, pendiente de decisión).
+- Con prórroga Tipo B tras finalizar, la sección padre queda accesible a todo el grupo de la edición hasta la fecha de la extensión (no solo al alumno con prórroga); las actividades siguen ocultas/protegidas.
+- `ensure_course_structure()` reconstruye las superficies legacy A y B en cada llamada (coste en cursos grandes).
+- `extend_to_cover()` en la importación se ejecuta antes de la transacción: si la importación falla, la Edición puede quedar ampliada.
 
 `move_section_to()`: se mantiene. En Moodle 5.2 está deprecada (`#[deprecated]`, MDL-86862) y emite aviso de depuración, pero sigue funcionando como envoltorio de `core_courseformat\local\sectionactions::move_at()`; su retirada está prevista para Moodle 6.0 (MDL-87419). No se ha verificado que `move_at()` exista en Moodle 5.0/5.1, así que migrar ahora podría romper esas versiones: queda para cuando se fije la versión mínima.
 
@@ -246,6 +268,9 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
   5. repetir el mismo patrón para Tipo B;
   7. Autoevaluación final HEE solo al alcanzar 54 h;
   8. ediciones anteriores ocultas debajo.
+- Pulsar «Inscribirme» desde una tarjeta antigua (sin sesskey): debe aparecer la confirmación, no el error; desde el calendario «Ver / Inscribirme» → inscribirse → la subsección del taller pasa a ser accesible.
+- Importar un Excel en un curso nuevo: no debe aparecer ninguna sección `TALLERES TIPO A/B`; calendario primero y talleres en el orden del Excel con sus actividades dentro.
+- Intentar «Borrar edición» con inscritos (debe negarse) y con una Edición vacía (debe ocultarse).
 - Crear edición A manual e intentar añadir B: debe rechazarse; repetir a la inversa.
 - Crear un seminario Tipo A manual nuevo y comprobar que queda configurado como **Cuestionario Moodle** por defecto; editar después sus datos y verificar que conserva el cuestionario.
 - Importar Excel Tipo A con «Crear cuestionario = Sí» y comprobar duplicación/vínculo del modelo; importar otra fila Tipo A sin duplicarlo y verificar que la edición queda igualmente en modo `quiz`, pendiente de vincular/crear el cuestionario.
@@ -272,5 +297,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.120-alpha** (`2026100535`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.121-alpha** (`2026100536`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.25-alpha** (`2026100509`).
