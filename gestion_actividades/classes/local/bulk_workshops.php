@@ -278,7 +278,7 @@ class bulk_workshops {
         $sheet->freezePane('A2');
         $path = tempnam(make_temp_directory(self::TEMPDIR), 'tpl_');
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save($path);
-        send_temp_file($path, 'Plantilla_importacion_masiva_talleres.xlsx');
+        \send_temp_file($path, 'Plantilla_importacion_masiva_talleres.xlsx');
         exit;
     }
 
