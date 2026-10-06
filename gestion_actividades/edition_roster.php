@@ -56,7 +56,7 @@ echo html_writer::link(
         'id' => (int)$workshop->id,
         'editionid' => $editionid,
     ]),
-    $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al seminario',
+    $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al taller',
     ['class' => 'btn btn-outline-secondary me-2']
 );
 echo html_writer::tag(
@@ -85,7 +85,7 @@ if ($students) {
     }
     echo html_writer::table($table);
 } else {
-    echo $OUTPUT->notification('Todavía no hay alumnado apuntado a este seminario.', 'info');
+    echo $OUTPUT->notification('Todavía no hay alumnado apuntado a este taller.', 'info');
 }
 
 echo html_writer::end_div();
