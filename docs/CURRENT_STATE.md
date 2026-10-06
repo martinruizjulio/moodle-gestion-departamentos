@@ -597,3 +597,14 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 ## 2026-10-07 · local 1.5.156-alpha · Email profesor vincula también a profesores sin edición
 - `bulk_workshops::teacher_candidates()`: la columna «Email profesor» busca entre todos los matriculados del curso con rol de arquetipo profesor (con o sin edición) o gestor, además de quien tenga `moodle/course:update`. Antes solo se buscaba entre profesores con edición, así que el profesor que importa la universidad sin permiso de edición no se encontraba. El vínculo es «Profesor HEE» (`local_ga_edition_teachers`); no se cambia ningún rol de Moodle. Alumnos nunca se vinculan.
 - Validado (Moodle 5.0.11 local): profesor sin edición en mayúsculas → vinculado; dos correos con «;» → ambos; correo de alumno → aviso y sin vínculo; el profesor sin edición ve «Lista de clase» solo en sus talleres.
+
+## 2026-10-07 · block_gestion_hee 1.0.28-alpha · Vistas por perfil e instrucciones para profesores
+- El bloque ya no muestra el resumen de horas de alumno (0 h / 54 h) a quien no es alumno:
+  - Administrador / Gestor HEE (`can_manage_globally`): «Panel de Gestión HEE» + instrucciones para profesores + instrucciones para alumnos.
+  - Profesor HEE (talleres asignados): sus talleres vigentes/finalizados + ambas instrucciones.
+  - Profesor del curso (rol arquetipo editingteacher/teacher/manager o `moodle/course:update`; en el Área personal, ese rol en cualquier curso) sin talleres asignados: aviso + ambas instrucciones.
+  - Alumno: igual que antes (horas, instrucciones para alumnos, traspaso, validación Tipo B, portafolio). No ve las instrucciones para profesores.
+- Nueva ventana «INSTRUCCIONES PARA PROFESORES» (común, Tipo A, Tipo B, al terminar, dónde ver tus talleres). Modal genérico `render_help_modal()`.
+- Instrucciones para alumnos actualizadas: botón Apuntarme/Desapuntarme con recarga, contenido visible solo tras apuntarse, baja hasta el inicio del taller, solo «Presente» cuenta, carpeta de materiales, reflexión solo texto en línea, certificados y horas automáticos al terminar, Ediciones finalizadas desaparecen del curso pero se conservan en el portafolio, autoevaluación al llegar a 54 h.
+- No se cambia ningún rol ni permiso de Moodle.
+- Validado (Moodle 5.0.11 local, navegador): admin, Profesor HEE sin edición, profesor sin talleres y alumno ven cada uno su vista; ambas ventanas se abren.

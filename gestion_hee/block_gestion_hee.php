@@ -51,8 +51,11 @@ class block_gestion_hee extends block_base {
                 $teachersummary = \block_gestion_hee\local\teacher_workshops_cache::get_summary((int)$USER->id);
             }
 
-            if (!empty($teachersummary['total'])) {
-                $this->content->text = $this->render_teacher_tools($teachersummary);
+            $ismanager = $this->is_hee_manager((int)$USER->id);
+            $isprofhee = !empty($teachersummary['total']);
+            if ($ismanager || $isprofhee || $this->is_course_teacher((int)$USER->id)) {
+                // Staff never see the student hour summary (0 h / 54 h).
+                $this->content->text = $this->render_staff_view($ismanager, $isprofhee ? $teachersummary : null);
             } else {
                 $summary = \block_gestion_hee\local\student_hours_cache::get_summary((int)$USER->id);
                 $this->content->text = $this->render_summary($summary);
@@ -133,34 +136,39 @@ class block_gestion_hee extends block_base {
     }
 
     private function render_student_help(): string {
-        $modalid = 'block-gestion-hee-student-help';
-        $html = html_writer::start_div('mt-3 mb-2');
-        $html .= html_writer::tag(
-            'button',
-            get_string('studenthelpbutton', 'block_gestion_hee'),
-            [
-                'type' => 'button',
-                'class' => 'btn btn-warning fw-bold w-100 py-2',
-                'data-bs-toggle' => 'modal',
-                'data-bs-target' => '#' . $modalid,
-                // Bootstrap 4 attributes for themes/sites still on Moodle 4.x.
-                'data-toggle' => 'modal',
-                'data-target' => '#' . $modalid,
-                'aria-controls' => $modalid,
-            ]
-        );
-        $html .= html_writer::end_div();
-
         $body = html_writer::tag('p', get_string('studenthelpintro', 'block_gestion_hee'), ['class' => 'lead fs-6']);
-        $body .= $this->render_help_section('studenthelpjoin_title', 'studenthelpjoin_text');
-        $body .= $this->render_help_section('studenthelpa_title', 'studenthelpa_text');
-        $body .= $this->render_help_section('studenthelpb_title', 'studenthelpb_text');
-        $body .= $this->render_help_section('studenthelpbexternal_title', 'studenthelpbexternal_text');
-        $body .= $this->render_help_section('studenthelpcerts_title', 'studenthelpcerts_text');
-        $body .= $this->render_help_section('studenthelptransfer_title', 'studenthelptransfer_text');
-        $body .= $this->render_help_section('studenthelpselfassessment_title', 'studenthelpselfassessment_text');
+        foreach (['join', 'a', 'b', 'bexternal', 'certs', 'transfer', 'selfassessment'] as $key) {
+            $body .= $this->render_help_section('studenthelp' . $key . '_title', 'studenthelp' . $key . '_text');
+        }
         $body .= html_writer::div(get_string('studenthelpfooter', 'block_gestion_hee'), 'alert alert-info mb-0');
+        return $this->render_help_modal('block-gestion-hee-student-help', get_string('studenthelpbutton', 'block_gestion_hee'),
+            'btn btn-warning fw-bold w-100 py-2', get_string('studenthelptitle', 'block_gestion_hee'), $body);
+    }
 
+    private function render_teacher_help(): string {
+        $body = html_writer::tag('p', get_string('teacherhelpintro', 'block_gestion_hee'), ['class' => 'lead fs-6']);
+        foreach (['common', 'a', 'b', 'end', 'roles'] as $key) {
+            $body .= $this->render_help_section('teacherhelp' . $key . '_title', 'teacherhelp' . $key . '_text');
+        }
+        $body .= html_writer::div(get_string('teacherhelpfooter', 'block_gestion_hee'), 'alert alert-info mb-0');
+        return $this->render_help_modal('block-gestion-hee-teacher-help', get_string('teacherhelpbutton', 'block_gestion_hee'),
+            'btn btn-info fw-bold w-100 py-2 text-white', get_string('teacherhelptitle', 'block_gestion_hee'), $body);
+    }
+
+    /** Button + Bootstrap modal (moved to <body> so the block drawer does not clip it). */
+    private function render_help_modal(string $modalid, string $buttonlabel, string $buttonclass, string $title, string $body): string {
+        $html = html_writer::start_div('mt-2 mb-2');
+        $html .= html_writer::tag('button', $buttonlabel, [
+            'type' => 'button',
+            'class' => $buttonclass,
+            'data-bs-toggle' => 'modal',
+            'data-bs-target' => '#' . $modalid,
+            // Bootstrap 4 attributes for themes/sites still on Moodle 4.x.
+            'data-toggle' => 'modal',
+            'data-target' => '#' . $modalid,
+            'aria-controls' => $modalid,
+        ]);
+        $html .= html_writer::end_div();
         $html .= html_writer::start_div('modal fade', [
             'id' => $modalid,
             'tabindex' => '-1',
@@ -170,10 +178,7 @@ class block_gestion_hee extends block_base {
         $html .= html_writer::start_div('modal-dialog modal-lg modal-dialog-scrollable');
         $html .= html_writer::start_div('modal-content');
         $html .= html_writer::start_div('modal-header');
-        $html .= html_writer::tag('h5', get_string('studenthelptitle', 'block_gestion_hee'), [
-            'class' => 'modal-title',
-            'id' => $modalid . '-title',
-        ]);
+        $html .= html_writer::tag('h5', $title, ['class' => 'modal-title', 'id' => $modalid . '-title']);
         $html .= html_writer::tag('button', '', [
             'type' => 'button',
             'class' => 'btn-close',
@@ -194,15 +199,78 @@ class block_gestion_hee extends block_base {
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
-
-        // Blocks live in the Boost block drawer, which uses a CSS transform; a
-        // position:fixed modal inside it is clipped to the drawer and covered
-        // by its own backdrop. Move the modal to <body> before it is opened.
         $this->page->requires->js_init_code(
             "(function(){var m=document.getElementById(" . json_encode($modalid) . ");" .
             "if(m&&m.parentNode!==document.body){document.body.appendChild(m);}})();"
         );
+        return $html;
+    }
 
+    /** Site admin or Gestor HEE (Usuarios autorizados). */
+    private function is_hee_manager(int $userid): bool {
+        if (is_siteadmin($userid)) {
+            return true;
+        }
+        try {
+            if (class_exists('\\local_gestion_actividades\\local\\manager')) {
+                return \local_gestion_actividades\local\manager::can_manage_globally($userid);
+            }
+        } catch (Throwable $e) {
+            return false;
+        }
+        return false;
+    }
+
+    /**
+     * Teacher-type role (editing teacher, non-editing teacher or manager
+     * archetype): in this course on a course page, in any course on the
+     * Dashboard. Students keep the student view.
+     */
+    private function is_course_teacher(int $userid): bool {
+        global $DB;
+        $roleids = $DB->get_fieldset_select('role', 'id', "archetype IN ('editingteacher', 'teacher', 'manager')");
+        if (!$roleids) {
+            return false;
+        }
+        [$in, $params] = $DB->get_in_or_equal(array_map('intval', $roleids), SQL_PARAMS_NAMED);
+        $params['userid'] = $userid;
+        $course = $this->page->course ?? null;
+        if ($course && (int)$course->id !== (int)SITEID) {
+            $context = \context_course::instance((int)$course->id);
+            if (has_capability('moodle/course:update', $context, $userid, false)) {
+                return true;
+            }
+            $params['ctx'] = $context->id;
+            return $DB->record_exists_select('role_assignments', "userid = :userid AND contextid = :ctx AND roleid $in", $params);
+        }
+        $params['level'] = CONTEXT_COURSE;
+        return $DB->record_exists_sql("SELECT 1 FROM {role_assignments} ra JOIN {context} c ON c.id = ra.contextid
+                                        WHERE ra.userid = :userid AND c.contextlevel = :level AND ra.roleid $in", $params);
+    }
+
+    private function render_staff_view(bool $ismanager, ?array $teachersummary): string {
+        $html = html_writer::start_div('block-gestion-hee-staff');
+        if ($ismanager) {
+            $html .= html_writer::tag('h5', 'Gestor HEE', ['class' => 'mb-1']);
+            $html .= html_writer::link(
+                new moodle_url('/local/gestion_actividades/dashboard.php'),
+                'Panel de Gestión HEE',
+                ['class' => 'btn btn-sm btn-primary d-block w-100 mb-1']
+            );
+        }
+        if ($teachersummary) {
+            $html .= $this->render_teacher_tools($teachersummary);
+        } else if (!$ismanager) {
+            $html .= html_writer::tag('h5', 'Profesorado', ['class' => 'mb-1']);
+            $html .= html_writer::tag('p', 'Todavía no tienes talleres HEE asignados. Cuando se te asigne uno aparecerá aquí.',
+                ['class' => 'text-muted small mb-2']);
+        }
+        $html .= html_writer::start_div('mt-3 pt-2 border-top');
+        $html .= $this->render_teacher_help();
+        $html .= $this->render_student_help();
+        $html .= html_writer::tag('p', 'Las instrucciones para alumnos son las mismas que ve el alumnado.', ['class' => 'text-muted small mb-0']);
+        $html .= html_writer::end_div();
+        $html .= html_writer::end_div();
         return $html;
     }
 
