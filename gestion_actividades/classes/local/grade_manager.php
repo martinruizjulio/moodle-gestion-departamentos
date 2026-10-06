@@ -103,6 +103,35 @@ class grade_manager {
     /**
      * Save the selected self-assessment quiz for a course.
      */
+    /**
+     * Course-module ids of quizzes that belong to a taller (Edición activity).
+     * They must never be used as the self-assessment quiz.
+     *
+     * @return int[] cmid => cmid
+     */
+    public static function workshop_quiz_cmids(int $courseid): array {
+        global $DB;
+        $out = [];
+        $cols = $DB->get_columns('local_ga_workshop_editions');
+        foreach (['requiredcmid', 'requiredquizcmid'] as $col) {
+            if (!isset($cols[$col])) {
+                continue;
+            }
+            $ids = $DB->get_fieldset_sql("SELECT DISTINCT e.$col FROM {local_ga_workshop_editions} e
+                                            JOIN {local_ga_workshops} w ON w.id = e.workshopid
+                                           WHERE w.courseid = :courseid AND e.$col > 0", ['courseid' => $courseid]);
+            foreach ($ids as $id) {
+                $out[(int)$id] = (int)$id;
+            }
+        }
+        $ids = $DB->get_fieldset_select('course_modules', 'id', 'course = :courseid AND ' . $DB->sql_like('idnumber', ':p'),
+            ['courseid' => $courseid, 'p' => 'HEE\_EDITION\_%']);
+        foreach ($ids as $id) {
+            $out[(int)$id] = (int)$id;
+        }
+        return $out;
+    }
+
     public static function save_selfassessment_quiz(int $courseid, int $cmid, int $userid): void {
         global $DB;
 
@@ -112,6 +141,9 @@ class grade_manager {
         }
         if ($cmid > 0 && !self::is_valid_quiz_cmid($courseid, $cmid)) {
             throw new \invalid_parameter_exception('El cuestionario seleccionado no pertenece al curso o ya no está disponible.');
+        }
+        if ($cmid > 0 && isset(self::workshop_quiz_cmids($courseid)[$cmid])) {
+            throw new \invalid_parameter_exception('Ese cuestionario pertenece a un taller y no puede ser la autoevaluación (quedaría oculto a sus alumnos hasta las 54 horas). Crea el cuestionario de autoevaluación HEE.');
         }
 
         $now = time();

@@ -20,7 +20,7 @@ class selfassessment_quiz {
      *
      * @return int Course-module id.
      */
-    public static function create_and_link(int $courseid, int $userid): int {
+    public static function create_and_link(int $courseid, int $userid, bool $replace = false): int {
         global $CFG, $DB;
 
         if ($courseid <= 0) {
@@ -41,7 +41,9 @@ class selfassessment_quiz {
         // Idempotency: if HEE already has a valid selected quiz, keep it.
         $settings = grade_manager::get_course_settings($courseid);
         $selectedcmid = (int)($settings->selfassessmentcmid ?? 0);
-        if ($selectedcmid > 0 && grade_manager::is_valid_quiz_cmid($courseid, $selectedcmid)) {
+        // $replace: the selected quiz is not a proper self-assessment (e.g. a
+        // taller quiz chosen by mistake); create/recover the HEE one instead.
+        if (!$replace && $selectedcmid > 0 && grade_manager::is_valid_quiz_cmid($courseid, $selectedcmid)) {
             grade_manager::ensure_selfassessment_availability($courseid);
             course_layout::synchronise_course($courseid);
             return $selectedcmid;

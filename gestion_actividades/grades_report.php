@@ -27,7 +27,8 @@ if ($courseid > 0 && !$course) {
 if ($course && data_submitted() && confirm_sesskey()) {
     $action = optional_param('action', '', PARAM_ALPHANUMEXT);
     if ($action === 'create_quiz') {
-        $cmid = selfassessment_quiz::create_and_link((int)$course->id, (int)$USER->id);
+        $cmid = selfassessment_quiz::create_and_link((int)$course->id, (int)$USER->id,
+            optional_param('replace', 0, PARAM_BOOL));
         grade_manager::get_course_grade_rows((int)$course->id, true);
         redirect(
             new moodle_url('/local/gestion_actividades/grades_report.php', ['courseid' => $course->id]),
@@ -38,7 +39,12 @@ if ($course && data_submitted() && confirm_sesskey()) {
     }
     if ($action === 'save_quiz') {
         $cmid = optional_param('selfassessmentcmid', 0, PARAM_INT);
-        grade_manager::save_selfassessment_quiz((int)$course->id, $cmid, (int)$USER->id);
+        try {
+            grade_manager::save_selfassessment_quiz((int)$course->id, $cmid, (int)$USER->id);
+        } catch (\invalid_parameter_exception $e) {
+            redirect(new moodle_url('/local/gestion_actividades/grades_report.php', ['courseid' => $course->id]),
+                $e->debuginfo ?: $e->getMessage(), null, \core\output\notification::NOTIFY_ERROR);
+        }
         grade_manager::get_course_grade_rows((int)$course->id, true);
         redirect(
             new moodle_url('/local/gestion_actividades/grades_report.php', ['courseid' => $course->id]),
@@ -124,6 +130,9 @@ if ($selectedinfo) {
 }
 $coursecontext = context_course::instance($courseid);
 $cancreatequiz = has_capability('moodle/course:manageactivities', $coursecontext);
+$workshopquizzes = grade_manager::workshop_quiz_cmids($courseid);
+$selectedisworkshop = $selectedinfo && isset($workshopquizzes[(int)$selectedinfo->cmid]);
+$selectedisauto = $selectedinfo && (string)$DB->get_field('course_modules', 'idnumber', ['id' => (int)$selectedinfo->cmid]) === 'gestion_hee_selfassessment';
 
 echo html_writer::start_div('card mb-4');
 echo html_writer::start_div('card-body');
@@ -134,15 +143,21 @@ echo html_writer::tag(
     ['class' => 'text-muted']
 );
 
-if (!$selectedinfo) {
+if ($selectedisworkshop) {
+    echo $OUTPUT->notification('Atención: el cuestionario seleccionado («' . format_string($selectedinfo->name) . '») es el de un TALLER. '
+        . 'Mientras siga seleccionado, ese taller queda oculto para sus alumnos hasta las 54 horas. '
+        . 'Pulsa «Crear cuestionario de autoevaluación HEE»: se creará el correcto y el taller volverá a estar visible.', 'error');
+}
+if (!$selectedinfo || $selectedisworkshop || !$selectedisauto) {
     if ($cancreatequiz) {
         echo html_writer::start_tag('form', ['method' => 'post', 'class' => 'mb-3']);
         echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
         echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'create_quiz']);
         echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
+        echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'replace', 'value' => $selectedinfo ? 1 : 0]);
         echo html_writer::empty_tag('input', [
             'type' => 'submit',
-            'value' => 'Crear cuestionario de autoevaluación HEE',
+            'value' => $selectedinfo ? 'Crear cuestionario de autoevaluación HEE y usarlo en lugar del seleccionado' : 'Crear cuestionario de autoevaluación HEE',
             'class' => 'btn btn-success',
         ]);
         echo html_writer::tag(
@@ -159,6 +174,8 @@ if (!$selectedinfo) {
     }
 }
 
+echo html_writer::start_tag('details', ['class' => 'mb-3'] + ($selectedinfo && !$selectedisauto && !$selectedisworkshop ? ['open' => 'open'] : []));
+echo html_writer::tag('summary', 'Opción avanzada: usar otro cuestionario que ya exista en el curso', ['class' => 'text-muted mb-2']);
 echo html_writer::start_tag('form', ['method' => 'post']);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'save_quiz']);
@@ -167,6 +184,10 @@ echo html_writer::label('Cuestionario de autoevaluación HEE', 'selfassessmentcm
 echo html_writer::start_tag('select', ['name' => 'selfassessmentcmid', 'id' => 'selfassessmentcmid', 'class' => 'form-select mb-2', 'style' => 'max-width:700px;']);
 echo html_writer::tag('option', '— Sin seleccionar —', ['value' => 0]);
 foreach ($quizzes as $quiz) {
+    // Taller quizzes are never offered (only shown if wrongly selected).
+    if (isset($workshopquizzes[(int)$quiz->cmid]) && (int)$quiz->cmid !== (int)$settings->selfassessmentcmid) {
+        continue;
+    }
     $range = '';
     if ($quiz->grademax !== null) {
         $range = ' · nota máxima ' . format_float((float)$quiz->grademax, 2, true);
@@ -182,8 +203,9 @@ foreach ($quizzes as $quiz) {
 }
 echo html_writer::end_tag('select');
 echo html_writer::tag('div', 'La nota se normaliza automáticamente a una escala de 0 a 10. El acceso se controla mediante un ítem técnico oculto del cuaderno que llega al 100% al completar 54 horas.', ['class' => 'form-text mb-3']);
-echo html_writer::empty_tag('input', ['type' => 'submit', 'value' => 'Guardar selector', 'class' => 'btn btn-primary']);
+echo html_writer::empty_tag('input', ['type' => 'submit', 'value' => 'Guardar selector', 'class' => 'btn btn-outline-primary']);
 echo html_writer::end_tag('form');
+echo html_writer::end_tag('details');
 if ($selectedinfo) {
     echo html_writer::div(
         'Seleccionado: ' . format_string($selectedinfo->name) . '. El cuestionario permanecerá oculto para cada alumno hasta alcanzar 54 horas.',
