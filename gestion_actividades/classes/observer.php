@@ -12,6 +12,22 @@ use local_gestion_actividades\local\typeb_reflection_activity;
  */
 class observer {
     /**
+     * Quiz close / reflection deadline changed: keep the "Materiales T0X"
+     * folder window (start of workshop -> quiz close) in step.
+     */
+    public static function course_module_updated(\core\event\course_module_updated $event): void {
+        $modname = (string)($event->other['modulename'] ?? '');
+        if (!in_array($modname, ['quiz', 'assign'], true)) {
+            return;
+        }
+        try {
+            \local_gestion_actividades\local\materials_folder::refresh_for_required_cm((int)$event->objectid);
+        } catch (\Throwable $e) {
+            debugging('No se pudo actualizar la carpeta de materiales: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
+    /**
      * Attendance taken in a workshop attendance list (teacher or student):
      * apply it to the HEE enrolments of the editions using that list.
      */

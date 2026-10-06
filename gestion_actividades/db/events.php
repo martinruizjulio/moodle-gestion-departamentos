@@ -47,4 +47,10 @@ $observers = [
         'callback' => '\\local_gestion_actividades\\observer::attendance_taken',
         'priority' => 9999,
     ],
+    [
+        // Quiz/reflection dates drive the "Materiales T0X" folder window.
+        'eventname' => '\\core\\event\\course_module_updated',
+        'callback' => '\\local_gestion_actividades\\observer::course_module_updated',
+        'priority' => 9999,
+    ],
 ];

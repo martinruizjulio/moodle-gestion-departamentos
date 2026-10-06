@@ -726,6 +726,18 @@ class workshop_series {
                     ]);
                 }
                 self::configure_workshop_subsection($sectionid, $series, $item);
+                // Default "Materiales T0X" folder: group + from start until quiz close.
+                $itemedition = self::edition_for_series_item($series, $item);
+                if ($itemedition && (int)($itemedition->seriesid ?? 0) === (int)$series->id) {
+                    try {
+                        materials_folder::ensure((int)$itemedition->id, (int)$item->sortorder);
+                    } catch (\Throwable $e) {
+                        if ($DB->is_transaction_started()) {
+                            throw $e;
+                        }
+                        debugging('No se pudo preparar la carpeta de materiales: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                    }
+                }
                 self::move_workshop_modules((int)$item->workshopid, $sectionid, (int)$item->notescmid, $series);
                 $ordered[] = $cmid;
             }
@@ -1100,6 +1112,10 @@ class workshop_series {
                 if (!empty($edition->$field)) {
                     $cmids[(int)$edition->$field] = (int)$edition->$field;
                 }
+            }
+            $foldercmid = materials_folder::cmid((int)$edition->id, (int)$target->course);
+            if ($foldercmid > 0) {
+                $cmids[$foldercmid] = $foldercmid;
             }
         }
         if ($notescmid > 0) {
