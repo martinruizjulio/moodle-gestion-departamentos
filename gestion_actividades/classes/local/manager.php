@@ -2149,11 +2149,17 @@ class manager {
             'submissions' => 0,
             'transfers' => 0,
             'groups' => 0,
+            'orphanstructures' => 0,
         ];
 
         if (!$DB->record_exists('course', ['id' => $courseid])) {
             return $summary;
         }
+
+        // Visual Moodle structures can outlive their administrative HEE rows
+        // (for example after an older "Borrar edición"). Count them separately
+        // so the cleanup remains runnable even when all plugin tables are at 0.
+        $summary->orphanstructures = self::count_orphan_hee_course_sections($courseid);
 
         if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_series'))) {
             $summary->series = $DB->count_records('local_ga_workshop_series', ['courseid' => $courseid]);
@@ -2198,6 +2204,56 @@ class manager {
         $summary->groups = count(array_unique(array_map('intval', $groupids)));
 
         return $summary;
+    }
+
+    /**
+     * Count regular Moodle sections that are recognisably generated HEE
+     * workshop structures but may no longer have administrative records.
+     */
+    private static function count_orphan_hee_course_sections(int $courseid): int {
+        global $DB;
+
+        $count = 0;
+        $sections = $DB->get_records('course_sections', ['course' => $courseid], 'section ASC');
+        foreach ($sections as $section) {
+            if ((int)$section->section === 0 || !empty($section->component)) {
+                continue;
+            }
+            $name = trim((string)($section->name ?? ''));
+            if (in_array($name, ['TALLERES TIPO A', 'TALLERES TIPO B'], true)
+                    || strpos($name, 'Eliminada · ') === 0) {
+                $count++;
+                continue;
+            }
+
+            $sequence = trim((string)($section->sequence ?? ''));
+            if ($sequence === '') {
+                continue;
+            }
+            foreach (array_values(array_filter(array_map('intval', explode(',', $sequence)))) as $cmid) {
+                $row = $DB->get_record_sql(
+                    "SELECT m.name AS modname, cm.instance
+                       FROM {course_modules} cm
+                       JOIN {modules} m ON m.id = cm.module
+                      WHERE cm.id = :cmid AND cm.course = :courseid",
+                    ['cmid' => $cmid, 'courseid' => $courseid],
+                    IGNORE_MISSING
+                );
+                if (!$row || (string)$row->modname !== 'subsection') {
+                    continue;
+                }
+                $delegatedname = (string)$DB->get_field('course_sections', 'name', [
+                    'course' => $courseid,
+                    'component' => 'mod_subsection',
+                    'itemid' => (int)$row->instance,
+                ]);
+                if (strpos(trim($delegatedname), 'Calendario y resumen de ') === 0) {
+                    $count++;
+                    break;
+                }
+            }
+        }
+        return $count;
     }
 
     /**
