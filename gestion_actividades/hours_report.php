@@ -39,7 +39,7 @@ if (!$rows) {
         get_string('student', 'local_gestion_actividades'),
         'Email',
         'Grupo',
-        'Seminarios Tipo A',
+        'Talleres Tipo A',
         'Horas Tipo A',
         'Certificados Tipo B validados',
         'Horas Tipo B validadas',
