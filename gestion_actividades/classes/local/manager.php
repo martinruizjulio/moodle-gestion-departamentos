@@ -753,13 +753,63 @@ class manager {
             $moduleinfo->attemptreopenmethod = 'none';
             $moduleinfo->maxattempts = -1;
         } else if ($type === 'quiz') {
-            $moduleinfo->grade = 100;
-            $moduleinfo->sumgrades = 0;
-            $moduleinfo->attempts = 0;
-            $moduleinfo->questionsperpage = 1;
-            $moduleinfo->preferredbehaviour = 'deferredfeedback';
+            // Moodle 5 requires a complete quiz configuration when creating the
+            // module programmatically. Keep these defaults aligned with the
+            // already proven self-assessment quiz creator.
+            $quizconfig = get_config('quiz');
+            $moduleinfo->showdescription = 0;
+            $moduleinfo->completion = COMPLETION_TRACKING_NONE;
+            $moduleinfo->completionview = 0;
+            $moduleinfo->completionexpected = 0;
+            $moduleinfo->completionpassgrade = 0;
+            $moduleinfo->completiongradeitemnumber = '';
+            $moduleinfo->completionattemptsexhausted = 0;
+            $moduleinfo->completionminattempts = 0;
             $moduleinfo->timeopen = 0;
             $moduleinfo->timeclose = 0;
+            $moduleinfo->timelimit = 0;
+            $moduleinfo->overduehandling = !empty($quizconfig->overduehandling) ? (string)$quizconfig->overduehandling : 'autosubmit';
+            $moduleinfo->graceperiod = 0;
+            $moduleinfo->grade = 10.0;
+            $moduleinfo->sumgrades = 0.0;
+            $moduleinfo->attempts = 0;
+            $moduleinfo->grademethod = !empty($quizconfig->grademethod) ? (int)$quizconfig->grademethod : 1;
+            $moduleinfo->questionsperpage = !empty($quizconfig->questionsperpage) ? (int)$quizconfig->questionsperpage : 1;
+            $moduleinfo->navmethod = !empty($quizconfig->navmethod) ? (string)$quizconfig->navmethod : 'free';
+            $moduleinfo->shuffleanswers = isset($quizconfig->shuffleanswers) ? (int)$quizconfig->shuffleanswers : 1;
+            $moduleinfo->preferredbehaviour = !empty($quizconfig->preferredbehaviour) ? (string)$quizconfig->preferredbehaviour : 'deferredfeedback';
+            $moduleinfo->canredoquestions = isset($quizconfig->canredoquestions) ? (int)$quizconfig->canredoquestions : 0;
+            $moduleinfo->attemptonlast = 0;
+            $moduleinfo->decimalpoints = isset($quizconfig->decimalpoints) ? (int)$quizconfig->decimalpoints : 2;
+            $moduleinfo->questiondecimalpoints = isset($quizconfig->questiondecimalpoints) ? (int)$quizconfig->questiondecimalpoints : -1;
+            $moduleinfo->showuserpicture = isset($quizconfig->showuserpicture) ? (int)$quizconfig->showuserpicture : 0;
+            $moduleinfo->showblocks = isset($quizconfig->showblocks) ? (int)$quizconfig->showblocks : 0;
+            $moduleinfo->quizpassword = '';
+            $moduleinfo->subnet = '';
+            $moduleinfo->delay1 = 0;
+            $moduleinfo->delay2 = 0;
+            $moduleinfo->browsersecurity = !empty($quizconfig->browsersecurity) ? (string)$quizconfig->browsersecurity : '-';
+            $moduleinfo->allowofflineattempts = 0;
+            $moduleinfo->precreateattempts = 0;
+
+            $reviewfields = [
+                'attempt', 'correctness', 'maxmarks', 'marks', 'specificfeedback',
+                'generalfeedback', 'rightanswer', 'overallfeedback',
+            ];
+            $reviewtimes = [
+                'during' => \mod_quiz\question\display_options::DURING,
+                'immediately' => \mod_quiz\question\display_options::IMMEDIATELY_AFTER,
+                'open' => \mod_quiz\question\display_options::LATER_WHILE_OPEN,
+                'closed' => \mod_quiz\question\display_options::AFTER_CLOSE,
+            ];
+            foreach ($reviewfields as $reviewfield) {
+                $maskproperty = 'review' . $reviewfield;
+                $mask = isset($quizconfig->$maskproperty) ? (int)$quizconfig->$maskproperty : 0;
+                foreach ($reviewtimes as $suffix => $bit) {
+                    $property = $reviewfield . $suffix;
+                    $moduleinfo->$property = ($mask & $bit) ? 1 : 0;
+                }
+            }
         }
 
         try {
