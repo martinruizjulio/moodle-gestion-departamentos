@@ -688,7 +688,22 @@ class manager {
                 self::update_edition_required_cmid($editionid, $cmid);
                 try {
                     self::restrict_required_activity_to_edition_group($editionid, $cmid);
-                    self::hard_archive_cmid_from_course_page((int)$cmid);
+
+                    // Legacy editions keep the historical hard-archive behaviour.
+                    // Modern Ediciones de talleres must leave the activity visible:
+                    // ensure_course_structure() will move it into TALLER XX.
+                    if (empty($edition->seriesid)) {
+                        self::hard_archive_cmid_from_course_page((int)$cmid);
+                    } else {
+                        $cmcolumns = $DB->get_columns('course_modules');
+                        if (isset($cmcolumns['visible'])) {
+                            $DB->set_field('course_modules', 'visible', 1, ['id' => $cmid]);
+                        }
+                        if (isset($cmcolumns['visibleoncoursepage'])) {
+                            $DB->set_field('course_modules', 'visibleoncoursepage', 1, ['id' => $cmid]);
+                        }
+                    }
+
                     self::add_workshop_backlink_to_required_activity($editionid, $cmid);
                 } catch (\Throwable $e) {
                     // Non-blocking: the activity is still created and linked.
