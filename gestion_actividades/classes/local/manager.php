@@ -654,14 +654,21 @@ class manager {
             $DB->set_field('quiz', 'name', 'Cuestionario T-' . $sortorder, ['id' => (int)$cm->instance]);
         }
 
+        // Apply the group restriction first. That generic helper uses
+        // stealth visibility for legacy flows, so modern Type A then restores
+        // normal course-page visibility inside its TALLER XX subsection.
+        self::restrict_required_activity_to_edition_group($editionid, $quizcmid);
         $cmcolumns = $DB->get_columns('course_modules');
         if (isset($cmcolumns['visible'])) {
             $DB->set_field('course_modules', 'visible', 1, ['id' => $quizcmid]);
         }
+        if (isset($cmcolumns['visibleold'])) {
+            $DB->set_field('course_modules', 'visibleold', 1, ['id' => $quizcmid]);
+        }
         if (isset($cmcolumns['visibleoncoursepage'])) {
             $DB->set_field('course_modules', 'visibleoncoursepage', 1, ['id' => $quizcmid]);
         }
-        self::restrict_required_activity_to_edition_group($editionid, $quizcmid);
+        rebuild_course_cache((int)$workshop->courseid, true);
 
         return (object)[
             'success' => true,
@@ -5445,22 +5452,23 @@ class manager {
             $editioncode = 'E' . (int)$edition->id;
         }
 
-        $groupname = trim('Taller ' . (string)$workshop->code . ' - ' . (string)$workshop->name . ' - ' . $editioncode);
-        if (\core_text::strlen($groupname) > 250) {
-            $groupname = \core_text::substr($groupname, 0, 250);
+        // One Moodle group belongs to one concrete workshop edition.
+        // Include the edition id so two workshops/editions can never silently
+        // reuse the same group merely because their visible codes/names match.
+        $suffix = ' · HEE-E' . (int)$edition->id;
+        $basegroupname = trim('Taller ' . (string)$workshop->code . ' - ' . (string)$workshop->name . ' - ' . $editioncode);
+        $maxbase = max(1, 250 - \core_text::strlen($suffix));
+        if (\core_text::strlen($basegroupname) > $maxbase) {
+            $basegroupname = \core_text::substr($basegroupname, 0, $maxbase);
         }
+        $groupname = $basegroupname . $suffix;
 
-        $existing = $DB->get_record('groups', ['courseid' => $courseid, 'name' => $groupname], '*', IGNORE_MISSING);
-        if ($existing) {
-            $groupid = (int)$existing->id;
-        } else {
-            $group = new \stdClass();
-            $group->courseid = $courseid;
-            $group->name = $groupname;
-            $group->description = get_string('editiongroupdescription', 'local_gestion_actividades', $workshop->name);
-            $group->descriptionformat = FORMAT_HTML;
-            $groupid = groups_create_group($group);
-        }
+        $group = new \stdClass();
+        $group->courseid = $courseid;
+        $group->name = $groupname;
+        $group->description = get_string('editiongroupdescription', 'local_gestion_actividades', $workshop->name);
+        $group->descriptionformat = FORMAT_HTML;
+        $groupid = groups_create_group($group);
 
         $edition->groupid = $groupid;
         $edition->timemodified = time();
