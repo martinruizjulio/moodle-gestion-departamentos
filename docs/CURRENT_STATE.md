@@ -361,7 +361,16 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Al reconstruir una Edición, se podan automáticamente subsecciones HEE vacías y huérfanas dejadas por versiones anteriores, identificadas por nombre `TALLER XX` o por el resumen de inscripción `local-ga-enrol-*`.
 - Esto corrige las cajas vacías con botón **Apuntarme** que quedaban visibles tras borrar talleres.
 
+**Importación Tipo A — cuestionario vacío canónico (2026-10-06):**
+- Todo Taller Tipo A crea siempre un cuestionario Moodle vacío por defecto; ya no depende de la columna Excel `Crear cuestionario` ni obliga a seleccionar un modelo.
+- El selector se renombra a **Cuestionario modelo (opcional)** y su opción por defecto es **No duplicar modelo · crear cuestionario vacío automáticamente**.
+- Si se selecciona expresamente un modelo, se duplica en lugar del cuestionario vacío, se fuerza visible, se marca como actividad HEE y se restringe al grupo de la edición.
+- Los cuestionarios generados por HEE (`Cuestionario T-X` o `idnumber` con prefijo `HEE_`) ya no aparecen como posibles modelos.
+- La previsualización muestra para Tipo A **Sí, vacío por defecto**.
+- La plantilla XLSX descargable elimina la columna obsoleta **Crear cuestionario**; conserva **Cierre cuestionario**.
+- No hay cambios de esquema ni savepoint nuevo.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.130-alpha** (`2026100545`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.131-alpha** (`2026100546`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
