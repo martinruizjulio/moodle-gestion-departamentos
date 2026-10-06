@@ -7,8 +7,8 @@ defined('MOODLE_INTERNAL') || die();
  * Keeps the Moodle course hierarchy aligned with the HEE seminar model.
  *
  * Visible order for current content:
- * 1) Seminarios Tipo A (calendar first, then seminar subsections)
- * 2) Seminarios Tipo B (calendar first, then seminar subsections)
+ * 1) Talleres Tipo A (calendar first, then seminar subsections)
+ * 2) Talleres Tipo B (calendar first, then seminar subsections)
  * 3) Autoevaluación final HEE (availability controlled at 54 recognised hours)
  * 4) Previous seminar editions, hidden from students.
  */
@@ -39,17 +39,17 @@ class course_layout {
     }
 
     /**
-     * Prevent new A/B mixtures inside one Edición de seminarios.
+     * Prevent new A/B mixtures inside one Edición de talleres.
      */
     public static function assert_series_accepts_type(int $seriesid, string $type): void {
         $type = $type === 'typeb' ? 'typeb' : 'typea';
         $current = self::series_type($seriesid);
         if ($current === 'mixed') {
-            throw new \RuntimeException('Esta edición contiene seminarios Tipo A y Tipo B heredados. No se pueden añadir más hasta separar la edición.');
+            throw new \RuntimeException('Esta edición contiene talleres Tipo A y Tipo B heredados. No se pueden añadir más hasta separar la edición.');
         }
         if ($current !== '' && $current !== $type) {
             throw new \RuntimeException(
-                'Una misma Edición de seminarios no puede mezclar Tipo A y Tipo B. Crea o selecciona una edición del tipo correspondiente.'
+                'Una misma Edición de talleres no puede mezclar Tipo A y Tipo B. Crea o selecciona una edición del tipo correspondiente.'
             );
         }
     }
@@ -192,7 +192,7 @@ class course_layout {
             return;
         }
         if (!empty($series->calendarsectionid)) {
-            self::rename_section($courseid, (int)$series->calendarsectionid, 'Calendario y resumen de seminarios');
+            self::rename_section($courseid, (int)$series->calendarsectionid, 'Calendario y resumen de talleres');
         }
         $sql = "SELECT i.subsectionsectionid, i.sortorder, w.name
                   FROM {local_ga_series_items} i
