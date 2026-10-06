@@ -34,7 +34,7 @@ class bulk_workshops {
     public static function preview(string $token, int $courseid): array {
         global $DB;
         $rows = self::read_xlsx(self::path_from_token($token));
-        $teachers = manager::get_course_teachers($courseid);
+        $teachers = self::teacher_candidates($courseid);
         $seen = [];
         $out = [];
         foreach ($rows as $row) {
@@ -303,6 +303,35 @@ class bulk_workshops {
         }
         @unlink(self::path_from_token($token));
         return $summary;
+    }
+
+    /**
+     * Course participants the «Email profesor» column may link as Profesor HEE:
+     * anyone enrolled with a teacher-type role (editing teacher, non-editing
+     * teacher or manager archetype), so teachers imported by the university
+     * WITHOUT editing rights are found too. No Moodle role is changed.
+     */
+    public static function teacher_candidates(int $courseid): array {
+        global $DB;
+        $context = \context_course::instance($courseid);
+        $roleids = $DB->get_fieldset_select('role', 'id', "archetype IN ('editingteacher', 'teacher', 'manager')");
+        $out = [];
+        if ($roleids) {
+            [$in, $params] = $DB->get_in_or_equal(array_map('intval', $roleids), SQL_PARAMS_NAMED);
+            $params['ctx'] = $context->id;
+            $ids = $DB->get_fieldset_sql("SELECT DISTINCT ra.userid FROM {role_assignments} ra
+                                           WHERE ra.contextid = :ctx AND ra.roleid $in", $params);
+            foreach (get_enrolled_users($context, '', 0, 'u.id, u.firstname, u.lastname, u.email') as $u) {
+                if (in_array((int)$u->id, array_map('intval', $ids), true)) {
+                    $out[(int)$u->id] = $u;
+                }
+            }
+        }
+        // Teachers with editing rights through other means (custom roles).
+        foreach (get_enrolled_users($context, 'moodle/course:update', 0, 'u.id, u.firstname, u.lastname, u.email') as $u) {
+            $out[(int)$u->id] = $u;
+        }
+        return $out;
     }
 
     public static function quiz_templates(int $courseid): array {
