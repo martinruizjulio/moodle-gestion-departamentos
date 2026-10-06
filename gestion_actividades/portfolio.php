@@ -217,8 +217,8 @@ echo html_writer::end_div();
 
 echo html_writer::start_div('row mb-3');
 $cards = [
-    ['Seminarios Tipo A', round($typeahours, 2) . ' h', 'Sistema + reconocimiento institucional'],
-    ['Seminarios Tipo B', round($typebvalidatedhours, 2) . ' h', 'Internos + externos + traspasos + reconocimiento institucional'],
+    ['Talleres Tipo A', round($typeahours, 2) . ' h', 'Sistema + reconocimiento institucional'],
+    ['Talleres Tipo B', round($typebvalidatedhours, 2) . ' h', 'Internos + externos + traspasos + reconocimiento institucional'],
     ['Horas pendientes', round($pendinghours, 2) . ' h', 'Hasta completar 54 horas'],
 ];
 foreach ($cards as $card) {
@@ -246,13 +246,13 @@ if ($gradesummary) {
     echo html_writer::tag('h2', 'Mis calificaciones HEE', ['class' => 'h4 mb-1']);
     echo html_writer::tag(
         'p',
-        'La Nota Final se publica cuando están disponibles las tres calificaciones: Seminarios A (60%), Portafolio (30%) y Autoevaluación (10%).',
+        'La Nota Final se publica cuando están disponibles las tres calificaciones: Talleres A (60%), Portafolio (30%) y Autoevaluación (10%).',
         ['class' => 'text-muted']
     );
     echo html_writer::start_div('row');
     $gradecards = [
         [
-            'Nota Seminarios A',
+            'Nota Talleres A',
             $gradesummary->typeagrade,
             'Media de las actividades evaluadas de Tipo A; el cuestionario Moodle es la actividad predeterminada.',
         ],
@@ -282,15 +282,15 @@ if ($gradesummary) {
     echo html_writer::end_div();
 }
 
-echo html_writer::tag('h2', 'Seminarios Tipo A', ['class' => 'mt-4']);
+echo html_writer::tag('h2', 'Talleres Tipo A', ['class' => 'mt-4']);
 echo html_writer::tag(
     'p',
-    'Certificados generados cuando se cumplen la asistencia y la actividad evaluada del seminario. En los seminarios nuevos, la actividad predeterminada es un cuestionario Moodle con nota mínima de 5/10.',
+    'Certificados generados cuando se cumplen la asistencia y la actividad evaluada del taller. En los talleres nuevos, la actividad predeterminada es un cuestionario Moodle con nota mínima de 5/10.',
     ['class' => 'text-muted']
 );
 if ($typeacerts) {
     $table = new html_table();
-    $table->head = ['Curso', 'Seminario', 'Horas', 'Fecha de emisión', 'Estado', 'Acciones'];
+    $table->head = ['Curso', 'Taller', 'Horas', 'Fecha de emisión', 'Estado', 'Acciones'];
     foreach ($typeacerts as $c) {
         $url = new moodle_url('/local/gestion_actividades/certificate_download.php', ['id' => $c->id]);
         $table->data[] = [
@@ -311,15 +311,15 @@ if ($typeacerts) {
     echo $OUTPUT->notification('Todavía no tienes certificados Tipo A generados.', 'info');
 }
 
-echo html_writer::tag('h2', 'Seminarios Tipo B internos', ['class' => 'mt-4']);
+echo html_writer::tag('h2', 'Talleres Tipo B internos', ['class' => 'mt-4']);
 echo html_writer::tag(
     'p',
-    'Seminarios Tipo B organizados dentro de HEE. Para quedar Apto deben constar la asistencia y la reflexión entregada mediante la Tarea Moodle.',
+    'Talleres Tipo B organizados dentro de HEE. Para quedar Apto deben constar la asistencia y la reflexión entregada mediante la Tarea Moodle.',
     ['class' => 'text-muted']
 );
 if ($typebworkshopcerts) {
     $table = new html_table();
-    $table->head = ['Curso', 'Seminario', 'Horas', 'Asistencia', 'Reflexión', 'Fecha de emisión', 'Acciones'];
+    $table->head = ['Curso', 'Taller', 'Horas', 'Asistencia', 'Reflexión', 'Fecha de emisión', 'Acciones'];
     foreach ($typebworkshopcerts as $c) {
         $url = new moodle_url('/local/gestion_actividades/certificate_download.php', ['id' => $c->id]);
         $table->data[] = [
@@ -338,7 +338,7 @@ if ($typebworkshopcerts) {
     }
     echo html_writer::table($table);
 } else {
-    echo $OUTPUT->notification('Todavía no tienes certificados de seminarios Tipo B internos.', 'info');
+    echo $OUTPUT->notification('Todavía no tienes certificados de talleres Tipo B internos.', 'info');
 }
 
 echo html_writer::tag('h2', 'Formación externa Tipo B', ['class' => 'mt-4']);
@@ -519,13 +519,13 @@ if (!empty($institutionalrecords)) {
 echo html_writer::tag('h2', 'Traspasos de Tipo A a Tipo B', ['class' => 'mt-4']);
 echo html_writer::tag(
     'p',
-    'Seminarios Tipo A certificados que has traspasado a Tipo B. Estas horas dejan de contar como Tipo A y pasan a contar como Tipo B sin cambiar tu total reconocido.',
+    'Talleres Tipo A certificados que has traspasado a Tipo B. Estas horas dejan de contar como Tipo A y pasan a contar como Tipo B sin cambiar tu total reconocido.',
     ['class' => 'text-muted']
 );
 $transferrows = manager::list_user_typeb_transfers((int)$USER->id);
 if ($transferrows) {
     $table = new html_table();
-    $table->head = ['Seminario A traspasado', 'Horas', 'Reflexión', 'Fecha'];
+    $table->head = ['Taller A traspasado', 'Horas', 'Reflexión', 'Fecha'];
     foreach ($transferrows as $r) {
         $table->data[] = [
             s(trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? ''))),
@@ -536,7 +536,7 @@ if ($transferrows) {
     }
     echo html_writer::table($table);
 } else {
-    echo $OUTPUT->notification('Todavía no has traspasado ningún seminario Tipo A a Tipo B.', 'info');
+    echo $OUTPUT->notification('Todavía no has traspasado ningún taller Tipo A a Tipo B.', 'info');
 }
 
 echo html_writer::start_div('card mt-4 mb-3');
