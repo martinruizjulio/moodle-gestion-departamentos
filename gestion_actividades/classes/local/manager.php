@@ -2281,6 +2281,17 @@ class manager {
             }
         }
 
+        // Remember affected students before deleting their test records,
+        // so block caches can be invalidated afterwards.
+        $affecteduserids = [];
+        if ($editionids && $dbman->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
+            [$uinsql, $uparams] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'pu');
+            $affecteduserids = array_map('intval', $DB->get_fieldset_select(
+                'local_ga_edition_enrolments', 'userid', "editionid $uinsql", $uparams
+            ));
+            $affecteduserids = array_values(array_unique(array_filter($affecteduserids)));
+        }
+
         // Delete plugin records tied to the concrete workshop editions.
         if ($editionids) {
             [$einsql, $eparams] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'pe');
@@ -2406,6 +2417,13 @@ class manager {
         }
 
         self::invalidate_teacher_block_cache([], $editionids);
+        foreach ($affecteduserids as $userid) {
+            self::invalidate_block_cache_for_user((int)$userid);
+        }
+        if (class_exists(grade_manager::class)) {
+            grade_manager::sync_course_safely($courseid);
+            grade_manager::ensure_selfassessment_availability($courseid);
+        }
         rebuild_course_cache($courseid, true);
         return $summary;
     }
