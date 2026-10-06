@@ -92,9 +92,14 @@ if ($action === 'enrol' && confirm_sesskey()) {
         $messagetype = $result->success ? 'success' : 'warning';
     }
 } else if ($action === 'unenrol' && confirm_sesskey() && $edition) {
-    $result = manager::unenrol_user_from_edition((int)$edition->id, (int)$USER->id);
-    $message = $result->message;
-    $messagetype = $result->success ? 'success' : 'warning';
+    if (!empty($edition->sessiondate) && time() >= (int)$edition->sessiondate) {
+        $message = 'El taller ya ha comenzado. Si necesitas darte de baja, contacta con el profesor o gestor.';
+        $messagetype = 'warning';
+    } else {
+        $result = manager::unenrol_user_from_edition((int)$edition->id, (int)$USER->id);
+        $message = $result->message;
+        $messagetype = $result->success ? 'success' : 'warning';
+    }
 }
 
 echo $OUTPUT->header();
@@ -139,16 +144,18 @@ if (!$edition) {
     $enrolment = manager::get_edition_enrolment((int)$edition->id, (int)$USER->id);
     if (manager::is_active_enrolment($enrolment)) {
         echo html_writer::div(get_string('enrolledlabel', 'local_gestion_actividades'), 'local-ga-pill local-ga-pill-ok', ['style' => 'display:inline-block;background:#e9f7ef;border:1px solid #badbcc;border-radius:999px;padding:8px 14px;margin:10px 8px 10px 0;color:#0f5132;font-weight:600;']);
-        $unenrolurl = new moodle_url('/local/gestion_actividades/workshop_view.php', [
-            'id' => $id,
-            'editionid' => $editionid,
-            'action' => 'unenrol',
-            'sesskey' => sesskey(),
-        ]);
-        echo html_writer::link($unenrolurl, 'Desinscribirme', [
-            'class' => 'btn btn-outline-danger',
-            'onclick' => "return confirm('¿Quieres desinscribirte de este taller?');",
-        ]);
+        if (empty($edition->sessiondate) || time() < (int)$edition->sessiondate) {
+            $unenrolurl = new moodle_url('/local/gestion_actividades/workshop_view.php', [
+                'id' => $id,
+                'editionid' => $editionid,
+                'action' => 'unenrol',
+                'sesskey' => sesskey(),
+            ]);
+            echo html_writer::link($unenrolurl, 'Desinscribirme', [
+                'class' => 'btn btn-outline-danger',
+                'onclick' => "return confirm('¿Quieres desinscribirte de este taller?');",
+            ]);
+        }
     } else if ($editionclosed) {
         echo $OUTPUT->notification('Esta edición ya está finalizada.', 'info');
     } else {
