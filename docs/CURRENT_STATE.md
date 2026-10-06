@@ -325,7 +325,13 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Se detectó y corrigió un riesgo residual: una tarea o cuestionario Moodle preexistente, vinculado manualmente a una única Edición, podía seguir considerándose “propio” por tener una sola referencia y borrarse. Como no existe un marcador persistente fiable de propiedad, la limpieza **nunca borra módulos `assign` ni `quiz` vinculados**; se conservan/desvinculan y, si estaban dentro de una subsección HEE, se mueven a la sección oculta de conservación.
 - No hay cambios de esquema ni savepoint nuevo.
 
+**Corrección de limpieza visual del curso (2026-10-06):**
+- La primera versión de la purga eliminaba los registros administrativos, pero podía dejar en Moodle secciones huérfanas creadas por versiones anteriores, especialmente tras usar «Borrar edición». Ejemplos observados en prueba real: `TALLERES TIPO A`, secciones `Eliminada · …`, calendario y subsecciones vacías.
+- La purga identifica ahora también estructuras HEE huérfanas desde el árbol real de secciones Moodle, aunque ya no exista su fila en `local_ga_workshop_series`.
+- Antes de borrar un contenedor HEE, cualquier actividad restante se mueve a la sección oculta de conservación; después se eliminan las subsecciones generadas y la sección padre si queda vacía.
+- La pantalla de limpieza informa por separado de las secciones Moodle HEE y de las secciones huérfanas eliminadas.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.125-alpha** (`2026100540`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.126-alpha** (`2026100541`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
