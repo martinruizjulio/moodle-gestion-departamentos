@@ -208,7 +208,7 @@ Punto de partida verificado: `e9ca208`, local 1.5.115-alpha (`2026100530`), bloq
 - **Finalizar desde el formulario de la edición**: guardar con estado «Finalizada» no cerraba las reflexiones Tipo B ni refrescaba el bloque docente como el botón «Finalizar». Ahora comparten `apply_status_side_effects()`.
 - **Resolución edición↔serie** en `dashboard.php`, `archive.php` y `workshops.php`: el respaldo por fechas (y el respaldo final a la edición principal) podía tomar una edición enlazada explícitamente a otra serie. Ahora solo se usan ediciones de esa serie o sin enlazar.
 - **Bloque — modal de instrucciones**: el modal vivía dentro del cajón de bloques (con `transform`), por lo que quedaba recortado y tapado por su fondo. Se mueve a `<body>` al cargar y se añaden también los atributos de Bootstrap 4.
-- **Terminología**: restos visibles de «Talleres A» → «Talleres A» (nota final, exportación PDF de notas, informe de horas, portafolio del gestor, traspasos, importación institucional y strings de horas). No se tocan nombres internos ni la plantilla de certificado ya almacenada.
+- **Terminología**: restos visibles de la denominación antigua «… A» → «Talleres A» (nota final, exportación PDF de notas, informe de horas, portafolio del gestor, traspasos, importación institucional y strings de horas). No se tocan nombres internos ni la plantilla de certificado ya almacenada.
 
 **Ampliación (petición de Julio):**
 - **Baja de alumnos y plaza manual**: `edition_students.php` incorpora «Dar de baja» (POST + sesskey + confirmación) para Profesor HEE / Gestor HEE de la edición. `manager::unenrol_user_from_edition()` conserva el registro como `cancelled`, borra su asistencia, lo saca del grupo Moodle y actualiza el bloque; no permite la baja si ya tiene certificado. Las incorporaciones manuales que crean plaza extra se marcan (`reason = MANUAL_SEAT_REASON`) y, al darlas de baja, se resta esa plaza de forma atómica (nunca por debajo de 1). Las plazas manuales creadas antes de esta versión no llevan marca y no se restan.
@@ -232,12 +232,12 @@ Punto de partida verificado: `e9ca208`, local 1.5.115-alpha (`2026100530`), bloq
 - **AMD sin compilar**: `amd/build/card_status*.min.js` seguían con el código anterior (Moodle sirve `build/` en producción), por lo que el cambio de `src/` que añade el `sesskey` no llegaba al navegador. Se sincronizan con `src/`.
 - **Sin punto de inscripción en Ediciones modernas (bloqueante funcional)**: la subsección del taller no tiene resumen, está restringida al grupo y el calendario no tenía enlaces; la sección legacy quedaba oculta. El alumno no podía apuntarse desde el curso. El calendario incluye ahora la columna **Acceso** con «Ver / Inscribirme» → `workshop_view.php?id=…&editionid=…` (enlace no mutante; la página muestra el estado propio y el botón con sesskey). Etiqueta constante para que el HTML cacheado no quede obsoleto.
 - **Autoinscripción en edición cerrada**: `enrol_user_in_edition()` rechaza ahora la autoinscripción (no la manual) en ediciones archivadas/finalizadas o de una Edición finalizada; antes solo `workshop_view.php` lo impedía y `enrol.php` era accesible directamente.
-- **Títulos de subsección contradictorios**: `course_layout::rename_series_subsections()` renombraba a `Taller 01 · …` y `ensure_course_structure()` a `TALLER 01: …` (cada sincronización deshacía la otra). Título único `workshop_series::subsection_title()`; además se alinea el nombre de la instancia `mod_subsection`.
+- **Títulos de subsección contradictorios**: `course_layout::rename_series_subsections()` renombraba a `<término anterior> 01 · …` y `ensure_course_structure()` a `TALLER 01: …` (cada sincronización deshacía la otra). Título único `workshop_series::subsection_title()`; además se alinea el nombre de la instancia `mod_subsection`.
 - **Orden dentro de la sección padre**: no se garantizaba que el calendario fuera el primero ni el orden de talleres (dependía del orden de creación). `order_parent_section()` reordena solo la secuencia: calendario, TALLER 01, 02…; otros módulos añadidos por el docente quedan detrás sin moverse de sección.
 - **Excel creaba la sección legacy `TALLERES TIPO A`**: al guardar cada edición importada (aún sin `seriesid`) se reconstruía la superficie legacy y, en la primera importación, se creaba la sección; la actividad obligatoria Tipo A/B también se creaba en `TALLERES TIPO A` (incluso para Tipo B). Ahora la edición se vincula a su Edición al crearse, la reconstrucción legacy se suspende durante la importación y `create_required_activity_for_edition()` crea la actividad en la sección de la Edición si existe (legacy sin cambios).
 - **Cursos mixtos**: la versión anterior dejaba sin tarjeta a cualquier edición legacy abierta si el curso tenía ya una Edición moderna del mismo tipo. Ahora, en ese caso, solo se mantienen tarjetas de ediciones legacy con inscripción todavía abierta y sin Edición; los talleres antiguos no reaparecen. Cursos solo legacy: sin cambios.
 - **Borrado de Edición conservador**: `delete_series()` se niega si alguna edición tiene inscripciones, horas, certificados, reflexiones, entregas o traspasos, e indica usar «Finalizar y ocultar». Solo una Edición vacía se retira (ediciones archivadas, sección oculta y renombrada «Eliminada · …», nunca se borran secciones ni actividades).
-- **Terminología de gestión**: «Edición de talleres» → «Edición de talleres» en páginas de gestión; dashboard muestra `TALLER 01`.
+- **Terminología de gestión**: unificada en las páginas de gestión (después sustituida globalmente por «Edición de talleres»); el panel muestra `TALLER 01`.
 
 *Validación estática:* `php -l` en todos los PHP de ambos plugins sin errores; XML bien formado; `node --check` en los AMD; strings es/en con las mismas claves en ambos plugins; sin ficheros temporales ni workflows en el repositorio. **Sin ejecución en Moodle real.**
 
@@ -301,6 +301,15 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Los identificadores técnicos internos (`workshop_*`, tablas, clases y rutas) no se renombraron.
 - Verificación real sobre el árbol del repositorio con búsqueda recursiva: **0 apariciones del término anterior** en `gestion_actividades`, `gestion_hee` y `docs`.
 
+**Auditoría de Claude de la limpieza de pruebas y la unificación «Taller» (2026-10-06, base `bea5fe2`, local 1.5.123-alpha):**
+- **Importante — la limpieza podía borrar actividades que no eran de HEE**: borraba todo módulo referenciado por una edición (`attendancecmid`, `certificatecmid`, `requiredcmid`…). Una actividad existente del curso vinculada con «Vincular actividad», una asistencia o certificado de todo el curso o una actividad compartida por varias ediciones se habrían eliminado; y al borrar la subsección `mod_subsection` Moodle borra también lo que contiene (incluido contenido añadido a mano por el docente). Ahora solo se borran las actividades propias de una sola edición; se conservan (desvinculadas) las compartidas, la autoevaluación final y los módulos `attendance`/`customcert`/`certificate`; antes de borrar cada subsección su contenido restante se mueve a la sección oculta «HEE · Actividades conservadas tras limpieza», y una subsección que no se pueda vaciar no se borra.
+- **Grupos**: solo se borran los grupos con el patrón HEE «Taller …» (y su agrupación «Agrupación …» si queda vacía); un grupo del curso enlazado a mano se conserva.
+- **Atomicidad**: el borrado de registros del plugin se hace en una transacción (todo o nada).
+- **Permiso**: además de Gestor HEE global, la limpieza exige `moodle/course:manageactivities` en el curso elegido (borra actividades y grupos de ese curso).
+- Unificación «Taller»: revisada; los ítems de calificación se localizan por `idnumber` (renombrarlos no duplica ítems) y las secciones por id, por lo que el cambio de textos no crea duplicados. Se corrigen tres frases del histórico de este documento que el reemplazo global dejó sin sentido.
+- Validación estática: `php -l` en todos los PHP, XML, `node --check`, strings es/en. **Sin ejecución en Moodle real.**
+- Pendiente Moodle real: ejecutar la limpieza en un curso de pruebas con (a) un cuestionario existente vinculado, (b) una actividad añadida a mano dentro de un TALLER y (c) un grupo propio del curso; deben conservarse.
+
 **Limpieza masiva de datos de prueba HEE (2026-10-06):**
 - Nueva pantalla `test_cleanup.php`, accesible desde **Talleres** y **Ediciones de talleres**.
 - Permite seleccionar un curso y ver antes del borrado cuántas Ediciones, talleres, ediciones concretas, inscripciones, certificados, horas, reflexiones, entregas, traspasos y grupos HEE contiene.
@@ -313,5 +322,5 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.123-alpha** (`2026100538`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.124-alpha** (`2026100539`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
