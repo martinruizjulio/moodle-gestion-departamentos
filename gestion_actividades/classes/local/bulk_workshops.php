@@ -299,6 +299,9 @@ class bulk_workshops {
     }
 
     public static function send_template(): void {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) throw new \RuntimeException('PhpSpreadsheet no está disponible para generar la plantilla XLSX.');
         $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $book->getActiveSheet();
