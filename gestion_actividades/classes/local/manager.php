@@ -1039,7 +1039,7 @@ class manager {
 
     /**
      * Keep the old TALLERES TIPO A/B section only for editions that are not
-     * attached to a modern Edición de seminarios. Modern series render their
+     * attached to a modern Edición de talleres. Modern series render their
      * card inside their own subsection instead, avoiding duplicate old/new UI.
      */
     public static function sync_workshop_section_summary(int $courseid, string $type = 'typea'): bool {
@@ -1054,7 +1054,7 @@ class manager {
 
         $sectionname = self::get_main_workshop_section_name_for_type($type);
 
-        // Once a course uses the modern Edición de seminarios structure for
+        // Once a course uses the modern Edición de talleres structure for
         // this type, old workshops must not "come back" in the legacy
         // TALLERES TIPO A/B surface when a new Excel is imported (see the
         // filter below). Legacy-only courses keep their cards unchanged.
@@ -2237,7 +2237,7 @@ class manager {
                     if (isset($deleted[$cmid])) {
                         continue;
                     }
-                    // Never delete content of an Edición de seminarios (calendar,
+                    // Never delete content of an Edición de talleres (calendar,
                     // notes pages, other editions reusing the same base seminar):
                     // this name-based cleanup only targets legacy course cards.
                     if (self::is_cm_in_series_section($cmid)) {
@@ -4760,7 +4760,7 @@ class manager {
             debugging('No se pudo cerrar la entrega de reflexiones: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
 
-        // Activities of this edition inside its Edición de seminarios: hide them
+        // Activities of this edition inside its Edición de talleres: hide them
         // and move them to the bottom of their seminar section. The Type B
         // reflection stays reachable so a teacher can grant a late submission.
         $istypeb = self::is_typeb_workshop($workshop);
@@ -4963,7 +4963,7 @@ class manager {
     }
 
     /**
-     * Section ids owned by Ediciones de seminarios (parent section, calendar
+     * Section ids owned by Ediciones de talleres (parent section, calendar
      * and seminar subsections). Content there is managed by workshop_series.
      */
     public static function series_owned_section_ids(int $courseid): array {
@@ -5001,7 +5001,7 @@ class manager {
 
     /**
      * Archive one activity of a finished edition inside an Edición de
-     * seminarios: it stays in its own section (so Moodle can still resolve it,
+     * talleres: it stays in its own section (so Moodle can still resolve it,
      * keep grades and serve direct links) but is moved to the bottom of that
      * section and hidden from students. With $keepaccessible (Type B
      * reflection, needed for an individual late permission) it is not hidden:
@@ -5046,7 +5046,7 @@ class manager {
         }
         // Removing a module from its section sequence makes Moodle unable to
         // resolve it at all (no access, no review). Activities that live inside
-        // an Edición de seminarios are archived with
+        // an Edición de talleres are archived with
         // archive_activity_to_section_bottom() instead and never orphaned here.
         if (self::is_cm_in_series_section($cmid)) {
             return false;
