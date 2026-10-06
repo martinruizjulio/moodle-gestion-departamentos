@@ -39,7 +39,7 @@ function local_ga_inst_status_badge(string $status): string {
 function local_ga_inst_render_preview(array $rows, bool $limit = true): string {
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm';
-    $table->head = ['Fila', 'Alumno Excel', 'Email', 'Curso', 'Grupo', 'Horas A', 'Horas B', 'Nota Seminario A', 'Estado'];
+    $table->head = ['Fila', 'Alumno Excel', 'Email', 'Curso', 'Grupo', 'Horas A', 'Horas B', 'Nota Taller A', 'Estado'];
     $max = $limit ? min(250, count($rows)) : count($rows);
     for ($i = 0; $i < $max; $i++) {
         $r = $rows[$i];
@@ -123,7 +123,7 @@ if ($preview) {
     echo html_writer::start_div('card-body');
     echo html_writer::tag('h2', '2. Revisión previa', ['class' => 'h4']);
     echo html_writer::div(
-        'Filas leídas: ' . (int)$summary->total . ' · Encontrados: ' . (int)$summary->found . ' · No encontrados: ' . (int)$summary->notfound . ' · Duplicados: ' . (int)$summary->duplicate . ' · Inválidos: ' . (int)$summary->invalid . ' · Horas A encontradas en Moodle: ' . format_float((float)$summary->typeahours, 2, true) . ' h · Horas B encontradas en Moodle: ' . format_float((float)$summary->typebhours, 2, true) . ' h · Filas con nota Seminario A: ' . (int)($summary->withgrade ?? 0),
+        'Filas leídas: ' . (int)$summary->total . ' · Encontrados: ' . (int)$summary->found . ' · No encontrados: ' . (int)$summary->notfound . ' · Duplicados: ' . (int)$summary->duplicate . ' · Inválidos: ' . (int)$summary->invalid . ' · Horas A encontradas en Moodle: ' . format_float((float)$summary->typeahours, 2, true) . ' h · Horas B encontradas en Moodle: ' . format_float((float)$summary->typebhours, 2, true) . ' h · Filas con nota Taller A: ' . (int)($summary->withgrade ?? 0),
         'alert alert-info'
     );
     echo local_ga_inst_render_preview($preview['rows']);
