@@ -262,6 +262,63 @@ class workshop_series {
         }
     }
 
+    /**
+     * Remove an Edición de seminarios from active management without deleting
+     * academic evidence. Linked concrete editions are archived/unlinked, the
+     * Moodle parent section is hidden, and the series container/items are
+     * removed. This is intentionally conservative for real student data.
+     */
+    public static function delete_series(int $seriesid): void {
+        global $DB, $CFG;
+        self::ensure_schema();
+        $series = self::get($seriesid);
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $editionids = self::editions_have_seriesid()
+            ? $DB->get_fieldset_select('local_ga_workshop_editions', 'id', 'seriesid = :seriesid', ['seriesid' => $seriesid])
+            : [];
+        $columns = $DB->get_columns('local_ga_workshop_editions');
+        foreach ($editionids as $editionid) {
+            $update = (object)['id' => (int)$editionid, 'timemodified' => time()];
+            if (isset($columns['seriesid'])) {
+                $update->seriesid = 0;
+            }
+            if (isset($columns['archived'])) {
+                $update->archived = 1;
+            }
+            if (isset($columns['status'])) {
+                $update->status = 'archived';
+            }
+            $DB->update_record('local_ga_workshop_editions', $update);
+        }
+        manager::invalidate_teacher_block_cache([], array_map('intval', $editionids));
+
+        if (!empty($series->sectionid)) {
+            $section = $DB->get_record('course_sections', [
+                'id' => (int)$series->sectionid,
+                'course' => (int)$series->courseid,
+            ], '*', IGNORE_MISSING);
+            if ($section) {
+                course_update_section((int)$series->courseid, $section, [
+                    'name' => 'Eliminada · ' . (string)$series->title,
+                    'summary' => '',
+                    'summaryformat' => FORMAT_HTML,
+                    'visible' => 0,
+                    'availability' => null,
+                ]);
+            }
+        }
+
+        $DB->delete_records(self::ITEMTABLE, ['seriesid' => $seriesid]);
+        $DB->delete_records(self::TABLE, ['id' => $seriesid]);
+
+        // Remove stale legacy cards that older builds may have generated for
+        // these seminars. Archived editions are excluded by the legacy renderer.
+        manager::sync_workshop_section_summary((int)$series->courseid, 'typea');
+        manager::sync_workshop_section_summary((int)$series->courseid, 'typeb');
+        rebuild_course_cache((int)$series->courseid, true);
+    }
+
     public static function next_sortorder(int $seriesid): int {
         global $DB;
         self::ensure_schema();
@@ -514,6 +571,7 @@ class workshop_series {
                         'timemodified' => time(),
                     ]);
                 }
+                self::update_workshop_section($sectionid, $series, $item);
                 self::move_workshop_modules((int)$item->workshopid, $sectionid, (int)$item->notescmid, $series);
             }
         } else {
@@ -524,6 +582,11 @@ class workshop_series {
                 'timemodified' => time(),
             ]);
         }
+        // Older builds rendered the same workshops in a parallel
+        // TALLERES TIPO A/B section. Rebuild that legacy surface so modern
+        // series-owned seminars disappear from it.
+        manager::sync_workshop_section_summary((int)$course->id, 'typea');
+        manager::sync_workshop_section_summary((int)$course->id, 'typeb');
         rebuild_course_cache((int)$course->id, true);
     }
 
@@ -670,6 +733,30 @@ class workshop_series {
         $cmrecord = get_coursemodule_from_id('subsection', $cmid, (int)$course->id, false, MUST_EXIST);
         $delegated = $DB->get_record('course_sections', ['component' => 'mod_subsection', 'itemid' => (int)$cmrecord->instance], '*', MUST_EXIST);
         return [$cmid, (int)$delegated->id];
+    }
+
+    /**
+     * Put the functional workshop card directly inside its modern subsection.
+     * The Moodle activities belonging to the concrete edition are moved into
+     * the same delegated section immediately afterwards.
+     */
+    private static function update_workshop_section(int $sectionid, \stdClass $series, \stdClass $item): void {
+        global $DB;
+        if ($sectionid <= 0) {
+            return;
+        }
+        $edition = self::edition_for_series_item($series, $item);
+        if (!$edition) {
+            return;
+        }
+        $workshop = manager::get_workshop((int)$item->workshopid);
+        $summary = manager::render_workshop_card($workshop, $edition);
+        $DB->update_record('course_sections', (object)[
+            'id' => $sectionid,
+            'summary' => $summary,
+            'summaryformat' => FORMAT_HTML,
+            'timemodified' => time(),
+        ]);
     }
 
     private static function update_calendar_section(int $sectionid, int $seriesid): void {
