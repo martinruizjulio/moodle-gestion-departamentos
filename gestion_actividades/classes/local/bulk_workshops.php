@@ -377,11 +377,55 @@ class bulk_workshops {
         $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $book->getActiveSheet();
         $sheet->setTitle('TALLERES');
-        $sheet->fromArray(['Código','Nombre','Tipo','Descripción','Fecha','Inicio','Fin','Horas','Plazas','Cierre inscripción','Email profesor','Crear apuntes','Cierre cuestionario','Código edición'], null, 'A1');
-        $sheet->fromArray(['TALLER-01','Nombre del taller Tipo A','A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','','Sí','23/09/2026 23:59','TALLER01_E1'], null, 'A2');
-        $sheet->fromArray(['TALLER-B01','Nombre del taller Tipo B','B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','','Sí','','TALLERB01_E1'], null, 'A3');
+        // Sheet TALLERES: headers only. It used to carry one Tipo A and one
+        // Tipo B example row; an Edición cannot mix A and B, so a template
+        // filled in on top of the examples failed or imported the examples.
+        $headers = ['Código','Nombre','Tipo','Descripción','Fecha','Inicio','Fin','Horas','Plazas','Cierre inscripción',
+            'Email profesor','Crear apuntes','Cierre cuestionario','Código edición'];
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:N1')->getFont()->setBold(true);
+        // Dates and times as text, so Excel does not reformat them on typing.
+        foreach (['E', 'F', 'G', 'J', 'M'] as $col) {
+            $sheet->getStyle($col . '2:' . $col . '300')->getNumberFormat()
+                ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+        }
+        // Drop-down lists for Tipo (A/B) and Crear apuntes (Sí/No).
+        foreach (['C' => '"A,B"', 'L' => '"Sí,No"'] as $col => $list) {
+            $validation = $sheet->getCell($col . '2')->getDataValidation();
+            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $validation->setAllowBlank(true);
+            $validation->setShowDropDown(true);
+            $validation->setFormula1($list);
+            $sheet->setDataValidation($col . '2:' . $col . '300', $validation);
+        }
         foreach (range('A','N') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
         $sheet->freezePane('A2');
+
+        // Sheet INSTRUCCIONES (never imported: only the TALLERES sheet is read).
+        $help = $book->createSheet();
+        $help->setTitle('INSTRUCCIONES');
+        $help->fromArray([
+            ['Cómo rellenar la hoja TALLERES'],
+            ['Una fila por taller; el orden de las filas es el orden TALLER 01, TALLER 02...'],
+            ['Un mismo Excel solo puede contener talleres de Tipo A o solo de Tipo B (importa cada tipo por separado).'],
+            ['Formatos: fecha dd/mm/aaaa · horas de inicio y fin hh:mm · cierres dd/mm/aaaa hh:mm · horas con decimales permitidos (1,5).'],
+            ['Cierre cuestionario: solo Tipo A; déjalo vacío si aún no lo sabes (se puede fijar después en el cuestionario).'],
+            ['Email profesor: correo del profesor del curso que impartirá el taller (opcional).'],
+            ['Código edición: opcional; si se deja vacío se genera como CÓDIGO_E1.'],
+            [''],
+            ['Ejemplo Tipo A (no copiar en la misma hoja que uno de Tipo B):'],
+            $headers,
+            ['TALLER-01','Nombre del taller Tipo A','A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','','Sí','23/09/2026 23:59','TALLER01_E1'],
+            [''],
+            ['Ejemplo Tipo B:'],
+            $headers,
+            ['TALLER-B01','Nombre del taller Tipo B','B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','','Sí','','TALLERB01_E1'],
+        ], null, 'A1');
+        $help->getStyle('A1')->getFont()->setBold(true)->setSize(13);
+        $help->getStyle('A10:N10')->getFont()->setBold(true);
+        $help->getStyle('A14:N14')->getFont()->setBold(true);
+        foreach (range('A','N') as $col) $help->getColumnDimension($col)->setAutoSize(true);
+        $book->setActiveSheetIndex(0);
         $path = tempnam(make_temp_directory(self::TEMPDIR), 'tpl_');
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save($path);
         \send_temp_file($path, 'Plantilla_importacion_masiva_talleres.xlsx');

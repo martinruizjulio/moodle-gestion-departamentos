@@ -512,7 +512,15 @@ Informe de Julio: «Borrar pruebas» devolvía error 500. No reproducible en el 
 - Prueba (Moodle 5.0.11): limpieza de un curso con 8 talleres y 37 actividades: de 6,3 s a 1,8 s; la papelera no recibe copias; la configuración `tool_recyclebin/coursebinenable` sigue igual.
 - Si persistiera el 500, hace falta el mensaje del registro de errores del servidor.
 
+## Plantilla Excel vacía (2026-10-06, 1.5.146-alpha / `2026100561`)
+
+Informe de Julio: la plantilla descargada venía con dos filas rellenas (un ejemplo Tipo A y otro Tipo B) y debía venir vacía.
+
+- La hoja `TALLERES` sale solo con la cabecera (el importador solo lee esa hoja). Fechas y horas con formato texto para que Excel no las transforme; listas desplegables en «Tipo» (A/B) y «Crear apuntes» (Sí/No).
+- Los ejemplos y las instrucciones pasan a una hoja aparte `INSTRUCCIONES`, que nunca se importa.
+- Prueba (Moodle 5.0.11): descarga desde la página → hojas TALLERES e INSTRUCCIONES; plantilla sin rellenar → 0 talleres; rellenada con dos filas Tipo B → ambas válidas.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.145-alpha** (`2026100560`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.146-alpha** (`2026100561`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
