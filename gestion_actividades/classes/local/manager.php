@@ -527,6 +527,7 @@ class manager {
 
         if (!empty($edition->attendancecmid)
                 && $DB->record_exists('course_modules', ['id' => (int)$edition->attendancecmid, 'course' => (int)$course->id])) {
+            attendance_sync::ensure_session($editionid);
             $result->success = true;
             $result->cmid = (int)$edition->attendancecmid;
             $result->message = 'La actividad de asistencia ya existe.';
@@ -535,11 +536,8 @@ class manager {
 
         if (!$DB->record_exists('modules', ['name' => 'attendance'])
                 || !$DB->get_manager()->table_exists(new \xmldb_table('attendance'))) {
-            // mod_attendance is optional: HEE attendance (Alumnos / asistencia)
-            // keeps working without it, so creation must not abort.
-            $result->success = true;
-            $result->skipped = true;
-            $result->message = 'mod_attendance no está instalado: se usará la asistencia de Gestión HEE.';
+            // Attendance is mandatory for every Type A/B workshop.
+            $result->message = 'mod_attendance (Asistencia) no está instalado en este Moodle: es obligatorio para los talleres.';
             return $result;
         }
 
@@ -585,6 +583,8 @@ class manager {
                 $DB->set_field('course_modules', 'visibleoncoursepage', 1, ['id' => $cmid]);
             }
             rebuild_course_cache((int)$course->id, true);
+            // One session on the workshop date, for the edition group only.
+            attendance_sync::ensure_session($editionid);
 
             $result->success = true;
             $result->cmid = $cmid;
@@ -6396,6 +6396,8 @@ class manager {
 
     public static function generate_certificate_for_user(int $editionid, int $userid, bool $syncgrades = true): ?\stdClass {
         global $DB;
+        // Attendance comes from the workshop attendance list (source of truth).
+        attendance_sync::sync_edition_once($editionid);
 
         if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_certificates'))) {
             return null;
@@ -6938,6 +6940,17 @@ class manager {
     }
 
 
+
+    /**
+     * Public wrapper used by attendance_sync after changing attendance.
+     *
+     * @param int[] $userids
+     */
+    public static function invalidate_block_caches_for_users(array $userids): void {
+        foreach (array_unique(array_map('intval', $userids)) as $userid) {
+            self::invalidate_block_cache_for_user($userid);
+        }
+    }
 
     private static function invalidate_block_cache_for_user(int $userid): void {
         global $CFG;

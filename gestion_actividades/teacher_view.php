@@ -2,6 +2,7 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
+use local_gestion_actividades\local\attendance_sync;
 use local_gestion_actividades\local\typeb_certificate_policy;
 
 $id = required_param('id', PARAM_INT);
@@ -54,6 +55,11 @@ if (!$edition && !$globalmanager) {
 
 $editionid = $edition ? (int)$edition->id : 0;
 $istypeb = manager::is_typeb_workshop($workshop);
+if ($editionid > 0) {
+    // Attendance shown here comes from the workshop attendance list.
+    attendance_sync::sync_edition_safely($editionid);
+    $edition = manager::get_workshop_edition($editionid);
+}
 
 $PAGE->set_context($coursecontext);
 $PAGE->set_course($course);

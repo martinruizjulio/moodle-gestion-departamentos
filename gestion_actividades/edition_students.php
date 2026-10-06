@@ -2,6 +2,7 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
+use local_gestion_actividades\local\attendance_sync;
 
 require_login();
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -77,12 +78,31 @@ try {
     }
 
     if (!empty($markattendance) && confirm_sesskey()) {
-        $enrolment = $DB->get_record('local_ga_edition_enrolments', ['id' => (int)$markattendance], 'id,editionid', MUST_EXIST);
+        $enrolment = $DB->get_record('local_ga_edition_enrolments', ['id' => (int)$markattendance], 'id,editionid,userid', MUST_EXIST);
         if ((int)$enrolment->editionid !== (int)$id) {
             throw new invalid_parameter_exception('La inscripción indicada no pertenece a esta edición.');
         }
+        // The workshop attendance list is the source of truth: a student who
+        // appears in it must be corrected there, not here.
+        if (array_key_exists((int)$enrolment->userid, attendance_sync::list_map((int)$id))) {
+            redirect(
+                new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $id, 't' => time()]),
+                'Este alumno figura en la lista de asistencia del taller: corrige su estado allí (solo cuenta «Presente»).',
+                null,
+                \core\output\notification::NOTIFY_WARNING
+            );
+        }
         manager::set_enrolment_attendance((int)$markattendance, (bool)$attended, (int)$USER->id);
         redirect(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $id, 't' => time()]), get_string('attendancesaved', 'local_gestion_actividades'));
+    }
+
+    // Bring HEE attendance in line with the workshop attendance list.
+    attendance_sync::sync_edition_safely((int)$id);
+    $listmap = [];
+    try {
+        $listmap = attendance_sync::list_map((int)$id);
+    } catch (\Throwable $e) {
+        $listmap = [];
     }
 
     $PAGE->set_context($coursecontext);
@@ -99,6 +119,13 @@ try {
     echo html_writer::start_tag('div', ['class' => 'card mb-3']);
     echo html_writer::start_tag('div', ['class' => 'card-body']);
     echo html_writer::tag('h3', get_string('clickattendance', 'local_gestion_actividades'));
+    if (!empty($edition->attendancecmid)) {
+        echo html_writer::tag('p',
+            'La asistencia se pasa en la lista de asistencia del taller y se aplica aquí automáticamente: solo cuenta «Presente». '
+            . 'El marcado manual de esta pantalla solo sirve para alumnos que no figuran en esa lista.',
+            ['class' => 'alert alert-info']
+        );
+    }
 
     $students = [];
     try {
@@ -121,7 +148,11 @@ try {
             $status = $isattended
                 ? html_writer::span(get_string('attended', 'local_gestion_actividades'), 'badge bg-success')
                 : html_writer::span(get_string('notattended', 'local_gestion_actividades'), 'badge bg-secondary');
-            $button = html_writer::link($toggleurl, $isattended ? get_string('marknotattended', 'local_gestion_actividades') : get_string('markattended', 'local_gestion_actividades'), ['class' => $isattended ? 'btn btn-warning btn-sm me-1' : 'btn btn-success btn-sm me-1']);
+            if (array_key_exists((int)($s->userid ?? 0), $listmap)) {
+                $button = html_writer::span('Según lista de asistencia', 'badge bg-info text-dark me-1');
+            } else {
+                $button = html_writer::link($toggleurl, $isattended ? get_string('marknotattended', 'local_gestion_actividades') : get_string('markattended', 'local_gestion_actividades'), ['class' => $isattended ? 'btn btn-warning btn-sm me-1' : 'btn btn-success btn-sm me-1']);
+            }
             $button .= html_writer::start_tag('form', [
                 'method' => 'post',
                 'action' => new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $id]),

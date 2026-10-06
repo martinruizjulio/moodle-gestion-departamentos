@@ -11,6 +11,18 @@ use local_gestion_actividades\local\typeb_reflection_activity;
  * Event observers for lightweight HEE grade synchronisation.
  */
 class observer {
+    /**
+     * Attendance taken in a workshop attendance list (teacher or student):
+     * apply it to the HEE enrolments of the editions using that list.
+     */
+    public static function attendance_taken(\core\event\base $event): void {
+        try {
+            \local_gestion_actividades\local\attendance_sync::sync_attendance_instance((int)$event->objectid);
+        } catch (\Throwable $e) {
+            debugging('No se pudo sincronizar la asistencia HEE: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
     /** @var bool Prevent recursive processing of grade events created by our own manual items. */
     private static $processing = false;
 

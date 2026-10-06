@@ -36,4 +36,15 @@ $observers = [
         'callback' => '\\local_gestion_actividades\\observer::assign_submission_changed',
         'priority' => 9999,
     ],
+    [
+        // Workshop attendance list is the source of truth for HEE attendance.
+        'eventname' => '\\mod_attendance\\event\\attendance_taken',
+        'callback' => '\\local_gestion_actividades\\observer::attendance_taken',
+        'priority' => 9999,
+    ],
+    [
+        'eventname' => '\\mod_attendance\\event\\attendance_taken_by_student',
+        'callback' => '\\local_gestion_actividades\\observer::attendance_taken',
+        'priority' => 9999,
+    ],
 ];

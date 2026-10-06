@@ -197,6 +197,12 @@ if (data_submitted() && confirm_sesskey()) {
     } else {
         workshop_series::refresh_for_workshop($workshopid);
     }
+    // Keep the attendance session on the (possibly changed) workshop date.
+    try {
+        \local_gestion_actividades\local\attendance_sync::ensure_session($savededitionid);
+    } catch (\Throwable $e) {
+        debugging('No se pudo actualizar la sesión de asistencia: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    }
     if ($seriesextension && $seriesid <= 0) {
         // Refresh the calendar/date range shown in the course.
         workshop_series::ensure_course_structure((int)$seriesextension->seriesid);

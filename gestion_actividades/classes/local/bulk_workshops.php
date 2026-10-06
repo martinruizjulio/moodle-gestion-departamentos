@@ -235,6 +235,8 @@ class bulk_workshops {
                     $summary->notescreated++;
                 }
                 workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid, $row['sessionenddate'], $editionid);
+                // Session duration uses the Excel end time stored by attach_workshop().
+                attendance_sync::ensure_session($editionid);
 
                 if ($row['type'] === 'typea') {
                     $savededition = manager::get_workshop_edition($editionid);
