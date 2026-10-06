@@ -41,7 +41,7 @@ if ($action === 'template') {
         ['Nota Tipo A: opcional, de 0 a 10.'],
         ['Apellidos, Nombre, Curso y Grupo: opcionales, solo para que la revisión previa sea más clara.'],
         ['Si vuelves a importar a un alumno, sus horas institucionales se SUSTITUYEN por las nuevas (no se suman).'],
-        ['Las horas Tipo B quedan pendientes hasta que el alumno escriba su comentario en «Mi portafolio HEE».'],
+        ['Las horas Tipo B cuentan desde que se importan; el alumno debe escribir su comentario en «Mi portafolio HEE» para completar el portafolio.'],
         [''],
         ['Ejemplo de fila:'],
         $headers,
@@ -134,7 +134,7 @@ try {
 echo $OUTPUT->header();
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_inst_btn_icon('t/left', 'Volver al panel'), ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo html_writer::tag('h1', 'Importar reconocimiento institucional');
-echo html_writer::tag('p', 'Importa un Excel institucional con horas Tipo A y Tipo B ya reconocidas. El cruce con Moodle se realiza por email. Las horas Tipo B quedarán pendientes del comentario obligatorio del alumno en su portafolio. No se modifican alumnos no encontrados.', ['class' => 'lead']);
+echo html_writer::tag('p', 'Importa un Excel institucional con horas Tipo A y Tipo B ya reconocidas. El cruce con Moodle se realiza por email. Las horas Tipo B cuentan desde la importación; el alumno debe añadir su comentario obligatorio en el portafolio. No se modifican alumnos no encontrados.', ['class' => 'lead']);
 
 if ($message !== '') {
     echo $OUTPUT->notification($message, 'success');
@@ -187,7 +187,8 @@ echo html_writer::alist([
     'Primero se muestra una <strong>revisión previa sin guardar</strong>: verás quién se encuentra, quién no y quién está repetido. Solo se importan los encontrados al confirmar.',
     'Si un alumno ya tenía horas institucionales, al volver a importarlo se <strong>sustituyen</strong> por las nuevas; no se suman.',
     'Estas horas se suman a las de los talleres de Gestión HEE en el bloque y el portafolio del alumno.',
-    'Las horas Tipo B no cuentan hasta que el alumno escribe su comentario en «Mi portafolio HEE».',
+    'Las horas Tipo B cuentan desde que se importan; el alumno debe escribir además su comentario en «Mi portafolio HEE» para completar el portafolio (nota de Portafolio).',
+    'La nota Tipo A importada cuenta como una nota más en la media de Talleres A, con el mismo peso que la de cada taller.',
 ]);
 echo html_writer::end_div();
 echo html_writer::end_tag('details');
