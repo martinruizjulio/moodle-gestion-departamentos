@@ -553,7 +553,15 @@ Petición de Julio: junto a «Apuntarme», un botón naranja «Lista de clase» 
 - Prueba en navegador (Moodle 5.0.11): administrador ve los 8 botones, profesor asignado a 4 talleres ve solo esos 4, alumno ninguno; la lista se abre y en vista de impresión muestra la tabla con firma.
 - En cursos ya creados el botón aparece en cuanto se actualiza la Edición (guardar un taller o «Actualizar»).
 
+## Limpieza de pruebas por Edición (2026-10-06, 1.5.151-alpha / `2026100566`)
+
+Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las borraba todas sin poder elegir.
+
+- `test_cleanup.php`: tras elegir el curso, paso «2. ¿Qué quieres borrar?» con una opción por Edición (título, tipo, n.º de talleres, fechas, finalizada) y la opción «Todas». La vista previa y la confirmación muestran exactamente lo que se borrará.
+- `purge_course_test_data($courseid, [$seriesid])`: borra solo esa Edición (sus ediciones, inscripciones, horas, certificados y sus PDF, reflexiones, grupos HEE, actividades generadas incluida la carpeta de materiales, subsecciones y sección). Un taller base solo se borra si ninguna otra Edición lo usa. No toca las demás Ediciones ni hace las reparaciones globales del curso (estructuras huérfanas, sección de conservados), que quedan para «Todas». Después reordena el curso.
+- Prueba en navegador (Moodle 5.0.11): curso con 4 Ediciones (2 A, 2 B) e inscritos en una de ellas → borrada solo «Edición A 1» (9 módulos, 2 grupos, su sección); las otras 3 Ediciones intactas con sus subsecciones, actividades y grupos. «Todas» sigue funcionando. Regresión 303 correcta.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.150-alpha** (`2026100565`). Último savepoint de esquema: **2026100563**.
+- `local_gestion_actividades`: **1.5.151-alpha** (`2026100566`). Último savepoint de esquema: **2026100563**.
 - `block_gestion_hee`: **1.0.27-alpha** (`2026100511`).

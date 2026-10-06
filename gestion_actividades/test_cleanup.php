@@ -10,6 +10,8 @@ if (!manager::can_manage_globally((int)$USER->id)) {
 }
 
 $courseid = optional_param('courseid', 0, PARAM_INT);
+// 0 = whole course; otherwise only that Edición de talleres.
+$seriesid = optional_param('seriesid', 0, PARAM_INT);
 $action = optional_param('action', '', PARAM_ALPHA);
 $message = '';
 $error = '';
@@ -33,8 +35,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 \core_php_time_limit::raise();
                 raise_memory_limit(MEMORY_HUGE);
                 ignore_user_abort(true);
-                $result = manager::purge_course_test_data($courseid);
-                $message = 'Limpieza completada. El curso mantiene usuarios y contenido ajeno a Gestión HEE.';
+                $seriesid = optional_param('seriesid', 0, PARAM_INT);
+                $result = manager::purge_course_test_data($courseid, $seriesid > 0 ? [$seriesid] : []);
+                $message = $seriesid > 0
+                    ? 'Edición borrada. El resto de Ediciones del curso no se ha tocado.'
+                    : 'Limpieza completada. El curso mantiene usuarios y contenido ajeno a Gestión HEE.';
+                $seriesid = 0;
             } catch (Throwable $e) {
                 $error = $e->getMessage();
             }
@@ -106,11 +112,48 @@ echo html_writer::end_div();
 if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
     $course = $DB->get_record('course', ['id' => $courseid], 'id,fullname', MUST_EXIST);
     require_capability('moodle/course:manageactivities', context_course::instance($courseid));
-    $summary = manager::course_test_data_summary($courseid);
+    // Step 2: what to delete — one Edición or the whole course.
+    $courseseries = $DB->get_records('local_ga_workshop_series', ['courseid' => $courseid], 'datefrom ASC, id ASC');
+    if ($seriesid > 0 && !isset($courseseries[$seriesid])) {
+        $seriesid = 0;
+    }
+    echo html_writer::start_div('card mb-4');
+    echo html_writer::start_div('card-body');
+    echo html_writer::tag('h3', '2. ¿Qué quieres borrar?', ['class' => 'h5']);
+    echo html_writer::start_tag('form', ['method' => 'get']);
+    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
+    foreach ($courseseries as $cs) {
+        $types = $DB->get_fieldset_sql("SELECT DISTINCT w.workshoptype FROM {local_ga_series_items} i
+                                          JOIN {local_ga_workshops} w ON w.id = i.workshopid WHERE i.seriesid = ?", [$cs->id]);
+        $typelabel = $types ? implode(' + ', array_map(fn($t) => $t === 'typeb' ? 'Tipo B' : 'Tipo A', $types)) : 'sin talleres';
+        $ntalleres = $DB->count_records('local_ga_series_items', ['seriesid' => $cs->id]);
+        $label = format_string($cs->title) . ' · ' . $typelabel . ' · ' . $ntalleres . ' taller(es) · '
+            . userdate((int)$cs->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$cs->dateto, '%d/%m/%Y')
+            . ((string)$cs->status === 'finished' ? ' · finalizada' : '');
+        echo html_writer::start_div('form-check');
+        echo html_writer::empty_tag('input', ['type' => 'radio', 'class' => 'form-check-input', 'name' => 'seriesid',
+            'id' => 'series' . $cs->id, 'value' => $cs->id] + ($seriesid === (int)$cs->id ? ['checked' => 'checked'] : []));
+        echo html_writer::label('Solo la Edición «' . $label . '»', 'series' . $cs->id, false, ['class' => 'form-check-label']);
+        echo html_writer::end_div();
+    }
+    echo html_writer::start_div('form-check mt-2');
+    echo html_writer::empty_tag('input', ['type' => 'radio', 'class' => 'form-check-input', 'name' => 'seriesid', 'id' => 'seriesall',
+        'value' => 0] + ($seriesid === 0 ? ['checked' => 'checked'] : []));
+    echo html_writer::label('<strong>Todas</strong> las Ediciones y datos HEE de prueba de este curso', 'seriesall', false, ['class' => 'form-check-label']);
+    echo html_writer::end_div();
+    echo html_writer::tag('button', 'Ver qué se borrará', ['type' => 'submit', 'class' => 'btn btn-primary mt-3']);
+    echo html_writer::end_tag('form');
+    echo html_writer::end_div();
+    echo html_writer::end_div();
+
+    $summary = manager::course_test_data_summary($courseid, $seriesid > 0 ? [$seriesid] : []);
+    $scopelabel = $seriesid > 0
+        ? 'la Edición «' . format_string($courseseries[$seriesid]->title) . '»'
+        : 'TODAS las Ediciones de ' . format_string($course->fullname);
 
     echo html_writer::start_div('card border-danger mb-4');
     echo html_writer::start_div('card-header bg-danger text-white');
-    echo html_writer::tag('strong', '2. Confirmar limpieza de ' . format_string($course->fullname));
+    echo html_writer::tag('strong', '3. Confirmar: se borrará ' . $scopelabel);
     echo html_writer::end_div();
     echo html_writer::start_div('card-body');
 
@@ -128,8 +171,7 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
         'Entregas' => $summary->submissions,
         'Traspasos' => $summary->transfers,
         'Grupos de Edición' => $summary->groups,
-        'Estructuras HEE huérfanas en el curso' => $summary->orphanstructures,
-    ] as $label => $value) {
+    ] + ($seriesid > 0 ? [] : ['Estructuras HEE huérfanas en el curso' => $summary->orphanstructures]) as $label => $value) {
         $preview->data[] = [$label, (int)$value];
     }
     echo html_writer::table($preview);
@@ -143,11 +185,12 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
         );
         echo html_writer::start_tag('form', [
             'method' => 'post',
-            'onsubmit' => "return confirm('¿Confirmas la limpieza masiva de los datos HEE de prueba de este curso?');",
+            'onsubmit' => "return confirm(" . json_encode('¿Confirmas que quieres borrar ' . strip_tags($scopelabel) . '?') . ");",
         ]);
         echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
         echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'purge']);
         echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
+        echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'seriesid', 'value' => $seriesid]);
         echo html_writer::empty_tag('input', [
             'type' => 'text',
             'name' => 'confirmtext',
@@ -156,7 +199,7 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
             'autocomplete' => 'off',
             'required' => 'required',
         ]);
-        echo html_writer::tag('button', 'Borrar todos los datos HEE de prueba de este curso', [
+        echo html_writer::tag('button', $seriesid > 0 ? 'Borrar solo esta Edición' : 'Borrar todos los datos HEE de prueba de este curso', [
             'type' => 'submit',
             'class' => 'btn btn-danger',
         ]);
