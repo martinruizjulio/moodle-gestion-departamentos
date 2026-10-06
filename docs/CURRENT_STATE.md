@@ -578,3 +578,6 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 **Validación (Moodle 5.0.11 local)**: importación de ambas plantillas (8 talleres), generación 100 alumnos / 320 inscripciones en ~23 s, asistencia y notas coherentes, repetir sin duplicados, al finalizar certificados = elegibles exactos (252) sin duplicados, horas en fichas, login del alumno demo, borrado sin restos; capturas de la página del plugin y del portafolio del alumno.
 
 **Pendiente**: probarlo en el Moodle de Julio; desinstalar `local_hee_demo` tras la presentación.
+
+## 2026-10-07 · `local_hee_demo` 0.1.1-demo
+- Acceso directo en el curso: menú «Más» › «Datos de demostración HEE» (solo administradores del sitio), con el curso ya elegido. Motivo: la página no aparece en la tabla «Gestionar plugins locales»; solo como enlace en Administración › Plugins › Plugins locales. Validado en Moodle 5.0.11 local.
