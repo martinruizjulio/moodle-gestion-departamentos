@@ -51,6 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             workshop_series::ensure_course_structure($id);
             course_layout::synchronise_course((int)$target->courseid);
             $message = 'Calendario, subsecciones y jerarquía A/B actualizados.';
+        } else if ($action === 'delete' && $id > 0) {
+            $target = workshop_series::get($id);
+            $targetcourseid = (int)$target->courseid;
+            workshop_series::delete_series($id);
+            course_layout::synchronise_course($targetcourseid);
+            $id = 0;
+            $courseid = $targetcourseid;
+            $message = 'Edición retirada de la gestión activa. Los datos académicos existentes se conservan archivados.';
         }
     } catch (Throwable $e) {
         $error = $e->getMessage();
@@ -154,6 +162,17 @@ if ($series) {
             $actions .= html_writer::tag('button', 'Finalizar y ocultar', ['type' => 'submit', 'class' => 'btn btn-sm btn-outline-danger']);
             $actions .= html_writer::end_tag('form');
         }
+        $actions .= html_writer::start_tag('form', [
+            'method' => 'post',
+            'style' => 'display:inline-block',
+            'onsubmit' => "return confirm('¿Borrar esta Edición de seminarios de la gestión activa? Los datos académicos existentes se conservarán archivados.');",
+        ]);
+        $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+        $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $s->id]);
+        $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'delete']);
+        $actions .= html_writer::tag('button', 'Borrar edición', ['type' => 'submit', 'class' => 'btn btn-sm btn-danger ms-1']);
+        $actions .= html_writer::end_tag('form');
+
         $table->data[] = [
             $course ? format_string($course->fullname) : (int)$s->courseid,
             s($s->title),
