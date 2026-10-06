@@ -593,6 +593,85 @@ class manager {
     }
 
 
+    /**
+     * Canonical setup for a modern Type A workshop edition.
+     *
+     * Guarantees: Moodle group, Attendance activity and a real empty Quiz.
+     * Existing activities are reused; missing ones are created. The caller can
+     * invoke this safely from both manual and Excel creation paths.
+     */
+    public static function ensure_typea_default_activities(int $editionid, int $sortorder = 0): \stdClass {
+        global $DB;
+
+        $edition = self::get_workshop_edition($editionid);
+        $workshop = self::get_workshop((int)$edition->workshopid);
+        if (self::is_typeb_workshop($workshop)) {
+            return (object)[
+                'success' => false,
+                'message' => 'Esta rutina solo corresponde a Talleres Tipo A.',
+                'attendancecmid' => 0,
+                'quizcmid' => 0,
+            ];
+        }
+
+        self::get_or_create_edition_group($editionid);
+
+        $attendance = self::create_attendance_activity_for_edition(
+            $editionid,
+            $sortorder > 0 ? ('Asistencia T' . sprintf('%02d', $sortorder)) : ('Asistencia ' . (string)$workshop->code)
+        );
+        if (empty($attendance->success) || empty($attendance->cmid)) {
+            return (object)[
+                'success' => false,
+                'message' => (string)($attendance->message ?? 'No se pudo crear la asistencia.'),
+                'attendancecmid' => 0,
+                'quizcmid' => 0,
+            ];
+        }
+
+        $quiz = self::create_required_activity_for_edition($editionid, null, 'quiz');
+        if (empty($quiz->success) || empty($quiz->cmid)) {
+            return (object)[
+                'success' => false,
+                'message' => (string)($quiz->message ?? 'No se pudo crear el cuestionario vacío.'),
+                'attendancecmid' => (int)$attendance->cmid,
+                'quizcmid' => 0,
+            ];
+        }
+
+        $quizcmid = (int)$quiz->cmid;
+        $cm = get_coursemodule_from_id('quiz', $quizcmid, (int)$workshop->courseid, false, IGNORE_MISSING);
+        if (!$cm || !$DB->record_exists('quiz', ['id' => (int)$cm->instance])) {
+            return (object)[
+                'success' => false,
+                'message' => 'El cuestionario fue creado pero Moodle no puede localizar su módulo.',
+                'attendancecmid' => (int)$attendance->cmid,
+                'quizcmid' => 0,
+            ];
+        }
+
+        if ($sortorder > 0) {
+            $DB->set_field('quiz', 'name', 'Cuestionario T-' . $sortorder, ['id' => (int)$cm->instance]);
+        }
+
+        $cmcolumns = $DB->get_columns('course_modules');
+        if (isset($cmcolumns['visible'])) {
+            $DB->set_field('course_modules', 'visible', 1, ['id' => $quizcmid]);
+        }
+        if (isset($cmcolumns['visibleoncoursepage'])) {
+            $DB->set_field('course_modules', 'visibleoncoursepage', 1, ['id' => $quizcmid]);
+        }
+        self::restrict_required_activity_to_edition_group($editionid, $quizcmid);
+
+        return (object)[
+            'success' => true,
+            'message' => 'Asistencia y cuestionario Tipo A preparados.',
+            'attendancecmid' => (int)$attendance->cmid,
+            'quizcmid' => $quizcmid,
+        ];
+    }
+
+
     public static function create_required_activity_for_edition(int $editionid, ?int $userid = null, string $forcedtype = ''): \stdClass {
         global $DB, $CFG, $USER;
 
