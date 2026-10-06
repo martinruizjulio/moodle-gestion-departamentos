@@ -640,11 +640,25 @@ class manager {
         }
 
         $quizcmid = (int)$quiz->cmid;
-        $cm = get_coursemodule_from_id('quiz', $quizcmid, (int)$workshop->courseid, false, IGNORE_MISSING);
-        if (!$cm || !$DB->record_exists('quiz', ['id' => (int)$cm->instance])) {
+        // Do not use get_coursemodule_from_id() here: this runs immediately
+        // after module creation inside a delegated transaction, where Moodle's
+        // modinfo cache can still lag behind the database and yield a false
+        // negative. Validate the fresh module directly in DB.
+        $cm = $DB->get_record_sql(
+            "SELECT cm.id, cm.instance, cm.course
+               FROM {course_modules} cm
+               JOIN {modules} m ON m.id = cm.module
+               JOIN {quiz} q ON q.id = cm.instance
+              WHERE cm.id = :cmid
+                AND cm.course = :courseid
+                AND m.name = 'quiz'",
+            ['cmid' => $quizcmid, 'courseid' => (int)$workshop->courseid],
+            IGNORE_MISSING
+        );
+        if (!$cm) {
             return (object)[
                 'success' => false,
-                'message' => 'El cuestionario fue creado pero Moodle no puede localizar su módulo.',
+                'message' => 'El cuestionario fue creado pero no existe como módulo quiz en la base de datos Moodle.',
                 'attendancecmid' => (int)$attendance->cmid,
                 'quizcmid' => 0,
             ];
