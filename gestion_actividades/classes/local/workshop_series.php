@@ -729,6 +729,45 @@ class workshop_series {
                 self::move_workshop_modules((int)$item->workshopid, $sectionid, (int)$item->notescmid, $series);
                 $ordered[] = $cmid;
             }
+
+            // Repair remnants left by older deletion code: a workshop could
+            // disappear from local_ga_series_items while its empty delegated
+            // subsection remained in the parent section with an "Apuntarme"
+            // summary. Delete only empty generated workshop subsections; never
+            // remove a subsection that still contains Moodle activities.
+            $parent = $DB->get_record('course_sections', ['id' => (int)$section->id], 'id, course, sequence', MUST_EXIST);
+            $parentcmids = array_values(array_filter(array_map('intval', explode(',', (string)$parent->sequence))));
+            foreach ($parentcmids as $parentcmid) {
+                if (in_array($parentcmid, $ordered, true)) {
+                    continue;
+                }
+                $cm = get_coursemodule_from_id('subsection', $parentcmid, (int)$course->id, false, IGNORE_MISSING);
+                if (!$cm) {
+                    continue;
+                }
+                $delegated = $DB->get_record('course_sections', [
+                    'course' => (int)$course->id,
+                    'component' => 'mod_subsection',
+                    'itemid' => (int)$cm->instance,
+                ], '*', IGNORE_MISSING);
+                if (!$delegated || trim((string)$delegated->sequence) !== '') {
+                    continue;
+                }
+                $dname = trim((string)($delegated->name ?? ''));
+                $dsummary = (string)($delegated->summary ?? '');
+                $lookshee = strpos($dname, 'TALLER ') === 0
+                    || strpos($dsummary, 'local-ga-enrol-inline') !== false
+                    || strpos($dsummary, 'local-ga-enrol-status') !== false;
+                if (!$lookshee) {
+                    continue;
+                }
+                try {
+                    course_delete_module($parentcmid);
+                } catch (\Throwable $e) {
+                    debugging('No se pudo retirar una subsección HEE huérfana vacía: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+
             self::order_parent_section((int)$section->id, $ordered);
         } else {
             $DB->update_record('course_sections', (object)[
