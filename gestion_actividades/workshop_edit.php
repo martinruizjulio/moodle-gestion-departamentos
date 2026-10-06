@@ -47,6 +47,12 @@ if (data_submitted() && confirm_sesskey()) {
         throw new moodle_exception('invaliddata', 'error', '', 'La edición de talleres y el taller deben pertenecer al mismo curso.');
     }
     $workshoptype = $record ? (string)($record->workshoptype ?? 'typea') : $type;
+    if (!$record && $postseriesid <= 0) {
+        // Every new taller must belong to an Edición: that is what gives it its
+        // own group, attendance list, quiz/reflection and enrol button.
+        throw new moodle_exception('invaliddata', 'error', '',
+            'Crea el taller desde su Edición de talleres («Añadir taller») o mediante la importación Excel.');
+    }
     if ($postseriesid > 0) {
         course_layout::assert_series_accepts_type($postseriesid, $workshoptype);
     }

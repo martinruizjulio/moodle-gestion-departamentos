@@ -221,6 +221,19 @@ class bulk_workshops {
                     if (isset($columns['requiredquizcmid'])) $update->requiredquizcmid = $quizcmid;
                     if (isset($columns['requiredassigncmid'])) $update->requiredassigncmid = 0;
                     $DB->update_record('local_ga_workshop_editions', $update);
+                    // Same group linkage as the default quiz: group restriction,
+                    // separate groups with the edition grouping, visible inside
+                    // its TALLER subsection.
+                    manager::restrict_required_activity_to_edition_group($editionid, $quizcmid);
+                    $cmcolumns = $DB->get_columns('course_modules');
+                    foreach (['visible', 'visibleold', 'visibleoncoursepage'] as $field) {
+                        if (isset($cmcolumns[$field])) {
+                            $DB->set_field('course_modules', $field, 1, ['id' => $quizcmid]);
+                        }
+                    }
+                    if (isset($cmcolumns['idnumber'])) {
+                        $DB->set_field('course_modules', 'idnumber', 'HEE_EDITION_' . $editionid . '_REQUIRED_QUIZ', ['id' => $quizcmid]);
+                    }
                     $summary->quizcreated++;
                 } else {
                     $defaults = manager::ensure_typea_default_activities($editionid, $order);
