@@ -52,7 +52,7 @@ function local_ga_dash_series_edition(stdClass $series, int $workshopid): ?stdCl
     $matching = [];
     foreach ($editions as $edition) {
         if (!empty($edition->seriesid) && (int)$edition->seriesid !== (int)$series->id) {
-            continue; // Linked to another Edición de seminarios: never borrow it by dates.
+            continue; // Linked to another Edición de talleres: never borrow it by dates.
         }
         $date = (int)($edition->sessiondate ?? 0);
         if ($date > 0 && $date >= (int)$series->datefrom && $date <= (int)$series->dateto) {
@@ -142,7 +142,7 @@ echo local_ga_dash_card(
 );
 echo local_ga_dash_card(
     '3. Listados y descargas',
-    'Consultar y descargar seminarios Tipo A/B, asistencia, resultados, certificados, horas, portafolios y expedientes completos.',
+    'Consultar y descargar talleres Tipo A/B, asistencia, resultados, certificados, horas, portafolios y expedientes completos.',
     new moodle_url('/local/gestion_actividades/manager_downloads.php'),
     'Abrir listados y descargas',
     'btn btn-primary'
@@ -163,7 +163,7 @@ echo local_ga_dash_card(
 );
 echo local_ga_dash_card(
     '6. Notas Asignatura HEE',
-    'Consultar Nota Seminarios A, Portafolio, Autoevaluación y Nota Final. También permite crear o vincular la autoevaluación que se desbloquea a las 54 horas.',
+    'Consultar Nota Talleres A, Portafolio, Autoevaluación y Nota Final. También permite crear o vincular la autoevaluación que se desbloquea a las 54 horas.',
     new moodle_url('/local/gestion_actividades/grades_report.php', $courseid > 0 ? ['courseid' => $courseid] : []),
     'Abrir notas de alumnos',
     'btn btn-primary'
@@ -176,27 +176,27 @@ echo local_ga_dash_card(
     'btn btn-warning'
 );
 echo local_ga_dash_card(
-    '8. Listado personalizado de seminarios',
-    'Seleccionar uno, varios o todos los seminarios y obtener edición, alumno, horas, actividad, resultado y asistencia.',
+    '8. Listado personalizado de talleres',
+    'Seleccionar uno, varios o todos los talleres y obtener edición, alumno, horas, actividad, resultado y asistencia.',
     new moodle_url('/local/gestion_actividades/workshop_report.php'),
-    'Crear listado de seminarios',
+    'Crear listado de talleres',
     'btn btn-primary'
 );
 echo html_writer::end_div();
 
-echo html_writer::tag('h3', 'Seminarios', ['class' => 'h4 mt-4 mb-3']);
+echo html_writer::tag('h3', 'Talleres', ['class' => 'h4 mt-4 mb-3']);
 echo html_writer::start_div('row');
 echo local_ga_dash_card(
-    'Seminarios Tipo A',
-    'Gestionar ediciones con su calendario y subsecciones. La actividad predeterminada de los seminarios Tipo A nuevos es un cuestionario Moodle; se mantienen compatibles las ediciones históricas.',
+    'Talleres Tipo A',
+    'Gestionar ediciones con su calendario y subsecciones. La actividad predeterminada de los talleres Tipo A nuevos es un cuestionario Moodle; se mantienen compatibles las ediciones históricas.',
     new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']),
-    'Gestionar seminarios Tipo A'
+    'Gestionar talleres Tipo A'
 );
 echo local_ga_dash_card(
-    'Seminarios Tipo B',
+    'Talleres Tipo B',
     'Gestionar ediciones con calendario y subsecciones, inscripción, asistencia y Tarea Moodle de reflexión como actividad canónica.',
     new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typeb']),
-    'Gestionar seminarios Tipo B',
+    'Gestionar talleres Tipo B',
     'btn btn-primary'
 );
 echo local_ga_dash_card(
@@ -208,10 +208,10 @@ echo local_ga_dash_card(
 );
 echo html_writer::end_div();
 
-echo html_writer::tag('h3', 'Vista general de seminarios ofertados actualmente', ['class' => 'h4 mt-4']);
+echo html_writer::tag('h3', 'Vista general de talleres ofertados actualmente', ['class' => 'h4 mt-4']);
 echo html_writer::tag(
     'p',
-    'Las ediciones activas se muestran de la más reciente a la más antigua. Dentro de cada edición aparecen sus seminarios en el orden visible Seminario 01, Seminario 02, etc.',
+    'Las ediciones activas se muestran de la más reciente a la más antigua. Dentro de cada edición aparecen sus talleres en el orden visible Taller 01, Taller 02, etc.',
     ['class' => 'text-muted']
 );
 
@@ -261,7 +261,7 @@ foreach ($serieslist as $series) {
     echo html_writer::start_div('card-body p-0');
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm mb-0';
-    $table->head = ['Orden', 'Tipo', 'Seminario', 'Fecha', 'Horario', 'Horas', 'Plazas', 'Inscritos', 'Profesor/es', 'Estado', 'Acciones'];
+    $table->head = ['Orden', 'Tipo', 'Taller', 'Fecha', 'Horario', 'Horas', 'Plazas', 'Inscritos', 'Profesor/es', 'Estado', 'Acciones'];
     foreach ($items as $item) {
         $edition = local_ga_dash_series_edition($series, (int)$item->workshopid);
         $sessiondate = $edition ? (int)($edition->sessiondate ?? 0) : 0;
@@ -329,11 +329,11 @@ foreach (manager::get_workshop_overview_rows() as $row) {
     $legacyrows[] = $row;
 }
 if ($legacyrows) {
-    echo html_writer::tag('h4', 'Seminarios anteriores sin Edición de seminarios', ['class' => 'h5 mt-3']);
+    echo html_writer::tag('h4', 'Talleres anteriores sin Edición de talleres', ['class' => 'h5 mt-3']);
     echo html_writer::tag('p', 'Se mantienen aquí temporalmente para no perder registros del modelo anterior.', ['class' => 'text-muted']);
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm';
-    $table->head = ['Tipo', 'Código', 'Seminario', 'Fecha', 'Horas', 'Plazas', 'Inscritos', 'Profesor/es', 'Acciones'];
+    $table->head = ['Tipo', 'Código', 'Taller', 'Fecha', 'Horas', 'Plazas', 'Inscritos', 'Profesor/es', 'Acciones'];
     foreach ($legacyrows as $row) {
         $actions = html_writer::link(
             new moodle_url('/local/gestion_actividades/edition_edit.php', [
@@ -365,7 +365,7 @@ if ($legacyrows) {
     echo html_writer::table($table);
 }
 if ($activecount === 0 && !$legacyrows) {
-    echo $OUTPUT->notification('No hay actualmente Ediciones de seminarios activas.', 'info');
+    echo $OUTPUT->notification('No hay actualmente Ediciones de talleres activas.', 'info');
 }
 if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
     local_gestion_actividades_enable_interactive_tables();
