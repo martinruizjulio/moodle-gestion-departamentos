@@ -66,6 +66,11 @@ if (data_submitted() && confirm_sesskey()) {
         'sectionnum' => optional_param('sectionnum', $record->sectionnum ?? 0, PARAM_INT),
         'workshoptype' => $workshoptype,
     ];
+    if (!$record && $postseriesid > 0) {
+        // Same rule as the Excel import: TA-E12-03 / TB-E12-03.
+        $data->code = manager::series_workshop_code($workshoptype, $postseriesid,
+            $postsortorder > 0 ? $postsortorder : workshop_series::next_sortorder($postseriesid), $selectedcourseid);
+    }
     $savedworkshopid = manager::save_workshop($data);
     if ($postseriesid > 0) {
         workshop_series::attach_workshop($postseriesid, $savedworkshopid, $postsortorder);
@@ -123,9 +128,11 @@ if ($id && !empty($record->code)) {
     echo html_writer::tag('div', s($record->code), ['class' => 'alert alert-secondary']);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'code', 'value' => $record->code]);
 } else {
-    echo html_writer::label('Código del taller', 'code');
-    $defaultcode = $sortorder > 0 ? 'TALLER-' . sprintf('%02d', $sortorder) : '';
-    echo html_writer::empty_tag('input', ['type' => 'text', 'name' => 'code', 'id' => 'code', 'class' => 'form-control mb-3', 'value' => $defaultcode, 'placeholder' => 'TALLER-01']);
+    echo html_writer::label('Código del taller', 'codeinfo');
+    $previewcode = $seriesid > 0
+        ? manager::series_workshop_code($type, $seriesid, $sortorder > 0 ? $sortorder : workshop_series::next_sortorder($seriesid), (int)($series->courseid ?? 0))
+        : '';
+    echo html_writer::tag('div', $previewcode !== '' ? 'Se generará automáticamente: <strong>' . s($previewcode) . '</strong>' : 'Se generará automáticamente al guardar.', ['class' => 'alert alert-secondary']);
 }
 
 echo html_writer::label(get_string('workshopname', 'local_gestion_actividades'), 'name');

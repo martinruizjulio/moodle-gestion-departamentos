@@ -366,6 +366,19 @@ class workshop_series {
         return $out;
     }
 
+    /**
+     * Teacher name(s) shown in the calendar for a workshop of an Edición
+     * (from the Excel «Nombre profesor» column or the workshop form).
+     */
+    public static function set_item_teachernames(int $seriesid, int $workshopid, string $names): void {
+        global $DB;
+        if (!array_key_exists('teachernames', $DB->get_columns(self::ITEMTABLE))) {
+            return;
+        }
+        $names = \core_text::substr(trim(preg_replace('/\s+/', ' ', $names)), 0, 255);
+        $DB->set_field(self::ITEMTABLE, 'teachernames', $names, ['seriesid' => $seriesid, 'workshopid' => $workshopid]);
+    }
+
     public static function next_sortorder(int $seriesid): int {
         global $DB;
         self::ensure_schema();
@@ -858,10 +871,15 @@ class workshop_series {
             if (!$edition) {
                 continue;
             }
-            $teachers = manager::get_edition_teachers((int)$edition->id);
+            // Name written in the Excel/form first; otherwise the linked Moodle
+            // teachers' full names (never their e-mail).
             $teachernames = [];
-            foreach ($teachers as $teacher) {
-                $teachernames[] = fullname($teacher);
+            if (trim((string)($item->teachernames ?? '')) !== '') {
+                $teachernames[] = trim((string)$item->teachernames);
+            } else {
+                foreach (manager::get_edition_teachers((int)$edition->id) as $teacher) {
+                    $teachernames[] = fullname($teacher);
+                }
             }
             $date = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%d/%m/%Y') : 'Pendiente';
             $starttime = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%H:%M') : '';

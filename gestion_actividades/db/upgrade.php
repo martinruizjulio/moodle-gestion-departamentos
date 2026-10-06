@@ -854,6 +854,17 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026100516, 'local', 'gestion_actividades');
     }
 
+    if ($oldversion < 2026100563) {
+        // Teacher name shown in the Edición calendar (Excel «Nombre profesor»).
+        // Non-destructive: adds one nullable column.
+        $table = new xmldb_table('local_ga_series_items');
+        $field = new xmldb_field('teachernames', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'notescmid');
+        if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026100563, 'local', 'gestion_actividades');
+    }
+
     return true;
 }
 

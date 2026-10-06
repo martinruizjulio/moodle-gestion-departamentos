@@ -528,7 +528,15 @@ Decisión de Julio: los talleres Tipo B son como los A pero sin cuestionario; en
 - Textos actualizados: introducción de la tarea, vista del profesor, vista del taller, formulario de edición, aviso de la importación y ayuda del bloque (ES/EN).
 - Prueba real (Moodle 5.0.11) con la plantilla nueva: Excel con 2 talleres B → cada uno con Apuntarme, grupo propio, «Asistencia T0X», «Reflexión · …» solo texto en línea y restringida al grupo, «Materiales T0X», sin cuestionario. Alumna con asistencia + reflexión → certificado y 2 h Tipo B al cerrar el plazo; asistencia sin reflexión o reflexión sin asistencia → nada. En el navegador el alumno solo ve el editor de texto, sin selector de archivos.
 
+## Códigos automáticos y nombre del profesorado en el calendario (2026-10-06, 1.5.148-alpha / `2026100563`)
+
+Decisiones de Julio:
+- **Códigos**: en las plantillas A y B la columna «Código» se numera 1, 2, 3… (o se deja vacía). El código interno se genera solo: `TA-E<id Edición>-NN` / `TB-E<id Edición>-NN` (código de edición `…_E1`). Nunca choca ni sobrescribe: dos importaciones del mismo Excel dan códigos distintos. Se elimina la columna «Código edición». El alta manual dentro de una Edición usa la misma regla (el formulario muestra el código que se generará).
+- **Profesorado**: nuevas columnas «Nombre profesor» (lo que muestra el calendario) y «Email profesor» (vincula al profesor del curso como Profesor HEE; varios con «;»). El calendario muestra el nombre escrito y, si no hay, el nombre completo de los profesores vinculados; nunca el correo. En el formulario del taller hay un campo «Nombre del profesorado para el calendario».
+- Esquema: nuevo campo opcional `local_ga_series_items.teachernames` (char 255), añadido en `install.xml` y en el paso de actualización `2026100563` (no destructivo).
+- Prueba real (Moodle 5.0.11): Excel A y B importados dos veces cada uno con códigos 1 y 2 → `TA-E67-01/02`, `TA-E68-01/02`, `TB-E69-01/02`, `TB-E70-01/02`; profesor vinculado por correo; calendario con «Ana García» y «Luis Pérez», sin correos; alta manual en el navegador → `TB-E76-03` y nombre del profesorado guardado. Regresión: 303 + Tipo B correctos.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.147-alpha** (`2026100562`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.148-alpha** (`2026100563`). Último savepoint de esquema: **2026100563**.
 - `block_gestion_hee`: **1.0.27-alpha** (`2026100511`).

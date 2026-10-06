@@ -192,6 +192,7 @@ if (data_submitted() && confirm_sesskey()) {
         // Link first so generated Moodle activities are born as modern
         // series-owned content rather than falling through the legacy path.
         workshop_series::attach_workshop($seriesid, $workshopid, $sortorder, 0, $sessionenddate, $savededitionid);
+        workshop_series::set_item_teachernames($seriesid, $workshopid, optional_param('teachernames', '', PARAM_TEXT));
 
         if (!$istypebworkshop) {
             $defaults = manager::ensure_typea_default_activities($savededitionid, $sortorder);
@@ -299,6 +300,13 @@ foreach ($teachers as $t) {
     echo html_writer::tag('option', fullname($t) . ' — ' . $t->email, ['value' => $t->id, 'selected' => in_array($t->id, $selectedteachers) ? 'selected' : null]);
 }
 echo html_writer::end_tag('select');
+if ($linkedseries || $seriesid > 0) {
+    echo html_writer::label('Nombre del profesorado para el calendario', 'teachernames');
+    echo html_writer::empty_tag('input', ['type' => 'text', 'name' => 'teachernames', 'id' => 'teachernames',
+        'class' => 'form-control mb-1', 'maxlength' => 255, 'value' => (string)($item->teachernames ?? ''),
+        'placeholder' => 'Ej.: Ana García; Luis Pérez']);
+    echo html_writer::tag('div', 'Es lo que se muestra en el calendario de la Edición. Si se deja vacío, se muestran los nombres de los profesores seleccionados arriba.', ['class' => 'form-text mb-3']);
+}
 
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'activityid', 'value' => $record->activityid ?? 0]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'attendancecmid', 'value' => $record->attendancecmid ?? 0]);

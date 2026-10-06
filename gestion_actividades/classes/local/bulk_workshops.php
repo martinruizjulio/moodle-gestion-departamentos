@@ -53,7 +53,6 @@ class bulk_workshops {
             $row['createnotes'] = self::yes($row['createnotes']);
             $row['teacherids'] = [];
 
-            if ($row['code'] === '') $row['errors'][] = 'Falta el código del taller.';
             if ($row['name'] === '') $row['errors'][] = 'Falta el nombre del taller.';
             if ($row['hours'] <= 0) $row['errors'][] = 'Las horas deben ser superiores a 0.';
             if ($row['places'] <= 0) $row['errors'][] = 'Las plazas deben ser superiores a 0.';
@@ -62,9 +61,9 @@ class bulk_workshops {
             if ($row['sessiondate'] > 0 && $row['sessionenddate'] > 0 && $row['sessionenddate'] <= $row['sessiondate']) $row['errors'][] = 'La hora de fin debe ser posterior a la hora de inicio.';
             if ($row['enrolenddate'] <= 0) $row['errors'][] = 'Fecha límite de inscripción no válida.';
             if ($row['sessiondate'] > 0 && $row['enrolenddate'] >= $row['sessiondate']) $row['errors'][] = 'La inscripción debe cerrar antes del taller.';
-            if ($row['code'] !== '' && isset($seen[$row['code']])) $row['errors'][] = 'Código repetido dentro del Excel.';
-            $seen[$row['code']] = true;
-            if ($row['code'] !== '' && $DB->record_exists('local_ga_workshops', ['courseid' => $courseid, 'code' => $row['code']])) $row['errors'][] = 'Ya existe ese código en el curso.';
+            // The workshop code is generated on import from type + Edición +
+            // order (TA-E12-01, TB-E12-02...): the «Código» column is only a
+            // row number (1, 2, 3...) and can never clash or overwrite.
 
             if ($row['type'] === 'typeb') {
                 if ($row['createquiz']) {
@@ -75,18 +74,22 @@ class bulk_workshops {
             }
             if ($row['createquiz'] && $row['quizclose'] <= 0) $row['warnings'][] = 'Sin cierre de cuestionario: conservará la fecha del modelo.';
 
-            $email = \core_text::strtolower(trim((string)$row['teacheremail']));
-            if ($email !== '') {
+            // Email(s) link the Moodle teacher(s); the name is what the
+            // calendar shows. Several teachers: separate with «;».
+            $row['teachername'] = trim(preg_replace('/\s+/', ' ', (string)($row['teachername'] ?? '')));
+            foreach (preg_split('/[;,\s]+/', \core_text::strtolower(trim((string)$row['teacheremail'])), -1, PREG_SPLIT_NO_EMPTY) as $email) {
+                $found = false;
                 foreach ($teachers as $teacher) {
-                    if (\core_text::strtolower(trim((string)$teacher->email)) === $email) $row['teacherids'][] = (int)$teacher->id;
+                    if (\core_text::strtolower(trim((string)$teacher->email)) === $email) {
+                        $row['teacherids'][] = (int)$teacher->id;
+                        $found = true;
+                    }
                 }
-                if (!$row['teacherids']) $row['warnings'][] = 'Profesor no encontrado en el curso: ' . $email . '.';
+                if (!$found) $row['warnings'][] = 'Profesor no encontrado en el curso: ' . $email . ' (en el calendario se mostrará el nombre escrito).';
             }
+            $row['teacherids'] = array_values(array_unique($row['teacherids']));
 
-            $editioncode = trim((string)$row['editioncode']);
-            if ($editioncode === '') $editioncode = preg_replace('/[^a-zA-Z0-9_-]/', '', $row['code']) . '_E1';
-            $row['editioncode'] = $editioncode;
-            if ($editioncode === '') $row['errors'][] = 'No se pudo generar el código de edición.';
+            $row['editioncode'] = '';
             $row['ok'] = !$row['errors'];
             $out[] = $row;
         }
@@ -131,6 +134,8 @@ class bulk_workshops {
         try {
             $order = workshop_series::next_sortorder($seriesid);
             foreach ($validrows as $row) {
+                $row['code'] = manager::series_workshop_code($row['type'], $seriesid, $order, $courseid);
+                $row['editioncode'] = $row['code'] . '_E1';
                 $workshopid = manager::save_workshop((object)[
                     'id' => 0, 'courseid' => $courseid, 'code' => $row['code'], 'name' => $row['name'],
                     'description' => $row['description'], 'hours' => $row['hours'], 'sectionnum' => 0, 'workshoptype' => $row['type'],
@@ -248,6 +253,7 @@ class bulk_workshops {
                     $summary->notescreated++;
                 }
                 workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid, $row['sessionenddate'], $editionid);
+                workshop_series::set_item_teachernames($seriesid, $workshopid, $row['teachername']);
                 // Session duration uses the Excel end time stored by attach_workshop().
                 attendance_sync::ensure_session($editionid);
 
@@ -381,16 +387,16 @@ class bulk_workshops {
         // Tipo B example row; an Edición cannot mix A and B, so a template
         // filled in on top of the examples failed or imported the examples.
         $headers = ['Código','Nombre','Tipo','Descripción','Fecha','Inicio','Fin','Horas','Plazas','Cierre inscripción',
-            'Email profesor','Crear apuntes','Cierre cuestionario','Código edición'];
+            'Nombre profesor','Email profesor','Crear apuntes','Cierre cuestionario'];
         $sheet->fromArray($headers, null, 'A1');
         $sheet->getStyle('A1:N1')->getFont()->setBold(true);
         // Dates and times as text, so Excel does not reformat them on typing.
-        foreach (['E', 'F', 'G', 'J', 'M'] as $col) {
+        foreach (['E', 'F', 'G', 'J', 'N'] as $col) {
             $sheet->getStyle($col . '2:' . $col . '300')->getNumberFormat()
                 ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
         }
         // Drop-down lists for Tipo (A/B) and Crear apuntes (Sí/No).
-        foreach (['C' => '"A,B"', 'L' => '"Sí,No"'] as $col => $list) {
+        foreach (['C' => '"A,B"', 'M' => '"Sí,No"'] as $col => $list) {
             $validation = $sheet->getCell($col . '2')->getDataValidation();
             $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
             $validation->setAllowBlank(true);
@@ -406,20 +412,21 @@ class bulk_workshops {
         $help->setTitle('INSTRUCCIONES');
         $help->fromArray([
             ['Cómo rellenar la hoja TALLERES'],
-            ['Una fila por taller; el orden de las filas es el orden TALLER 01, TALLER 02...'],
+            ['Una fila por taller. Código: numera 1, 2, 3... (o déjalo vacío); el orden de las filas es TALLER 01, TALLER 02...'],
+            ['El código interno del taller se genera solo (TA-E12-01, TB-E12-02...), así nunca se repite ni sobrescribe otro taller.'],
             ['Un mismo Excel solo puede contener talleres de Tipo A o solo de Tipo B (importa cada tipo por separado).'],
             ['Formatos: fecha dd/mm/aaaa · horas de inicio y fin hh:mm · cierres dd/mm/aaaa hh:mm · horas con decimales permitidos (1,5).'],
             ['Cierre cuestionario: solo Tipo A; déjalo vacío si aún no lo sabes (se puede fijar después en el cuestionario).'],
-            ['Email profesor: correo del profesor del curso que impartirá el taller (opcional).'],
-            ['Código edición: opcional; si se deja vacío se genera como CÓDIGO_E1.'],
+            ['Nombre profesor: el nombre que se mostrará en el calendario del curso (opcional).'],
+            ['Email profesor: correo del profesor del curso, para vincularlo como profesor del taller (opcional). Varios: sepáralos con «;».'],
             [''],
             ['Ejemplo Tipo A (no copiar en la misma hoja que uno de Tipo B):'],
             $headers,
-            ['TALLER-01','Nombre del taller Tipo A','A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','','Sí','23/09/2026 23:59','TALLER01_E1'],
+            ['1','Nombre del taller Tipo A','A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','Ana García','ana.garcia@ucv.es','Sí','23/09/2026 23:59'],
             [''],
             ['Ejemplo Tipo B:'],
             $headers,
-            ['TALLER-B01','Nombre del taller Tipo B','B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','','Sí','','TALLERB01_E1'],
+            ['1','Nombre del taller Tipo B','B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','Luis Pérez','luis.perez@ucv.es','No',''],
         ], null, 'A1');
         $help->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $help->getStyle('A10:N10')->getFont()->setBold(true);
@@ -452,7 +459,8 @@ class bulk_workshops {
             'code' => ['codigo','codigotaller','taller'], 'name' => ['nombre','actividad','nombretaller'], 'type' => ['tipo','tipotaller'],
             'description' => ['descripcion'], 'date' => ['fecha'], 'start' => ['inicio','horainicio'], 'end' => ['fin','horafin'],
             'hours' => ['horas'], 'places' => ['plazas'], 'enrolend' => ['cierreinscripcion','fininscripcion','fechalimiteinscripcion'],
-            'teacheremail' => ['emailprofesor','profesor','correoprofesor'], 'createnotes' => ['crearapuntes','apuntes'],
+            'teacheremail' => ['emailprofesor','correoprofesor','emaildocente','correodocente','profesor'],
+            'teachername' => ['nombreprofesor','profesornombre','nombredocente','docente'], 'createnotes' => ['crearapuntes','apuntes'],
             'createquiz' => ['crearcuestionario','cuestionario'], 'quizclose' => ['cierrecuestionario','fincuestionario'], 'editioncode' => ['codigoedicion','edicion'],
         ];
         $cols = [];

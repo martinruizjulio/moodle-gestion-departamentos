@@ -3472,6 +3472,22 @@ class manager {
 
 
 
+    /**
+     * Code of a workshop inside an Edición: type + Edición id + order, e.g.
+     * TA-E12-01 / TB-E12-03. Unique by construction; a numeric suffix is
+     * added only if such a code already exists in the course.
+     */
+    public static function series_workshop_code(string $type, int $seriesid, int $sortorder, int $courseid): string {
+        global $DB;
+        $base = (self::normalize_workshop_type($type) === 'typeb' ? 'TB' : 'TA') . '-E' . $seriesid . '-' . sprintf('%02d', max(1, $sortorder));
+        $code = $base;
+        $n = 2;
+        while ($DB->record_exists('local_ga_workshops', ['courseid' => $courseid, 'code' => $code])) {
+            $code = $base . '-' . $n++;
+        }
+        return $code;
+    }
+
     public static function generate_workshop_code(string $name, int $courseid, int $excludeid = 0): string {
         global $DB;
 

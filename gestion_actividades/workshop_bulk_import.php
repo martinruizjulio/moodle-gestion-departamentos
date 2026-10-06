@@ -195,13 +195,13 @@ if ($token !== '' && $courseid > 0) {
         }
         $table->data[] = [
             sprintf('%02d', $order++),
-            '<strong>' . s($row['code']) . '</strong><br>' . s($row['name']),
+            '<strong>' . s($row['name']) . '</strong><br><span class="text-muted">Código automático al importar</span>',
             $row['type'] === 'typeb' ? 'B' : 'A',
             $schedule,
             format_float((float)$row['hours'], 2, true),
             (int)$row['places'],
             !empty($row['enrolenddate']) ? userdate((int)$row['enrolenddate'], '%d/%m/%Y %H:%M') : '-',
-            s($row['teacheremail'] ?: '-'),
+            s(trim(($row['teachername'] ?? '') . ' ' . ($row['teacheremail'] !== '' ? '<' . $row['teacheremail'] . '>' : '')) ?: '-'),
             !empty($row['createnotes']) ? 'Sí' : 'No',
             $row['type'] === 'typea' ? 'Sí, vacío por defecto' : 'No',
             implode('', $messages),
