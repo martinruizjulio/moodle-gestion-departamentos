@@ -492,7 +492,7 @@ function local_gestion_actividades_require_card_status_v2(int $courseid): void {
                     'enrolled' => (bool)$enrolled,
                     'closed' => (bool)$closed,
                     'label' => $enrolled
-                        ? 'Desapuntarme'
+                        ? ((empty($edition->sessiondate) || time() < (int)$edition->sessiondate) ? 'Desapuntarme' : 'Apuntado')
                         : ($closed
                             ? get_string('enrolmentclosed', 'local_gestion_actividades')
                             : 'Apuntarme'),

@@ -535,7 +535,11 @@ class manager {
 
         if (!$DB->record_exists('modules', ['name' => 'attendance'])
                 || !$DB->get_manager()->table_exists(new \xmldb_table('attendance'))) {
-            $result->message = 'mod_attendance no está disponible en este Moodle.';
+            // mod_attendance is optional: HEE attendance (Alumnos / asistencia)
+            // keeps working without it, so creation must not abort.
+            $result->success = true;
+            $result->skipped = true;
+            $result->message = 'mod_attendance no está instalado: se usará la asistencia de Gestión HEE.';
             return $result;
         }
 
@@ -620,7 +624,7 @@ class manager {
             $editionid,
             $sortorder > 0 ? ('Asistencia T' . sprintf('%02d', $sortorder)) : ('Asistencia ' . (string)$workshop->code)
         );
-        if (empty($attendance->success) || empty($attendance->cmid)) {
+        if (empty($attendance->success)) {
             return (object)[
                 'success' => false,
                 'message' => (string)($attendance->message ?? 'No se pudo crear la asistencia.'),
@@ -629,12 +633,27 @@ class manager {
             ];
         }
 
+        // A historical Type A edition configured with an assignment keeps it:
+        // editing it must never add a quiz or switch its required activity.
+        $edition = self::get_workshop_edition($editionid);
+        if ((string)($edition->requiredmodname ?? '') === 'assign' || !empty($edition->requiredassigncmid)) {
+            return (object)[
+                'success' => true,
+                'message' => 'Edición Tipo A histórica con tarea: se conserva su actividad.',
+                'attendancecmid' => (int)($attendance->cmid ?? 0),
+                'quizcmid' => 0,
+            ];
+        }
+        $previousquizcmid = !empty($edition->requiredquizcmid)
+            ? (int)$edition->requiredquizcmid
+            : ((string)($edition->requiredmodname ?? '') === 'quiz' ? (int)($edition->requiredcmid ?? 0) : 0);
+
         $quiz = self::create_required_activity_for_edition($editionid, null, 'quiz');
         if (empty($quiz->success) || empty($quiz->cmid)) {
             return (object)[
                 'success' => false,
                 'message' => (string)($quiz->message ?? 'No se pudo crear el cuestionario vacío.'),
-                'attendancecmid' => (int)$attendance->cmid,
+                'attendancecmid' => (int)($attendance->cmid ?? 0),
                 'quizcmid' => 0,
             ];
         }
@@ -659,13 +678,24 @@ class manager {
             return (object)[
                 'success' => false,
                 'message' => 'El cuestionario fue creado pero no existe como módulo quiz en la base de datos Moodle.',
-                'attendancecmid' => (int)$attendance->cmid,
+                'attendancecmid' => (int)($attendance->cmid ?? 0),
                 'quizcmid' => 0,
             ];
         }
 
+        if ($previousquizcmid > 0 && $previousquizcmid === $quizcmid) {
+            // Already configured (this runs on every save of the edition): do
+            // not rename it or override visibility the teacher may have set.
+            return (object)[
+                'success' => true,
+                'message' => 'Asistencia y cuestionario Tipo A ya estaban preparados.',
+                'attendancecmid' => (int)($attendance->cmid ?? 0),
+                'quizcmid' => $quizcmid,
+            ];
+        }
+
         if ($sortorder > 0) {
-            $DB->set_field('quiz', 'name', 'Cuestionario T-' . $sortorder, ['id' => (int)$cm->instance]);
+            $DB->set_field('quiz', 'name', 'Cuestionario T' . sprintf('%02d', $sortorder), ['id' => (int)$cm->instance]);
         }
 
         // Apply the group restriction first. That generic helper uses
@@ -687,7 +717,7 @@ class manager {
         return (object)[
             'success' => true,
             'message' => 'Asistencia y cuestionario Tipo A preparados.',
-            'attendancecmid' => (int)$attendance->cmid,
+            'attendancecmid' => (int)($attendance->cmid ?? 0),
             'quizcmid' => $quizcmid,
         ];
     }
@@ -2568,7 +2598,7 @@ class manager {
         if ((string)$row->modname === 'attendance' && preg_match('/^Asistencia T\\d{2}$/u', trim($name))) {
             return true;
         }
-        if ((string)$row->modname === 'quiz' && preg_match('/^Cuestionario T-\\d+$/u', trim($name))) {
+        if ((string)$row->modname === 'quiz' && preg_match('/^Cuestionario T-?\\d+$/u', trim($name))) {
             return true;
         }
         if ((string)$row->modname === 'label' && strpos(trim($name), 'HEE_ENROL_EDITION_') === 0) {
@@ -5544,12 +5574,20 @@ class manager {
         }
         $groupname = $basegroupname . $suffix;
 
-        $group = new \stdClass();
-        $group->courseid = $courseid;
-        $group->name = $groupname;
-        $group->description = get_string('editiongroupdescription', 'local_gestion_actividades', $workshop->name);
-        $group->descriptionformat = FORMAT_HTML;
-        $groupid = groups_create_group($group);
+        // The name carries the edition id, so a group with this exact name
+        // can only be this edition's own group (e.g. groupid lost by an
+        // interrupted save): reuse it instead of creating a duplicate.
+        $existing = $DB->get_record('groups', ['courseid' => $courseid, 'name' => $groupname], 'id', IGNORE_MULTIPLE);
+        if ($existing) {
+            $groupid = (int)$existing->id;
+        } else {
+            $group = new \stdClass();
+            $group->courseid = $courseid;
+            $group->name = $groupname;
+            $group->description = get_string('editiongroupdescription', 'local_gestion_actividades', $workshop->name);
+            $group->descriptionformat = FORMAT_HTML;
+            $groupid = groups_create_group($group);
+        }
 
         $edition->groupid = $groupid;
         $edition->timemodified = time();

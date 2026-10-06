@@ -28,6 +28,29 @@ if (!empty($edition->sessiondate) && time() >= (int)$edition->sessiondate) {
     );
 }
 
+// The course-page button is a one-click link: ask before cancelling so a
+// student cannot lose the place by accident.
+if (!optional_param('confirm', 0, PARAM_BOOL)) {
+    $PAGE->set_context(context_course::instance((int)$course->id));
+    $PAGE->set_course($course);
+    $PAGE->set_url(new moodle_url('/local/gestion_actividades/unenrol.php', ['id' => $editionid]));
+    $PAGE->set_title(format_string($workshop->name));
+    $PAGE->set_heading(format_string($course->fullname));
+    echo $OUTPUT->header();
+    echo $OUTPUT->confirm(
+        '¿Quieres desapuntarte de ' . format_string($workshop->code . ' - ' . $workshop->name)
+            . '? Tu plaza quedará libre para otra persona.',
+        new moodle_url('/local/gestion_actividades/unenrol.php', [
+            'id' => $editionid,
+            'sesskey' => sesskey(),
+            'confirm' => 1,
+        ]),
+        $returnurl
+    );
+    echo $OUTPUT->footer();
+    exit;
+}
+
 $result = manager::unenrol_user_from_edition($editionid, (int)$USER->id);
 
 redirect(

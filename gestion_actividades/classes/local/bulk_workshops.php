@@ -207,7 +207,7 @@ class bulk_workshops {
                         $course,
                         $quiztemplatecmid,
                         $groupid,
-                        'Cuestionario T-' . (int)$order,
+                        'Cuestionario T' . sprintf('%02d', (int)$order),
                         $row['quizclose']
                     );
                     $columns = $DB->get_columns('local_ga_workshop_editions');

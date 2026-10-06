@@ -26,7 +26,7 @@ foreach (['typea', 'typeb'] as $type) {
             'enrolled' => $isenrolled,
             'closed' => $closed,
             'label' => $isenrolled
-                ? 'Desapuntarme'
+                ? ((empty($edition->sessiondate) || time() < (int)$edition->sessiondate) ? 'Desapuntarme' : 'Apuntado')
                 : ($closed ? get_string('enrolmentclosed', 'local_gestion_actividades') : 'Apuntarme'),
         ];
     }
