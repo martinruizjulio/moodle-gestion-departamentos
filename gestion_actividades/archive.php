@@ -138,8 +138,8 @@ foreach (manager::get_workshop_overview_rows() as $row) {
     if (($row->computedstatus ?? '') === 'archived') { $legacyarchived[] = $row; }
 }
 if ($legacyarchived) {
-    echo html_writer::tag('h3', 'Talleres anteriores sin Edición de talleres', ['class' => 'h4 mt-4']);
-    echo html_writer::tag('p', 'Registros archivados del modelo anterior. Se mantienen disponibles para consulta y modificación de notas sin mezclarlos con las nuevas Ediciones de talleres.', ['class' => 'text-muted']);
+    echo html_writer::tag('h3', 'Talleres anteriores sin Edición de seminarios', ['class' => 'h4 mt-4']);
+    echo html_writer::tag('p', 'Registros archivados del modelo anterior. Se mantienen disponibles para consulta y modificación de notas sin mezclarlos con las nuevas Ediciones de seminarios.', ['class' => 'text-muted']);
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm';
     $table->head = ['Tipo', 'Código', 'Taller', 'Código de edición', 'Fecha', 'Plazas', 'Inscritos', 'Profesor/es', 'Grupo', 'Acciones'];

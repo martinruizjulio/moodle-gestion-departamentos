@@ -198,7 +198,7 @@ echo html_writer::div(
 
 echo $OUTPUT->heading('Configuración completa del taller: ' . s($workshop->code));
 if ($linkedseries) {
-    echo html_writer::tag('div', '<strong>Edición de talleres:</strong> ' . s($linkedseries->title) . ($sortorder > 0 ? ' · Taller ' . sprintf('%02d', $sortorder) : '') . '. Los campos siguen la misma secuencia del Excel y, al guardar, el calendario HTML se actualiza automáticamente.', ['class' => 'alert alert-info']);
+    echo html_writer::tag('div', '<strong>Edición de seminarios:</strong> ' . s($linkedseries->title) . ($sortorder > 0 ? ' · Taller ' . sprintf('%02d', $sortorder) : '') . '. Los campos siguen la misma secuencia del Excel y, al guardar, el calendario HTML se actualiza automáticamente.', ['class' => 'alert alert-info']);
 }
 
 $teachers = manager::get_course_teachers($workshop->courseid);

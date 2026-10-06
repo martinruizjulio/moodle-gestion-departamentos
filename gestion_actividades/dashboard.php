@@ -299,7 +299,7 @@ foreach ($serieslist as $series) {
             );
         }
         $table->data[] = [
-            'Seminario ' . sprintf('%02d', (int)$item->sortorder),
+            'TALLER ' . sprintf('%02d', (int)$item->sortorder),
             local_ga_dash_type_badge($item->workshoptype ?? 'typea'),
             format_string($item->name),
             $sessiondate > 0 ? userdate($sessiondate, '%d/%m/%Y') : '-',

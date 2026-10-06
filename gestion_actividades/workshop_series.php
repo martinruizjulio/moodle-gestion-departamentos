@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             course_layout::synchronise_course($targetcourseid);
             $id = 0;
             $courseid = $targetcourseid;
-            $message = 'Edición retirada de la gestión activa. Los datos académicos existentes se conservan archivados.';
+            $message = 'Edición vacía retirada de la gestión activa. Su sección queda oculta en el curso; no se ha borrado ninguna actividad.';
         }
     } catch (Throwable $e) {
         $error = $e->getMessage();
@@ -165,7 +165,7 @@ if ($series) {
         $actions .= html_writer::start_tag('form', [
             'method' => 'post',
             'style' => 'display:inline-block',
-            'onsubmit' => "return confirm('¿Borrar esta Edición de seminarios de la gestión activa? Los datos académicos existentes se conservarán archivados.');",
+            'onsubmit' => "return confirm('¿Borrar esta Edición de seminarios? Solo es posible si aún no tiene inscripciones ni datos académicos; en ese caso usa Finalizar y ocultar.');",
         ]);
         $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
         $actions .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $s->id]);

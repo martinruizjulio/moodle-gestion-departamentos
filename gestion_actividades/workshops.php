@@ -114,7 +114,7 @@ echo $OUTPUT->heading($typetitle);
 echo html_writer::div(
     html_writer::link(
         new moodle_url('/local/gestion_actividades/workshop_series.php'),
-        local_ga_workshops_btn_icon('i/calendar', 'Ediciones de talleres'),
+        local_ga_workshops_btn_icon('i/calendar', 'Ediciones de seminarios'),
         ['class' => 'btn btn-primary me-1 mb-1']
     ) . ' ' .
     html_writer::link(
@@ -132,7 +132,7 @@ echo html_writer::div(
 
 echo html_writer::tag(
     'p',
-    'Los talleres creados manualmente y los importados desde Excel aparecen juntos dentro de su Edición de talleres. Los datos estructurales se editan aquí; cuestionarios, apuntes y asistencia siguen siendo actividades Moodle editables desde la vista del curso.',
+    'Los talleres creados manualmente y los importados desde Excel aparecen juntos dentro de su Edición de seminarios. Los datos estructurales se editan aquí; cuestionarios, apuntes y asistencia siguen siendo actividades Moodle editables desde la vista del curso.',
     ['class' => 'text-muted mb-4']
 );
 
@@ -248,7 +248,7 @@ foreach ($serieslist as $series) {
 }
 
 if ($shownseries === 0) {
-    echo $OUTPUT->notification('Todavía no hay Ediciones de talleres con talleres de este tipo.', 'info');
+    echo $OUTPUT->notification('Todavía no hay Ediciones de seminarios con talleres de este tipo.', 'info');
 }
 
 // Keep legacy or not-yet-attached workshops visible so nothing disappears during the transition.
@@ -260,8 +260,8 @@ foreach (manager::list_workshops(0, $type) as $workshop) {
 }
 
 if ($unlinked) {
-    echo html_writer::tag('h3', 'Talleres sin Edición de talleres', ['class' => 'h4 mt-4']);
-    echo html_writer::tag('p', 'Registros anteriores o todavía no asociados a una Edición de talleres. Se mantienen visibles para poder revisarlos y migrarlos sin perder información.', ['class' => 'text-muted']);
+    echo html_writer::tag('h3', 'Talleres sin Edición de seminarios', ['class' => 'h4 mt-4']);
+    echo html_writer::tag('p', 'Registros anteriores o todavía no asociados a una Edición de seminarios. Se mantienen visibles para poder revisarlos y migrarlos sin perder información.', ['class' => 'text-muted']);
     $legacytable = new html_table();
     $legacytable->attributes['class'] = 'generaltable table-sm';
     $legacytable->head = ['Curso', 'Código', 'Taller', 'Horas', 'Configuración', 'Acciones'];
