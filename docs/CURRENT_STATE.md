@@ -491,7 +491,19 @@ Informe de Julio: «Guardar cambios» daba error y había que guardar, volver y 
 - **Avisos que rompían la redirección con depuración activada**: `cmidnumber` ausente al crear asistencia/cuestionario/reflexión/subsección (aviso PHP de `add_moduleinfo()`), campos de nombre incompletos en el profesorado del calendario (`fullname()`), y callbacks antiguos de `lib.php` que Moodle 4.4+ marca como obsoletos en cada página. Nuevos `db/hooks.php` + `classes/hook_callbacks.php` (Moodle 4.4+; en versiones anteriores siguen los callbacks de `lib.php`).
 - Prueba real (Moodle 5.0.11, depuración DEVELOPER activada): guardar ediciones A y B repetidas veces → misma pantalla, mensaje de guardado y publicado, sin avisos y sin crear actividades duplicadas; prueba completa de 303 comprobaciones correcta.
 
+## Certificados y horas automáticos al finalizar cada taller (2026-10-06, 1.5.144-alpha / `2026100559`)
+
+Decisión de Julio: al finalizar cada taller se generan los certificados de todos los que tengan asistencia y nota de 5 o más en el cuestionario, y las horas se suman a la ficha de cada alumno.
+
+- Nueva clase `classes/local/auto_certificates.php` y tarea programada `\local_gestion_actividades\task\generate_workshop_certificates` (cada 15 min, `db/tasks.php`).
+- Fin del taller: cierre del cuestionario (Tipo A) o plazo de la reflexión (Tipo B); si no tienen fecha de cierre, el fin de la sesión del taller. Durante 30 días después se siguen recogiendo los que pasen a cumplir (nota corregida, asistencia marcada tarde, reflexión con prórroga).
+- Regla: la misma de siempre (`user_is_certificate_eligible`): Tipo A asistencia «Presente» + cuestionario terminado con ≥ 5/10; Tipo B asistencia + reflexión entregada. Solo se envía el correo del certificado nuevo; no hay avisos repetidos.
+- Horas: se registran en el historial de horas y se recalculan las notas HEE; la ficha del alumno (portafolio, bloque, notas) las toma de `hours_calculator`.
+- «Finalizar» un taller y «Finalizar y ocultar» una Edición emiten antes los certificados pendientes (ya no exige generarlos a mano).
+- Corregido: la protección de «Tipo A histórico con tarea» solo se aplica si hay una tarea realmente vinculada.
+- Prueba real (Moodle 5.0.11): con el cuestionario abierto no se emite nada; al cerrarse, asistencia + 7/10 → certificado (PDF) y 2,5 h en su ficha; asistencia + 4/10 → nada; falta + 9/10 → nada; repetir no duplica; nota corregida a 6/10 → certificado en la siguiente ejecución; tarea registrada y ejecutada por `admin/cli/scheduled_task.php`. Prueba completa de 303 comprobaciones correcta.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.143-alpha** (`2026100558`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.144-alpha** (`2026100559`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
