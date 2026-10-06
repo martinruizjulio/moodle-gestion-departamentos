@@ -499,7 +499,7 @@ if (in_array($action, $downloadactions, true)) {
                 $activity->activity, $activity->status, $activity->result,
             ];
         }
-        local_ga_dl_send_csv('listado_seminarios_tipo_a.csv', ['Edición de seminarios', 'Curso', 'ID seminario', 'Código seminario', 'Seminario', 'Horas', 'ID edición', 'Código edición', 'Edición', 'Fecha seminario', 'Fin inscripción', 'Plazas', 'Estado', 'Archivado', 'Alumno', 'Email', 'Asistencia', 'Actividad', 'Estado / calificación', 'Resultado'], $rows);
+        local_ga_dl_send_csv('listado_talleres_tipo_a.csv', ['Edición de talleres', 'Curso', 'ID taller', 'Código taller', 'Taller', 'Horas', 'ID edición', 'Código edición', 'Edición', 'Fecha taller', 'Fin inscripción', 'Plazas', 'Estado', 'Archivado', 'Alumno', 'Email', 'Asistencia', 'Actividad', 'Estado / calificación', 'Resultado'], $rows);
     }
     if ($action === 'typeb_workshops_csv') {
         $rows = [];
@@ -507,21 +507,21 @@ if (in_array($action, $downloadactions, true)) {
             $submitted = !empty($r->reflectionsubmitted);
             $rows[] = [$r->seriestitle ?? '', $r->coursename ?? '', $r->code ?? '', $r->workshopname ?? '', round((float)($r->hours ?? 0), 2), $r->editioncode ?? '', $r->editionname ?? '', !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%Y-%m-%d %H:%M') : '', $r->userid ? fullname($r) : '-', $r->email ?? '', !empty($r->attended) ? 'Asiste' : 'No asiste', $submitted ? 'Entregada' : 'Pendiente', trim(strip_tags((string)($r->reflectiontext ?? '')))];
         }
-        local_ga_dl_send_csv('listado_seminarios_tipo_b.csv', ['Edición de seminarios', 'Curso', 'Código seminario', 'Seminario', 'Horas', 'Código edición', 'Edición', 'Fecha seminario', 'Alumno', 'Email', 'Asistencia', 'Reflexión', 'Texto en línea'], $rows);
+        local_ga_dl_send_csv('listado_talleres_tipo_b.csv', ['Edición de talleres', 'Curso', 'Código taller', 'Taller', 'Horas', 'Código edición', 'Edición', 'Fecha taller', 'Alumno', 'Email', 'Asistencia', 'Reflexión', 'Texto en línea'], $rows);
     }
     if ($action === 'typea_csv') {
         $rows = [];
         foreach (local_ga_dl_typea_rows() as $c) {
             $rows[] = [$c->seriestitle ?? '', fullname($c), $c->email ?? '', $c->coursename ?? '', $c->workshopcode ?? '', $c->workshopname ?? '', $c->editioncode ?? '', $c->editionname ?? '', $c->certcode ?? '', $c->status ?? '', !empty($c->timeissued) ? userdate((int)$c->timeissued, '%Y-%m-%d %H:%M') : '', $c->filename ?? ''];
         }
-        local_ga_dl_send_csv('listado_certificados_tipo_a.csv', ['Edición de seminarios', 'Alumno', 'Email', 'Curso', 'Código seminario', 'Seminario', 'Código edición', 'Edición', 'Código certificado', 'Estado', 'Fecha emisión', 'Archivo'], $rows);
+        local_ga_dl_send_csv('listado_certificados_tipo_a.csv', ['Edición de talleres', 'Alumno', 'Email', 'Curso', 'Código taller', 'Taller', 'Código edición', 'Edición', 'Código certificado', 'Estado', 'Fecha emisión', 'Archivo'], $rows);
     }
     if ($action === 'transfers_csv') {
         $rows = [];
         foreach (manager::list_all_typeb_transfers() as $r) {
             $rows[] = [fullname($r), $r->email ?? '', trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? '')), round((float)($r->hours ?? 0), 2), format_text((string)($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : ''];
         }
-        local_ga_dl_send_csv('traspasos_tipoa_tipob.csv', ['Alumno', 'Email', 'Seminario A traspasado', 'Horas', 'Reflexión', 'Fecha traspaso'], $rows);
+        local_ga_dl_send_csv('traspasos_tipoa_tipob.csv', ['Alumno', 'Email', 'Taller A traspasado', 'Horas', 'Reflexión', 'Fecha traspaso'], $rows);
     }
     if ($action === 'typeb_csv') {
         $rows = [];
@@ -535,7 +535,7 @@ if (in_array($action, $downloadactions, true)) {
         foreach (manager::get_hours_summary_by_student() as $r) {
             $rows[] = [fullname($r), $r->email ?? '', local_ga_dl_student_group((int)$r->id), (int)($r->completedworkshops ?? 0), round((float)($r->totaltypeahours ?? 0), 2), (int)($r->validatedtypebcount ?? 0), round((float)($r->totaltypebhours ?? 0), 2), round((float)($r->totalhours ?? 0), 2), max(0, round(54 - (float)($r->totalhours ?? 0), 2))];
         }
-        local_ga_dl_send_csv('listado_horas_alumnos.csv', ['Alumno', 'Email', 'Grupo', 'Seminarios Tipo A completados', 'Horas Tipo A', 'Tipo B validados', 'Horas Tipo B', 'Total reconocido', 'Pendiente hasta 54'], $rows);
+        local_ga_dl_send_csv('listado_horas_alumnos.csv', ['Alumno', 'Email', 'Grupo', 'Talleres Tipo A completados', 'Horas Tipo A', 'Tipo B validados', 'Horas Tipo B', 'Total reconocido', 'Pendiente hasta 54'], $rows);
     }
     if ($action === 'portfolios_csv') {
         global $DB;
@@ -626,8 +626,8 @@ echo $OUTPUT->header();
 if ($viewmode !== '') {
     echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_btn_icon('t/left', 'Volver al panel'), ['class' => 'btn btn-outline-secondary me-2 mb-3']) . html_writer::link(new moodle_url('/local/gestion_actividades/manager_downloads.php'), local_ga_btn_icon('t/left', 'Volver a listados'), ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
     if ($viewmode === 'view_workshops') {
-        echo html_writer::tag('h2', 'Listado de Seminarios Tipo A');
-        echo html_writer::tag('p', 'Consulta seminarios y ediciones. La actividad muestra el Cuestionario Moodle canónico en seminarios nuevos y conserva la Tarea Moodle solo en ediciones históricas.', ['class' => 'text-muted']);
+        echo html_writer::tag('h2', 'Listado de Talleres Tipo A');
+        echo html_writer::tag('p', 'Consulta talleres y ediciones. La actividad muestra el Cuestionario Moodle canónico en talleres nuevos y conserva la Tarea Moodle solo en ediciones históricas.', ['class' => 'text-muted']);
         echo html_writer::div(html_writer::link(local_ga_dl_action_url('workshops_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-3']), 'mb-2');
         $rows = [];
         foreach (local_ga_dl_workshop_activity_rows() as $r) {
@@ -636,11 +636,11 @@ if ($viewmode !== '') {
             $result = $activity->result === 'Apto' ? html_writer::span('Apto', 'badge bg-success') : ($activity->result === 'No apto' ? html_writer::span('No apto', 'badge bg-danger') : ($activity->result === '-' ? '-' : html_writer::span('Pendiente', 'badge bg-warning text-dark')));
             $rows[] = [s($r->seriestitle ?: '-'), s($r->coursename ?? ''), s($r->code ?? ''), s($r->workshopname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', s($r->editionname ?: '-'), !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%d/%m/%Y %H:%M') : '-', s($r->editionstatus ?: '-'), !empty($r->archived) ? 'Sí' : 'No', $r->userid ? s(fullname($r)) : '-', s($r->email ?? ''), $r->userid ? s(local_ga_dl_student_group((int)$r->userid)) : '-', $attendancevalue, s($activity->activity), s($activity->status), $result];
         }
-        echo local_ga_dl_render_table(['Edición de seminarios', 'Curso', 'Código', 'Seminario', 'Horas', 'Edición', 'Fecha seminario', 'Estado', 'Archivado', 'Alumno', 'Email', 'Grupo', 'Asistencia', 'Actividad', 'Estado / calificación', 'Resultado'], $rows);
+        echo local_ga_dl_render_table(['Edición de talleres', 'Curso', 'Código', 'Taller', 'Horas', 'Edición', 'Fecha taller', 'Estado', 'Archivado', 'Alumno', 'Email', 'Grupo', 'Asistencia', 'Actividad', 'Estado / calificación', 'Resultado'], $rows);
     }
     if ($viewmode === 'view_typeb_workshops') {
-        echo html_writer::tag('h2', 'Listado de Seminarios Tipo B');
-        echo html_writer::tag('p', 'Consulta los Seminarios Tipo B. La reflexión se obtiene de la Tarea Moodle canónica.', ['class' => 'text-muted']);
+        echo html_writer::tag('h2', 'Listado de Talleres Tipo B');
+        echo html_writer::tag('p', 'Consulta los Talleres Tipo B. La reflexión se obtiene de la Tarea Moodle canónica.', ['class' => 'text-muted']);
         echo html_writer::div(html_writer::link(local_ga_dl_action_url('typeb_workshops_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-3']), 'mb-2');
         $rows = [];
         foreach (local_ga_dl_internal_typeb_rows() as $r) {
@@ -662,7 +662,7 @@ if ($viewmode !== '') {
             $evidence = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id'=>(int)$r->id]), local_ga_btn_icon('t/download', 'Ver evidencia'), ['class'=>'btn btn-secondary btn-sm']);
             $rows[] = ['Externo', 'Externo', '-', s($r->activityname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', 'Subido por el alumno', !empty($r->activitydate) ? userdate((int)$r->activitydate, '%d/%m/%Y') : '-', s(fullname($r)), s($r->email ?? ''), html_writer::span('No procede', 'badge bg-secondary'), $hasreflection ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), $hasreflection ? s(\core_text::substr((string)$r->reflectiontext, 0, 220)) : '-', $status === 'validated' ? html_writer::span('Reconocido', 'badge bg-success') : html_writer::span('No computa', 'badge bg-warning text-dark'), !empty($r->timereviewed) ? userdate((int)$r->timereviewed, '%d/%m/%Y %H:%M') : '-', $evidence . html_writer::div($confirm, 'mt-1')];
         }
-        echo local_ga_dl_render_table(['Edición de seminarios/origen', 'Curso/origen', 'Código', 'Seminario', 'Horas', 'Edición/origen', 'Fecha seminario', 'Alumno', 'Email', 'Asistencia', 'Reflexión', 'Contenido', 'Reconocimiento', 'Fecha revisión', 'Acciones'], $rows);
+        echo local_ga_dl_render_table(['Edición de talleres/origen', 'Curso/origen', 'Código', 'Taller', 'Horas', 'Edición/origen', 'Fecha taller', 'Alumno', 'Email', 'Asistencia', 'Reflexión', 'Contenido', 'Reconocimiento', 'Fecha revisión', 'Acciones'], $rows);
     }
     if ($viewmode === 'view_typea') {
         echo html_writer::tag('h2', 'Listado de Certificados Tipo A');
@@ -673,7 +673,7 @@ if ($viewmode !== '') {
             $actions = html_writer::link(new moodle_url('/local/gestion_actividades/certificate_download.php', ['id' => $c->id]), local_ga_btn_icon('t/download', 'Descargar'), ['class' => 'btn btn-secondary btn-sm']);
             $rows[] = [s($c->seriestitle ?: '-'), s(fullname($c)), s($c->email ?? ''), s(local_ga_dl_student_group((int)$c->userid)), s($c->coursename ?? ''), s(trim(($c->workshopcode ?? '') . ' - ' . ($c->workshopname ?? ''), ' -')), s($c->editionname ?? '-'), !empty($c->timeissued) ? userdate((int)$c->timeissued, '%d/%m/%Y %H:%M') : '-', s($c->status ?? ''), s($c->filename ?? ''), $actions];
         }
-        echo local_ga_dl_render_table(['Edición de seminarios', 'Alumno', 'Email', 'Grupo', 'Curso', 'Seminario', 'Edición', 'Fecha emisión', 'Estado', 'Archivo', 'Acciones'], $rows);
+        echo local_ga_dl_render_table(['Edición de talleres', 'Alumno', 'Email', 'Grupo', 'Curso', 'Taller', 'Edición', 'Fecha emisión', 'Estado', 'Archivo', 'Acciones'], $rows);
     }
     if ($viewmode === 'view_transfers') {
         echo html_writer::tag('h2', 'Traspasos Tipo A a Tipo B');
@@ -683,7 +683,7 @@ if ($viewmode !== '') {
         foreach (manager::list_all_typeb_transfers() as $r) {
             $rows[] = [fullname($r), s($r->email ?? ''), s(local_ga_dl_student_group((int)$r->userid)), s(trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? ''))), format_float((float)($r->hours ?? 0), 2, true) . ' h', format_text((string)($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : '-'];
         }
-        echo local_ga_dl_render_table(['Alumno', 'Email', 'Grupo', 'Seminario A traspasado', 'Horas', 'Reflexión', 'Fecha traspaso'], $rows);
+        echo local_ga_dl_render_table(['Alumno', 'Email', 'Grupo', 'Taller A traspasado', 'Horas', 'Reflexión', 'Fecha traspaso'], $rows);
     }
     if ($viewmode === 'view_typeb') {
         echo html_writer::tag('h2', 'Listado de Certificados Tipo B externos');
@@ -698,13 +698,13 @@ if ($viewmode !== '') {
     }
     if ($viewmode === 'view_hours') {
         echo html_writer::tag('h2', 'Listado de horas de alumnos');
-        echo html_writer::tag('p', 'Consulta las horas reconocidas por alumno, separando Seminarios Tipo A y Tipo B reconocido.', ['class' => 'text-muted']);
+        echo html_writer::tag('p', 'Consulta las horas reconocidas por alumno, separando Talleres Tipo A y Tipo B reconocido.', ['class' => 'text-muted']);
         echo html_writer::div(html_writer::link(local_ga_dl_action_url('hours_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-3']), 'mb-2');
         $rows = [];
         foreach ($hoursrows as $r) {
             $rows[] = [s(fullname($r)), s($r->email ?? ''), s(local_ga_dl_student_group((int)$r->id)), (int)($r->completedworkshops ?? 0), format_float((float)($r->totaltypeahours ?? 0), 2, true) . ' h', (int)($r->validatedtypebcount ?? 0), format_float((float)($r->totaltypebhours ?? 0), 2, true) . ' h', format_float((float)($r->totalhours ?? 0), 2, true) . ' h', format_float(max(0, 54 - (float)($r->totalhours ?? 0)), 2, true) . ' h'];
         }
-        echo local_ga_dl_render_table(['Alumno', 'Email', 'Grupo', 'Seminarios A', 'Horas A', 'Tipo B reconocidos', 'Horas B', 'Total reconocido', 'Pendiente hasta 54'], $rows);
+        echo local_ga_dl_render_table(['Alumno', 'Email', 'Grupo', 'Talleres A', 'Horas A', 'Tipo B reconocidos', 'Horas B', 'Total reconocido', 'Pendiente hasta 54'], $rows);
     }
     if ($viewmode === 'view_portfolios') {
         global $DB;
@@ -731,16 +731,16 @@ if ($viewmode !== '') {
 
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_btn_icon('t/left', 'Volver al panel'), ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo html_writer::tag('h2', 'Listados y descargas');
-echo html_writer::tag('p', 'Acceso centralizado a listados y descargas de seminarios, certificados, horas, portafolios y expedientes.', ['class' => 'lead']);
+echo html_writer::tag('p', 'Acceso centralizado a listados y descargas de talleres, certificados, horas, portafolios y expedientes.', ['class' => 'lead']);
 
 $leftcards = [
-    local_ga_dl_render_card('Seminarios Tipo A', $workshopcount . ' fila(s)', 'Seminarios y ediciones con asistencia y actividad canónica: Cuestionario Moodle en los nuevos y Tarea Moodle solo en históricos.', [html_writer::link(local_ga_dl_action_url('view_workshops'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('workshops_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1'])]),
-    local_ga_dl_render_card('Traspasos A→B', count(manager::list_all_typeb_transfers()) . ' traspaso(s)', 'Traspasos de Seminarios Tipo A a Tipo B con su reflexión, sin alterar el total de horas.', [html_writer::link(local_ga_dl_action_url('view_transfers'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('transfers_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1'])]),
+    local_ga_dl_render_card('Talleres Tipo A', $workshopcount . ' fila(s)', 'Talleres y ediciones con asistencia y actividad canónica: Cuestionario Moodle en los nuevos y Tarea Moodle solo en históricos.', [html_writer::link(local_ga_dl_action_url('view_workshops'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('workshops_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1'])]),
+    local_ga_dl_render_card('Traspasos A→B', count(manager::list_all_typeb_transfers()) . ' traspaso(s)', 'Traspasos de Talleres Tipo A a Tipo B con su reflexión, sin alterar el total de horas.', [html_writer::link(local_ga_dl_action_url('view_transfers'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('transfers_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1'])]),
     local_ga_dl_render_card('Horas de alumnos', $hoursstudentcount . ' alumno(s) · ' . round($hourstotal, 2) . ' h', 'Horas Tipo A y Tipo B reconocidas con el cálculo canónico HEE.', [html_writer::link(local_ga_dl_action_url('view_hours'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('hours_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1'])]),
 ];
 $rightcards = [
-    local_ga_dl_render_card('Seminarios Tipo B', count(local_ga_dl_internal_typeb_rows()) . ' fila(s)', 'Seminarios internos: asistencia, reflexión de la Tarea Moodle y certificado; el Tipo B externo se mantiene en su listado específico.', [html_writer::link(local_ga_dl_action_url('view_typeb_workshops'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('typeb_workshops_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1'])]),
-    local_ga_dl_render_card('Certificados Tipo A', $typeacount . ' certificado(s)', 'Listado y descarga masiva de certificados generados por seminarios Tipo A.', [html_writer::link(local_ga_dl_action_url('view_typea'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('typea_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('typea_zip', true), local_ga_btn_icon('t/download', 'Descargar PDFs ZIP'), ['class' => 'btn btn-secondary mb-1'])]),
+    local_ga_dl_render_card('Talleres Tipo B', count(local_ga_dl_internal_typeb_rows()) . ' fila(s)', 'Talleres internos: asistencia, reflexión de la Tarea Moodle y certificado; el Tipo B externo se mantiene en su listado específico.', [html_writer::link(local_ga_dl_action_url('view_typeb_workshops'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('typeb_workshops_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-1'])]),
+    local_ga_dl_render_card('Certificados Tipo A', $typeacount . ' certificado(s)', 'Listado y descarga masiva de certificados generados por talleres Tipo A.', [html_writer::link(local_ga_dl_action_url('view_typea'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('typea_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('typea_zip', true), local_ga_btn_icon('t/download', 'Descargar PDFs ZIP'), ['class' => 'btn btn-secondary mb-1'])]),
     local_ga_dl_render_card('Portafolios', count($portfolioids) . ' alumno(s)', 'Portafolios y expedientes completos con Tipo B externo solo cuando está validado y tiene reflexión.', [html_writer::link(local_ga_dl_action_url('view_portfolios'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('portfolios_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary me-1 mb-1']), html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_all.php', ['sesskey' => sesskey()]), local_ga_btn_icon('t/download', 'Descargar portafolios PDF ZIP'), ['class' => 'btn btn-primary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('packages_zip', true), local_ga_btn_icon('t/download', 'Descargar expedientes completos ZIP'), ['class' => 'btn btn-secondary mb-1'])]),
 ];
 echo html_writer::start_div('row');
