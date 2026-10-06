@@ -217,6 +217,13 @@ class bulk_workshops {
                     if ($quizcm && $DB->record_exists('quiz', ['id' => (int)$quizcm->instance])) {
                         $DB->set_field('quiz', 'name', 'Cuestionario T-' . (int)$order, ['id' => (int)$quizcm->instance]);
                     }
+                    $cmcolumns = $DB->get_columns('course_modules');
+                    if (isset($cmcolumns['visible'])) {
+                        $DB->set_field('course_modules', 'visible', 1, ['id' => $quizcmid]);
+                    }
+                    if (isset($cmcolumns['visibleoncoursepage'])) {
+                        $DB->set_field('course_modules', 'visibleoncoursepage', 1, ['id' => $quizcmid]);
+                    }
                     $summary->quizcreated++;
                 }
                 if (!empty($row['createnotes']) && $notestemplatecmid > 0) {
