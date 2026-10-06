@@ -1023,7 +1023,28 @@ class manager {
         require_once($CFG->dirroot . '/course/lib.php');
 
         $sectionname = self::get_main_workshop_section_name_for_type($type);
+
+        // Once a course uses the modern Edición de seminarios structure for
+        // this type, the parallel legacy TALLERES TIPO A/B surface must not be
+        // rendered at all. Otherwise importing a new Excel appears to "bring
+        // back" every old workshop alongside the new edition.
+        $modernseries = false;
+        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_series'))
+                && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_series_items'))) {
+            $sql = "SELECT 1
+                      FROM {local_ga_workshop_series} s
+                      JOIN {local_ga_series_items} i ON i.seriesid = s.id
+                      JOIN {local_ga_workshops} w ON w.id = i.workshopid
+                     WHERE s.courseid = :courseid
+                       AND w.workshoptype = :workshoptype";
+            $modernseries = $DB->record_exists_sql($sql, [
+                'courseid' => $courseid,
+                'workshoptype' => self::normalize_workshop_type($type),
+            ]);
+        }
+
         $cards = '';
+        if (!$modernseries) {
         foreach (self::list_workshops($courseid, $type) as $workshop) {
             if (!self::is_workshop_publishable($workshop)) {
                 continue;
@@ -1038,6 +1059,7 @@ class manager {
                 continue;
             }
             $cards .= self::render_workshop_card($workshop, $edition);
+        }
         }
 
         $section = null;
