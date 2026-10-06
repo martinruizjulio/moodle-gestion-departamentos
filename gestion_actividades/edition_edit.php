@@ -134,6 +134,17 @@ if (data_submitted() && confirm_sesskey()) {
     $savededitionid = manager::save_workshop_edition($data);
 
     if ($istypebworkshop) {
+        // Manual Type B must match the Excel path: one edition group,
+        // one Attendance activity and one reflection assignment.
+        manager::get_or_create_edition_group($savededitionid);
+        $attendance = manager::create_attendance_activity_for_edition(
+            $savededitionid,
+            $sortorder > 0 ? ('Asistencia T' . sprintf('%02d', $sortorder)) : ''
+        );
+        if (empty($attendance->success)) {
+            throw new moodle_exception('invaliddata', 'error', '', (string)($attendance->message ?? 'No se pudo crear la asistencia Tipo B.'));
+        }
+
         $reflection = typeb_reflection_activity::ensure_for_edition($savededitionid);
         if (empty($reflection->success)) {
             throw new moodle_exception('invaliddata', 'error', '', (string)($reflection->message ?? 'No se pudo crear la tarea de reflexión Tipo B.'));
