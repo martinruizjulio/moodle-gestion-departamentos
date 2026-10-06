@@ -389,7 +389,14 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - La creación manual Tipo B se alinea con Excel y crea también Attendance.
 - No hay cambios de esquema ni savepoint nuevo.
 
+**Regresión real al crear cuestionarios en Moodle 5 (2026-10-06):**
+- La importación podía abortar con `No se ha podido crear automáticamente la actividad requerida: Error escribiendo a la base de datos` y revertir toda la transacción, dejando el curso sin taller/grupo/asistencia.
+- Causa: el `moduleinfo` usado para crear el quiz de Taller Tipo A era demasiado mínimo para Moodle 5 y omitía campos estándar que el generador de autoevaluación sí proporcionaba.
+- El creador de quiz Tipo A usa ahora una configuración completa alineada con la autoevaluación: método de calificación, navegación, barajado, comportamiento, revisión, seguridad, finalización y demás valores requeridos.
+- Se mantiene la regla: Tipo A manual/Excel = grupo propio + Attendance + cuestionario vacío visible/restringido; si falla cualquiera de estos pasos, la operación no se considera correcta.
+- No hay cambios de esquema ni savepoint nuevo.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.133-alpha** (`2026100548`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.134-alpha** (`2026100549`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
