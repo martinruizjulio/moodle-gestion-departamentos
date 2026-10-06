@@ -132,6 +132,12 @@ if (data_submitted() && confirm_sesskey()) {
         'teachers' => $teachers,
     ];
     $savededitionid = manager::save_workshop_edition($data);
+    if ($seriesid > 0 && array_key_exists('seriesid', $DB->get_columns('local_ga_workshop_editions'))) {
+        // Link to its Edición before creating activities (as the Excel import
+        // does): they are then born inside the Edición instead of following
+        // the legacy path, which pulled them out of the course page.
+        $DB->set_field('local_ga_workshop_editions', 'seriesid', $seriesid, ['id' => $savededitionid]);
+    }
 
     if ($istypebworkshop) {
         // Manual Type B must match the Excel path: one edition group,

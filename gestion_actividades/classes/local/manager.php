@@ -562,6 +562,7 @@ class manager {
             'grade' => 0,
         ];
 
+        $outertransaction = $DB->is_transaction_started();
         try {
             $created = add_moduleinfo($moduleinfo, $course);
             $cmid = (int)($created->coursemodule ?? $created->coursemoduleid ?? $created->cmid ?? 0);
@@ -591,6 +592,7 @@ class manager {
             $result->message = 'Actividad de asistencia creada.';
             return $result;
         } catch (\Throwable $e) {
+            self::recover_failed_module_creation($outertransaction, $e);
             $result->message = 'No se pudo crear Attendance: ' . $e->getMessage();
             return $result;
         }
@@ -796,6 +798,27 @@ class manager {
             $moduleinfo->blindmarking = 0;
             $moduleinfo->attemptreopenmethod = 'none';
             $moduleinfo->maxattempts = -1;
+            // Moodle 4.5/5.x store these as NOT NULL without default when the
+            // form is bypassed: omitting them made every Type B reflection
+            // fail with "Error writing to database".
+            $moduleinfo->cutoffdate = 0;
+            $moduleinfo->gradingduedate = 0;
+            $moduleinfo->timelimit = 0;
+            $moduleinfo->completionsubmit = 0;
+            $moduleinfo->teamsubmissiongroupingid = 0;
+            $moduleinfo->preventsubmissionnotingroup = 0;
+            $moduleinfo->hidegrader = 0;
+            $moduleinfo->markingworkflow = 0;
+            $moduleinfo->markingallocation = 0;
+            $moduleinfo->markinganonymous = 0;
+            $moduleinfo->submissionattachments = 0;
+            $moduleinfo->gradepenalty = 0;
+            // Submission plugins (online text + one optional file).
+            $moduleinfo->assignsubmission_onlinetext_enabled = 1;
+            $moduleinfo->assignsubmission_file_enabled = 1;
+            $moduleinfo->assignsubmission_file_maxfiles = 1;
+            $moduleinfo->assignsubmission_file_maxsizebytes = 0;
+            $moduleinfo->assignfeedback_comments_enabled = 1;
         } else if ($type === 'quiz') {
             // Moodle 5 requires a complete quiz configuration when creating the
             // module programmatically. Keep these defaults aligned with the
@@ -856,6 +879,7 @@ class manager {
             }
         }
 
+        $outertransaction = $DB->is_transaction_started();
         try {
             $created = add_moduleinfo($moduleinfo, $course);
             $cmid = 0;
@@ -904,8 +928,26 @@ class manager {
             $result->message = get_string('requiredactivitycreatefailed', 'local_gestion_actividades');
             return $result;
         } catch (\Throwable $e) {
+            self::recover_failed_module_creation($outertransaction, $e);
             $result->message = get_string('requiredactivitycreatefailed', 'local_gestion_actividades') . ': ' . $e->getMessage();
             return $result;
+        }
+    }
+
+    /**
+     * add_moduleinfo() opens its own delegated transaction. If it throws, that
+     * transaction is left open: catching the error and carrying on made Moodle
+     * silently roll back everything done afterwards (group, links, other
+     * activities) at the end of the request. Close it here; inside a caller's
+     * transaction (Excel import) rethrow so the whole import is rolled back.
+     */
+    private static function recover_failed_module_creation(bool $outertransaction, \Throwable $e): void {
+        global $DB;
+        if ($outertransaction) {
+            throw $e;
+        }
+        if ($DB->is_transaction_started()) {
+            $DB->force_transaction_rollback();
         }
     }
 
@@ -4926,8 +4968,14 @@ class manager {
             }
         }
 
-        $candidates = self::find_candidate_required_activities_by_type($edition, $type);
-        return $candidates ? reset($candidates) : null;
+        // Only the activity explicitly linked to THIS edition is "its" activity.
+        // The former fallback returned any course quiz/assignment whose name
+        // contained "cuestionario", "tarea", "taller"... so creating Taller 02
+        // re-used (and re-restricted to its group) the quiz of Taller 01, and
+        // could even take over the final self-assessment or a teacher's own
+        // quiz. Name-based candidates are only offered as suggestions in
+        // task_activity.php for an explicit, manual link.
+        return null;
     }
 
     public static function find_candidate_required_activities_by_type(\stdClass $edition, string $type): array {
