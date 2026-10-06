@@ -336,7 +336,17 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - `course_test_data_summary()` cuenta ahora también **estructuras HEE huérfanas en el curso** (secciones legacy `TALLERES TIPO A/B`, secciones `Eliminada · …` y padres con calendario HEE).
 - `test_cleanup.php` muestra ese recuento y permite ejecutar **BORRAR PRUEBAS** aunque todos los registros administrativos estén a cero, siempre que queden estructuras HEE Moodle.
 
+**Prueba real de importación Excel — estructura funcional del taller (2026-10-06):**
+- Las subsecciones modernas ya se crean correctamente, pero la prueba mostró que faltaban sus elementos funcionales por defecto.
+- La importación crea ahora primero el grupo de la edición y después una actividad Moodle **Attendance** visible denominada `Asistencia TXX`, restringida al grupo del taller.
+- Todo Taller Tipo A importado crea un **Cuestionario Moodle vacío** por defecto (`Cuestionario T-X`) aunque la fila no solicite duplicar un modelo. Si se solicita un modelo, se sigue duplicando el cuestionario indicado.
+- Asistencia y cuestionario se mantienen visibles dentro de la subsección Moodle moderna; no quedan en modo stealth.
+- El calendario usa ahora un control por alumno: **Inscribirme** cuando no está inscrito y **Desinscribirme** cuando ya lo está, además de **Ver taller**.
+- La vista del taller también ofrece **Desinscribirme**. La baja voluntaria del alumno solo está disponible antes del inicio del taller; después debe realizarla Profesor/Gestor para proteger asistencia e histórico.
+- Nuevo endpoint `unenrol.php` protegido con `sesskey`.
+- Validación estática correcta: `php -l` sobre los PHP afectados y `node --check` sobre AMD source/build.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.127-alpha** (`2026100542`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.128-alpha** (`2026100543`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
