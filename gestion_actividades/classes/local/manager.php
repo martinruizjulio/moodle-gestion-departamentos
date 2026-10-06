@@ -2688,6 +2688,11 @@ class manager {
      */
     public static function purge_course_test_data(int $courseid): \stdClass {
         global $DB, $CFG;
+        // Test data: skip the course recycle bin for this request only. Its
+        // per-activity backup (with all attempts, logs and files) is what made
+        // the cleanup run out of time on real servers. Nothing is written to
+        // the site configuration.
+        $CFG->forced_plugin_settings['tool_recyclebin']['coursebinenable'] = 0;
         require_once($CFG->dirroot . '/course/lib.php');
         require_once($CFG->dirroot . '/group/lib.php');
 

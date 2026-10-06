@@ -27,6 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Escribe exactamente BORRAR PRUEBAS para confirmar la limpieza.';
         } else {
             try {
+                // Deleting many activities is slow (each one also goes through
+                // Moodle's recycle bin backup): with the default PHP limits the
+                // request could die with an HTTP 500. Lift the limits first.
+                \core_php_time_limit::raise();
+                raise_memory_limit(MEMORY_HUGE);
+                ignore_user_abort(true);
                 $result = manager::purge_course_test_data($courseid);
                 $message = 'Limpieza completada. El curso mantiene usuarios y contenido ajeno a Gestión HEE.';
             } catch (Throwable $e) {
