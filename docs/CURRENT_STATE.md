@@ -503,7 +503,16 @@ Decisión de Julio: al finalizar cada taller se generan los certificados de todo
 - Corregido: la protección de «Tipo A histórico con tarea» solo se aplica si hay una tarea realmente vinculada.
 - Prueba real (Moodle 5.0.11): con el cuestionario abierto no se emite nada; al cerrarse, asistencia + 7/10 → certificado (PDF) y 2,5 h en su ficha; asistencia + 4/10 → nada; falta + 9/10 → nada; repetir no duplica; nota corregida a 6/10 → certificado en la siguiente ejecución; tarea registrada y ejecutada por `admin/cli/scheduled_task.php`. Prueba completa de 303 comprobaciones correcta.
 
+## Limpieza de pruebas: error 500 (2026-10-06, 1.5.145-alpha / `2026100560`)
+
+Informe de Julio: «Borrar pruebas» devolvía error 500. No reproducible en el Moodle de prueba (la limpieza terminaba bien), pero el 500 sin mensaje apunta a que PHP corta la petición por tiempo/memoria: cada actividad borrada pasaba por la copia de seguridad de la papelera de reciclaje del curso (con intentos, registros y archivos), que en el servidor real es lenta.
+
+- `test_cleanup.php`: eleva el límite de tiempo y de memoria y continúa aunque se cierre el navegador.
+- `purge_course_test_data()`: desactiva la papelera del curso solo durante esa petición (`$CFG->forced_plugin_settings`), sin tocar la configuración del sitio.
+- Prueba (Moodle 5.0.11): limpieza de un curso con 8 talleres y 37 actividades: de 6,3 s a 1,8 s; la papelera no recibe copias; la configuración `tool_recyclebin/coursebinenable` sigue igual.
+- Si persistiera el 500, hace falta el mensaje del registro de errores del servidor.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.144-alpha** (`2026100559`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.145-alpha** (`2026100560`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
