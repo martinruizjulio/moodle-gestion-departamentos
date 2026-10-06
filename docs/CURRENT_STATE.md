@@ -464,11 +464,11 @@ Prueba real (Moodle 5.0.11): manual A, manual B, Excel A, Excel B y Excel A con 
 - Estado del botón centralizado en `manager::enrol_button_status()` (usado por `card_status.php`, la carga inicial y el nuevo endpoint).
 - Los módulos AMD antiguos no actúan cuando el script único está presente.
 - Corregido un bucle del observador de cambios del DOM que podía colgar la página.
-- Las actividades restringidas al grupo se desbloquean al recargar la página (Moodle calcula el acceso al generar la página); el aviso lo indica.
+- Tras apuntarse o desapuntarse con éxito la página se recarga sola (decisión de Julio, 1.5.141) para que Moodle recalcule el acceso a las actividades del grupo; se conserva la posición de desplazamiento y se muestra el aviso junto al botón pulsado. Prueba real en navegador: bloqueado → Apuntarme → recarga en la misma posición, aviso, asistencia y cuestionario/reflexión visibles → Desapuntarme → recarga y vuelve a bloquearse; sin errores JavaScript.
 
 Prueba real en navegador (Chromium + Moodle 5.0.11, alumno real): Apuntarme → «Desapuntarme» sin cambiar de página, los 2 botones del taller cambian, se guarda inscripción y grupo; Desapuntarme con confirmación → vuelve a «Apuntarme»; cancelar no desapunta; el estado persiste al recargar; sin errores JavaScript.
 
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.140-alpha** (`2026100555`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.141-alpha** (`2026100556`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).

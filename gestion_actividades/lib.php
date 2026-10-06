@@ -563,14 +563,29 @@ document.addEventListener("click",function(ev){
   if(d&&d.status){G.statuses[id]=d.status;}
   buttons(id).forEach(function(b){paint(b,G.statuses[id]);});
   var msg=(d&&d.message)||"";
-  if(d&&d.success&&action==="enrol"){msg="Te has apuntado. Las actividades del taller se abrirán al recargar la página.";}
-  if(d&&d.success&&action==="unenrol"){msg="Te has desapuntado del taller.";}
-  note(a,msg,!!(d&&d.success));
+  if(d&&d.success){
+   // Reload so Moodle recalculates access to the workshop activities,
+   // keeping the scroll position and showing the confirmation afterwards.
+   msg=action==="enrol"?"Te has apuntado al taller.":"Te has desapuntado del taller.";
+   note(a,msg,true);
+   var idx=Array.prototype.indexOf.call(buttons(id),a);
+   try{sessionStorage.setItem("localGaReload",JSON.stringify({y:window.scrollY,id:id,idx:idx,msg:msg}));}catch(e){}
+   window.location.reload();
+   return;
+  }
+  note(a,msg,false);
  })
  .catch(function(){a.textContent=old;a.classList.remove("disabled");note(a,"No se ha podido completar. Inténtalo de nuevo.",false);})
  .then(function(){G.busy[id]=false;});
 },true);
+function restore(){
+ var r=null;try{r=JSON.parse(sessionStorage.getItem("localGaReload")||"null");sessionStorage.removeItem("localGaReload");}catch(e){}
+ if(!r){return;}
+ var go=function(){window.scrollTo(0,r.y||0);var bs=buttons(r.id),b=bs[r.idx>=0&&r.idx<bs.length?r.idx:0];if(b){note(b,r.msg,true);}};
+ go();setTimeout(go,300);setTimeout(go,1200);
+}
 function start(){
+ restore();
  load(0);
  var pending=false;
  var obs=new MutationObserver(function(){if(pending){return;}pending=true;setTimeout(function(){pending=false;paintAll();},150);});
