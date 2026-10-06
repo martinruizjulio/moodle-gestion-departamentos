@@ -410,20 +410,34 @@ Objetivo auditado: al crear una Edición (manual o Excel) cada taller debe tener
 Comprobado correcto: grupo único por edición (nombre con `HEE-E<id>`) creado antes de las actividades; asistencia y cuestionario/reflexión restringidos al grupo (modo grupos separados + agrupación + disponibilidad); la inscripción exige alta en el grupo; botón Apuntarme en el resumen de cada subsección TALLER (Moodle muestra el resumen aunque la sección esté restringida) y en el calendario; desinscripción con `sesskey` y bloqueada al empezar el taller.
 
 Correcciones (1.5.136-alpha / `2026100551`, sin cambio de esquema):
-- **Bloqueante si el Moodle no tiene `mod_attendance`**: la importación Excel y el guardado manual abortaban. Ahora la asistencia Moodle es opcional (se avisa y se usa la asistencia de Gestión HEE).
+- ~~Asistencia opcional si falta `mod_attendance`~~: revertido en 1.5.137 (la asistencia es obligatoria y el Moodle de la universidad tiene el módulo).
 - **Edición Tipo A histórica con tarea**: al guardarla dentro de una Edición se le creaba un cuestionario y se cambiaba su actividad obligatoria. Ahora se conserva la tarea.
 - **Cada guardado renombraba el cuestionario a «Cuestionario T-n» y lo volvía visible**, deshaciendo cambios del profesor. Solo se nombra/configura al crearlo; nombre unificado `Cuestionario T01` (como `Asistencia T01`); la limpieza reconoce ambos formatos.
 - **Grupo duplicado**: si una edición perdía su `groupid`, se creaba otro grupo con el mismo nombre; ahora se reutiliza el suyo.
 - **Desapuntarme con un clic desde el curso**: `unenrol.php` pide confirmación; una vez empezado el taller el botón muestra «Apuntado».
 
 Pendiente / decisión:
-- **La lista de asistencia de `mod_attendance` no alimenta el cómputo HEE.** Horas y certificados usan la asistencia marcada en «Alumnos / asistencia»; lo marcado en «Asistencia T01» no cuenta. Hace falta decidir: sincronizar desde `mod_attendance` (y qué estados cuentan: ¿Retraso? ¿Justificado?) o marcar solo en HEE.
-- `mod_attendance` se crea sin sesiones: el profesor debe añadir la sesión del taller (para el grupo).
+- Asistencia de `mod_attendance` y sesión automática: resuelto en 1.5.137 (ver sección siguiente).
 - El guardado manual lanza el error después de guardar la edición si falla la creación de actividades (no es transaccional).
 
 Validación estática: `php -l`, XML, `node --check`, strings es/en. **Sin ejecución en Moodle real.**
 
+## Asistencia obligatoria desde la lista del taller (2026-10-06, 1.5.137-alpha / `2026100552`)
+
+Decisiones de Julio: el Moodle de la universidad tiene `mod_attendance`; la asistencia es imprescindible para dar por bueno cualquier taller A o B; **solo cuenta «Presente»**; **la lista del taller manda**; la sesión se crea automáticamente.
+
+- `mod_attendance` vuelve a ser **obligatorio** al crear talleres (se revierte la opción «opcional» de 1.5.136).
+- Nueva clase `classes/local/attendance_sync.php`:
+  - `ensure_session()`: crea una sesión con la fecha/hora y duración del taller (fin del Excel/formulario; si no hay, horas del taller) **solo para el grupo de la edición**; si cambia la fecha y nadie ha pasado lista, la sesión se mueve. Se llama al crear la asistencia, al guardar la edición y tras la importación.
+  - «Presente» = estado con la nota más alta del conjunto de estados de la sesión (independiente del idioma; por defecto Presente 2, Retraso 1, Justificado 1, Falta 0).
+  - `sync_edition()`: para cada inscrito activo con algún registro en la lista, asistido en HEE si y solo si algún registro es «Presente». Una corrección Presente→Falta retira la asistencia HEE salvo que ya tenga certificado. Alumnos sin registro conservan el marcado manual de «Alumnos / asistencia».
+  - Lista compartida por varias ediciones (caso histórico): solo cuentan las sesiones del grupo de la edición.
+- Sincronización: observadores de `\mod_attendance\event\attendance_taken` y `attendance_taken_by_student`; además al abrir «Alumnos / asistencia» y la vista del profesor, y antes de generar cada certificado.
+- «Alumnos / asistencia»: para alumnos que figuran en la lista se muestra «Según lista de asistencia» y no se permite el marcado manual (se corrige en la lista).
+
+Pendiente Moodle real: crear un taller → comprobar sesión creada para su grupo con fecha/duración correctas; pasar lista (Presente / Retraso / Falta) → solo Presente queda asistido en HEE; corregir Presente→Falta → se retira; con certificado emitido → no se retira; cambiar la fecha del taller antes de pasar lista → la sesión se mueve.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.136-alpha** (`2026100551`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.137-alpha** (`2026100552`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
