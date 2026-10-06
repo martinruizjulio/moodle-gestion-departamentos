@@ -339,10 +339,10 @@ class bulk_workshops {
         $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $book->getActiveSheet();
         $sheet->setTitle('TALLERES');
-        $sheet->fromArray(['Código','Nombre','Tipo','Descripción','Fecha','Inicio','Fin','Horas','Plazas','Cierre inscripción','Email profesor','Crear apuntes','Crear cuestionario','Cierre cuestionario','Código edición'], null, 'A1');
-        $sheet->fromArray(['TALLER-01','Nombre del taller Tipo A','A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','','Sí','Sí','23/09/2026 23:59','TALLER01_E1'], null, 'A2');
-        $sheet->fromArray(['TALLER-B01','Nombre del taller Tipo B','B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','','Sí','No','','TALLERB01_E1'], null, 'A3');
-        foreach (range('A','O') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
+        $sheet->fromArray(['Código','Nombre','Tipo','Descripción','Fecha','Inicio','Fin','Horas','Plazas','Cierre inscripción','Email profesor','Crear apuntes','Cierre cuestionario','Código edición'], null, 'A1');
+        $sheet->fromArray(['TALLER-01','Nombre del taller Tipo A','A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','','Sí','23/09/2026 23:59','TALLER01_E1'], null, 'A2');
+        $sheet->fromArray(['TALLER-B01','Nombre del taller Tipo B','B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','','Sí','','TALLERB01_E1'], null, 'A3');
+        foreach (range('A','N') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
         $sheet->freezePane('A2');
         $path = tempnam(make_temp_directory(self::TEMPDIR), 'tpl_');
         (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save($path);
