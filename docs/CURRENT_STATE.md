@@ -403,7 +403,27 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Si el registro quiz realmente no existe o el CMID no está vinculado, entonces sí se aborta.
 - No hay cambios de esquema ni savepoint nuevo.
 
+## Auditoría de Claude — creación de talleres con asistencia, inscripción y cuestionario por grupo (2026-10-06, base `ccedf9f`, local 1.5.135-alpha)
+
+Objetivo auditado: al crear una Edición (manual o Excel) cada taller debe tener grupo propio, lista de asistencia, botón Apuntarme y cuestionario (Tipo A) o reflexión (Tipo B), todo restringido al grupo.
+
+Comprobado correcto: grupo único por edición (nombre con `HEE-E<id>`) creado antes de las actividades; asistencia y cuestionario/reflexión restringidos al grupo (modo grupos separados + agrupación + disponibilidad); la inscripción exige alta en el grupo; botón Apuntarme en el resumen de cada subsección TALLER (Moodle muestra el resumen aunque la sección esté restringida) y en el calendario; desinscripción con `sesskey` y bloqueada al empezar el taller.
+
+Correcciones (1.5.136-alpha / `2026100551`, sin cambio de esquema):
+- **Bloqueante si el Moodle no tiene `mod_attendance`**: la importación Excel y el guardado manual abortaban. Ahora la asistencia Moodle es opcional (se avisa y se usa la asistencia de Gestión HEE).
+- **Edición Tipo A histórica con tarea**: al guardarla dentro de una Edición se le creaba un cuestionario y se cambiaba su actividad obligatoria. Ahora se conserva la tarea.
+- **Cada guardado renombraba el cuestionario a «Cuestionario T-n» y lo volvía visible**, deshaciendo cambios del profesor. Solo se nombra/configura al crearlo; nombre unificado `Cuestionario T01` (como `Asistencia T01`); la limpieza reconoce ambos formatos.
+- **Grupo duplicado**: si una edición perdía su `groupid`, se creaba otro grupo con el mismo nombre; ahora se reutiliza el suyo.
+- **Desapuntarme con un clic desde el curso**: `unenrol.php` pide confirmación; una vez empezado el taller el botón muestra «Apuntado».
+
+Pendiente / decisión:
+- **La lista de asistencia de `mod_attendance` no alimenta el cómputo HEE.** Horas y certificados usan la asistencia marcada en «Alumnos / asistencia»; lo marcado en «Asistencia T01» no cuenta. Hace falta decidir: sincronizar desde `mod_attendance` (y qué estados cuentan: ¿Retraso? ¿Justificado?) o marcar solo en HEE.
+- `mod_attendance` se crea sin sesiones: el profesor debe añadir la sesión del taller (para el grupo).
+- El guardado manual lanza el error después de guardar la edición si falla la creación de actividades (no es transaccional).
+
+Validación estática: `php -l`, XML, `node --check`, strings es/en. **Sin ejecución en Moodle real.**
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.135-alpha** (`2026100550`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.136-alpha** (`2026100551`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
