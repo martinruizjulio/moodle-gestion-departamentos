@@ -175,8 +175,20 @@ class bulk_workshops {
                     $edition = manager::get_workshop_edition($editionid);
                 }
 
-                $groupid = (int)($edition->groupid ?? 0);
+                // The edition group must exist before any Moodle activity
+                // is created so Attendance, quiz/reflection and resources are
+                // restricted correctly from the start.
+                $groupid = manager::get_or_create_edition_group($editionid);
+                $edition = manager::get_workshop_edition($editionid);
                 $notescmid = 0;
+
+                $attendance = manager::create_attendance_activity_for_edition(
+                    $editionid,
+                    'Asistencia T' . sprintf('%02d', $order)
+                );
+                if (empty($attendance->success)) {
+                    throw new \RuntimeException($row['code'] . ': ' . ($attendance->message ?? 'no se pudo crear la lista de asistencia.'));
+                }
 
                 if ($row['type'] === 'typeb') {
                     $reflection = typeb_reflection_activity::ensure_for_edition($editionid);
@@ -186,12 +198,25 @@ class bulk_workshops {
                     $summary->reflectioncreated++;
                 } else if (!empty($row['createquiz'])) {
                     require_once($CFG->dirroot . '/course/lib.php');
-                    $quizcmid = self::duplicate_template($course, $quiztemplatecmid, $groupid, 'Cuestionario ' . $row['code'], $row['quizclose']);
+                    $quizcmid = self::duplicate_template($course, $quiztemplatecmid, $groupid, 'Cuestionario T-' . (int)$order, $row['quizclose']);
                     $columns = $DB->get_columns('local_ga_workshop_editions');
                     $update = (object)['id' => $editionid, 'requiredcmid' => $quizcmid, 'requiredmodname' => 'quiz', 'activitycreationtype' => 'quiz', 'timemodified' => time()];
                     if (isset($columns['requiredquizcmid'])) $update->requiredquizcmid = $quizcmid;
                     if (isset($columns['requiredassigncmid'])) $update->requiredassigncmid = 0;
                     $DB->update_record('local_ga_workshop_editions', $update);
+                    $summary->quizcreated++;
+                } else {
+                    // Type A always starts with a real, empty Moodle quiz.
+                    // The Excel flag only controls whether a model is duplicated.
+                    $quiz = manager::create_required_activity_for_edition($editionid, null, 'quiz');
+                    if (empty($quiz->success) || empty($quiz->cmid)) {
+                        throw new \RuntimeException($row['code'] . ': ' . ($quiz->message ?? 'no se pudo crear el cuestionario vacío.'));
+                    }
+                    $quizcmid = (int)$quiz->cmid;
+                    $quizcm = get_coursemodule_from_id('quiz', $quizcmid, $courseid, false, IGNORE_MISSING);
+                    if ($quizcm && $DB->record_exists('quiz', ['id' => (int)$quizcm->instance])) {
+                        $DB->set_field('quiz', 'name', 'Cuestionario T-' . (int)$order, ['id' => (int)$quizcm->instance]);
+                    }
                     $summary->quizcreated++;
                 }
                 if (!empty($row['createnotes']) && $notestemplatecmid > 0) {
