@@ -492,7 +492,7 @@ function local_gestion_actividades_require_card_status_v2(int $courseid): void {
                     'enrolled' => (bool)$enrolled,
                     'closed' => (bool)$closed,
                     'label' => $enrolled
-                        ? get_string('enrolledbutton', 'local_gestion_actividades')
+                        ? 'Desinscribirme'
                         : ($closed
                             ? get_string('enrolmentclosed', 'local_gestion_actividades')
                             : get_string('enrolme', 'local_gestion_actividades')),
@@ -533,12 +533,14 @@ function local_gestion_actividades_require_card_status_js(int $courseid): void {
         action.removeAttribute('aria-disabled');
 
         if (status.enrolled) {
-            action.classList.add('btn', 'disabled');
-            action.style.backgroundColor = '#dff3e4';
-            action.style.borderColor = '#9fd3ad';
-            action.style.color = '#1f6b35';
-            action.setAttribute('aria-disabled', 'true');
-            action.removeAttribute('href');
+            action.classList.add('btn', 'btn-outline-danger');
+            var editionid = action.getAttribute('data-editionid');
+            var root = (window.M && M.cfg && M.cfg.wwwroot) ? M.cfg.wwwroot : '';
+            var key = (window.M && M.cfg && M.cfg.sesskey) ? M.cfg.sesskey : '';
+            if (editionid && key) {
+                action.setAttribute('href', root + '/local/gestion_actividades/unenrol.php?id='
+                    + encodeURIComponent(editionid) + '&sesskey=' + encodeURIComponent(key));
+            }
         } else if (status.closed) {
             action.classList.add('btn', 'disabled');
             action.style.backgroundColor = '#fff0d5';
@@ -633,7 +635,7 @@ function local_gestion_actividades_before_standard_html_head(): string {
     return '<script>(function(){"use strict";'
         . 'var endpoint=' . $urljson . ',running=false,done=false,observer=null,retries=0;'
         . 'function paint(a,st){a.textContent=st.label||"";a.classList.remove("btn-primary","btn-secondary","btn-success","btn-warning","disabled");a.style.borderColor="";a.style.backgroundColor="";a.style.color="";a.removeAttribute("aria-disabled");'
-        . 'if(st.enrolled){a.classList.add("btn","disabled");a.style.backgroundColor="#dff3e4";a.style.borderColor="#9fd3ad";a.style.color="#1f6b35";a.setAttribute("aria-disabled","true");a.removeAttribute("href");}'
+        . 'if(st.enrolled){a.classList.add("btn","btn-outline-danger");var eid=a.getAttribute("data-editionid"),root=(window.M&&M.cfg&&M.cfg.wwwroot)?M.cfg.wwwroot:"",key=(window.M&&M.cfg&&M.cfg.sesskey)?M.cfg.sesskey:"";if(eid&&key){a.setAttribute("href",root+"/local/gestion_actividades/unenrol.php?id="+encodeURIComponent(eid)+"&sesskey="+encodeURIComponent(key));}}'
         . 'else if(st.closed){a.classList.add("btn","disabled");a.style.backgroundColor="#fff0d5";a.style.borderColor="#efbd68";a.style.color="#8a4b00";a.setAttribute("aria-disabled","true");a.removeAttribute("href");}'
         . 'else{a.classList.add("btn","btn-primary");}}'
         . 'function update(){if(running||done){return;}var cards=document.querySelectorAll(".local-ga-card-actions[data-editionid]");if(!cards.length){if(retries++<40){setTimeout(update,250);}return;}running=true;'
