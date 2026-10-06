@@ -198,7 +198,7 @@ echo html_writer::div(
 
 echo $OUTPUT->heading('Configuración completa del taller: ' . s($workshop->code));
 if ($linkedseries) {
-    echo html_writer::tag('div', '<strong>Edición de seminarios:</strong> ' . s($linkedseries->title) . ($sortorder > 0 ? ' · Taller ' . sprintf('%02d', $sortorder) : '') . '. Los campos siguen la misma secuencia del Excel y, al guardar, el calendario HTML se actualiza automáticamente.', ['class' => 'alert alert-info']);
+    echo html_writer::tag('div', '<strong>Edición de talleres:</strong> ' . s($linkedseries->title) . ($sortorder > 0 ? ' · Taller ' . sprintf('%02d', $sortorder) : '') . '. Los campos siguen la misma secuencia del Excel y, al guardar, el calendario HTML se actualiza automáticamente.', ['class' => 'alert alert-info']);
 }
 
 $teachers = manager::get_course_teachers($workshop->courseid);
@@ -267,7 +267,7 @@ if ($istypebworkshop) {
     } else {
         $activitylabel = 'Tarea Moodle';
     }
-    echo html_writer::tag('div', '<strong>Actividad asociada actual:</strong> ' . s($activitylabel) . '. Los seminarios Tipo A nuevos usan cuestionario Moodle por defecto. Puede vincularse otra actividad posteriormente desde la gestión del seminario. En las importaciones Excel puede duplicarse un cuestionario modelo; sus preguntas se crean o importan siempre desde Moodle.', ['class' => 'alert alert-info']);
+    echo html_writer::tag('div', '<strong>Actividad asociada actual:</strong> ' . s($activitylabel) . '. Los talleres Tipo A nuevos usan cuestionario Moodle por defecto. Puede vincularse otra actividad posteriormente desde la gestión del taller. En las importaciones Excel puede duplicarse un cuestionario modelo; sus preguntas se crean o importan siempre desde Moodle.', ['class' => 'alert alert-info']);
     $requiredcmidvalue = $record->requiredcmid ?? 0;
 }
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'requiredcmid', 'value' => $requiredcmidvalue]);
