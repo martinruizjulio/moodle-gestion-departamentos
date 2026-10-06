@@ -241,11 +241,28 @@ class bulk_workshops {
                     $finalquizcmid = !empty($savededition->requiredquizcmid)
                         ? (int)$savededition->requiredquizcmid
                         : (int)($savededition->requiredcmid ?? 0);
+
+                    // Validate against the database, not get_fast_modinfo /
+                    // get_coursemodule_from_id. At this point we are still in
+                    // the delegated transaction and the quiz may just have been
+                    // moved into a delegated subsection, so modinfo can be stale.
                     $finalquizcm = $finalquizcmid > 0
-                        ? get_coursemodule_from_id('quiz', $finalquizcmid, $courseid, false, IGNORE_MISSING)
+                        ? $DB->get_record_sql(
+                            "SELECT cm.id
+                               FROM {course_modules} cm
+                               JOIN {modules} m ON m.id = cm.module
+                               JOIN {quiz} q ON q.id = cm.instance
+                              WHERE cm.id = :cmid
+                                AND cm.course = :courseid
+                                AND m.name = 'quiz'",
+                            ['cmid' => $finalquizcmid, 'courseid' => $courseid],
+                            IGNORE_MISSING
+                        )
                         : false;
                     if (!$finalquizcm) {
-                        throw new \RuntimeException($row['code'] . ': el cuestionario Tipo A no quedó creado/vinculado en Moodle.');
+                        throw new \RuntimeException(
+                            $row['code'] . ': el cuestionario Tipo A no existe o no quedó vinculado en la base de datos Moodle.'
+                        );
                     }
                 }
 
