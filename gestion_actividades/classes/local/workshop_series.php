@@ -610,6 +610,19 @@ class workshop_series {
             $ordered = [$calendarcmid];
 
             foreach (self::items($seriesid) as $item) {
+                $edition = self::edition_for_series_item($series, $item);
+                if ($edition) {
+                    $enrolcmid = self::ensure_enrolment_label(
+                        $course,
+                        (int)$section->section,
+                        $item,
+                        $edition
+                    );
+                    if ($enrolcmid > 0) {
+                        $ordered[] = $enrolcmid;
+                    }
+                }
+
                 $title = self::subsection_title((int)$item->sortorder, (string)$item->name);
                 [$cmid, $sectionid] = self::ensure_subsection($course, (int)$section->section, (int)$item->subsectioncmid, $title);
                 if ($cmid !== (int)$item->subsectioncmid || $sectionid !== (int)$item->subsectionsectionid) {
@@ -747,6 +760,94 @@ class workshop_series {
             '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Cierre inscripción</th>' .
             '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Acceso</th>' .
             '</tr></thead><tbody>' . $body . '</tbody></table></div></div>';
+    }
+
+    /**
+     * Create/update the per-workshop enrolment label in the parent section.
+     * It deliberately lives outside the group-restricted subsection so a
+     * student who is not yet a member can still join it.
+     */
+    private static function ensure_enrolment_label(
+        \stdClass $course,
+        int $parentsectionnum,
+        \stdClass $item,
+        \stdClass $edition
+    ): int {
+        global $DB, $CFG;
+
+        if (!$DB->record_exists('modules', ['name' => 'label'])
+                || !$DB->get_manager()->table_exists(new \xmldb_table('label'))) {
+            return 0;
+        }
+
+        require_once($CFG->dirroot . '/course/lib.php');
+        require_once($CFG->dirroot . '/course/modlib.php');
+
+        $marker = 'HEE_ENROL_EDITION_' . (int)$edition->id;
+        $viewurl = new \moodle_url('/local/gestion_actividades/workshop_view.php', [
+            'id' => (int)$item->workshopid,
+            'editionid' => (int)$edition->id,
+        ]);
+
+        $intro = '<div class="local-ga-card-actions local-ga-enrol-label" data-editionid="' . (int)$edition->id . '" '
+            . 'style="margin:.35rem 0 .55rem;padding:.55rem .75rem;border:1px solid #d9e2e8;border-radius:.6rem;background:#f8fafb;">'
+            . '<a class="btn btn-sm btn-primary local-ga-enrol-status" data-editionid="' . (int)$edition->id . '" '
+            . 'href="' . $viewurl->out(true) . '">Apuntarme</a>'
+            . '</div>';
+
+        $sql = "SELECT cm.id, cm.instance, cm.section
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module
+                  JOIN {label} l ON l.id = cm.instance
+                 WHERE cm.course = :courseid
+                   AND m.name = 'label'
+                   AND l.name = :marker";
+        $existing = $DB->get_record_sql($sql, [
+            'courseid' => (int)$course->id,
+            'marker' => $marker,
+        ], IGNORE_MISSING);
+
+        if ($existing) {
+            $DB->update_record('label', (object)[
+                'id' => (int)$existing->instance,
+                'name' => $marker,
+                'intro' => $intro,
+                'introformat' => FORMAT_HTML,
+                'timemodified' => time(),
+            ]);
+            if ((int)$existing->section !== $parentsectionnum) {
+                course_add_cm_to_section((int)$course->id, (int)$existing->id, $parentsectionnum);
+            }
+            $cmcolumns = $DB->get_columns('course_modules');
+            if (isset($cmcolumns['visible'])) {
+                $DB->set_field('course_modules', 'visible', 1, ['id' => (int)$existing->id]);
+            }
+            if (isset($cmcolumns['visibleoncoursepage'])) {
+                $DB->set_field('course_modules', 'visibleoncoursepage', 1, ['id' => (int)$existing->id]);
+            }
+            if (isset($cmcolumns['availability'])) {
+                $DB->set_field('course_modules', 'availability', null, ['id' => (int)$existing->id]);
+            }
+            return (int)$existing->id;
+        }
+
+        $moduleinfo = (object)[
+            'course' => (int)$course->id,
+            'section' => $parentsectionnum,
+            'module' => (int)$DB->get_field('modules', 'id', ['name' => 'label'], MUST_EXIST),
+            'modulename' => 'label',
+            'name' => $marker,
+            'intro' => $intro,
+            'introformat' => FORMAT_HTML,
+            'visible' => 1,
+            'visibleoncoursepage' => 1,
+            'groupmode' => 0,
+            'groupingid' => 0,
+            'completion' => 0,
+            'availability' => null,
+        ];
+        $created = add_moduleinfo($moduleinfo, $course);
+        return (int)($created->coursemodule ?? $created->coursemoduleid ?? $created->cmid ?? 0);
     }
 
     /**
