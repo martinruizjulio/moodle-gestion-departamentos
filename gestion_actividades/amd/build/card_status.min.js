@@ -66,6 +66,10 @@ define([], function() {
 
     return {
         init: function(courseid) {
+            if (window.localGaCards) {
+                // The canonical in-place toggle script (lib.php) handles the buttons.
+                return;
+            }
             var run = function() { update(courseid, 0); };
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', run, {once: true});

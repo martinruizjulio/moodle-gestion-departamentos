@@ -58,6 +58,10 @@ define([], function() {
 
     return {
         init: function(statuses) {
+            if (window.localGaCards) {
+                // The canonical in-place toggle script (lib.php) handles the buttons.
+                return;
+            }
             if (initialized) {
                 return;
             }

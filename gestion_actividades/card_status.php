@@ -19,16 +19,7 @@ foreach (['typea', 'typeb'] as $type) {
         if (!$edition) {
             continue;
         }
-        $enrolment = manager::get_edition_enrolment((int)$edition->id, (int)$USER->id);
-        $isenrolled = manager::is_active_enrolment($enrolment);
-        $closed = manager::is_edition_enrolment_closed($edition);
-        $statuses[(int)$edition->id] = [
-            'enrolled' => $isenrolled,
-            'closed' => $closed,
-            'label' => $isenrolled
-                ? ((empty($edition->sessiondate) || time() < (int)$edition->sessiondate) ? 'Desapuntarme' : 'Apuntado')
-                : ($closed ? get_string('enrolmentclosed', 'local_gestion_actividades') : 'Apuntarme'),
-        ];
+        $statuses[(int)$edition->id] = manager::enrol_button_status($edition, (int)$USER->id);
     }
 }
 

@@ -482,21 +482,10 @@ function local_gestion_actividades_require_card_status_v2(int $courseid): void {
                 if (!$edition) {
                     continue;
                 }
-                $enrolment = \local_gestion_actividades\local\manager::get_edition_enrolment(
-                    (int)$edition->id,
+                $statuses[(string)(int)$edition->id] = \local_gestion_actividades\local\manager::enrol_button_status(
+                    $edition,
                     (int)$USER->id
                 );
-                $enrolled = \local_gestion_actividades\local\manager::is_active_enrolment($enrolment);
-                $closed = \local_gestion_actividades\local\manager::is_edition_enrolment_closed($edition);
-                $statuses[(string)(int)$edition->id] = [
-                    'enrolled' => (bool)$enrolled,
-                    'closed' => (bool)$closed,
-                    'label' => $enrolled
-                        ? ((empty($edition->sessiondate) || time() < (int)$edition->sessiondate) ? 'Desapuntarme' : 'Apuntado')
-                        : ($closed
-                            ? get_string('enrolmentclosed', 'local_gestion_actividades')
-                            : 'Apuntarme'),
-                ];
             }
         }
     } catch (\Throwable $e) {
@@ -504,6 +493,94 @@ function local_gestion_actividades_require_card_status_v2(int $courseid): void {
     }
 
     $PAGE->requires->js_call_amd('local_gestion_actividades/card_status_v2', 'init', [$statuses]);
+}
+
+/**
+ * Canonical course-page script for the Apuntarme / Desapuntarme buttons.
+ *
+ * Paints every `.local-ga-enrol-status[data-editionid]` button with the
+ * current user's state and toggles the enrolment in place through
+ * enrol_toggle.php (POST + sesskey), so the student stays on the course page.
+ * Guarded by window.localGaCards: the several callbacks that inject it on
+ * different themes never install it twice. Without JavaScript the button keeps
+ * its plain link to the workshop page.
+ */
+function local_gestion_actividades_card_script(int $courseid): string {
+    $status = json_encode((new moodle_url('/local/gestion_actividades/card_status.php', ['courseid' => $courseid]))->out(false),
+        JSON_UNESCAPED_SLASHES);
+    $toggle = json_encode((new moodle_url('/local/gestion_actividades/enrol_toggle.php'))->out(false), JSON_UNESCAPED_SLASHES);
+    $js = <<<'JS'
+(function(){"use strict";
+if(window.localGaCards){return;}
+var G=window.localGaCards={statuses:null,busy:{}};
+var STATUS=__STATUS__,TOGGLE=__TOGGLE__;
+function buttons(id){return document.querySelectorAll('.local-ga-enrol-status[data-editionid="'+id+'"]');}
+function paint(a,st){
+ var label=st.label||"";if(a.textContent!==label){a.textContent=label;} // Avoid feeding the MutationObserver.
+ a.classList.remove("btn-primary","btn-secondary","btn-success","btn-warning","btn-outline-danger","disabled");
+ a.style.borderColor="";a.style.backgroundColor="";a.style.color="";a.removeAttribute("aria-disabled");
+ a.classList.add("btn");
+ if(st.enrolled&&st.canunenrol){a.classList.add("btn-outline-danger");}
+ else if(st.enrolled){a.classList.add("disabled");a.style.backgroundColor="#dff3e4";a.style.borderColor="#9fd3ad";a.style.color="#1f6b35";a.setAttribute("aria-disabled","true");}
+ else if(st.closed){a.classList.add("disabled");a.style.backgroundColor="#fff0d5";a.style.borderColor="#efbd68";a.style.color="#8a4b00";a.setAttribute("aria-disabled","true");}
+ else{a.classList.add("btn-primary");}
+}
+function paintAll(){
+ if(!G.statuses){return;}
+ document.querySelectorAll(".local-ga-enrol-status[data-editionid]").forEach(function(a){
+  var st=G.statuses[String(a.getAttribute("data-editionid"))];if(st){paint(a,st);}
+ });
+}
+function note(a,text,ok){
+ var n=a.parentNode&&a.parentNode.querySelector(".local-ga-enrol-note");
+ if(!n){n=document.createElement("span");n.className="local-ga-enrol-note ms-2";n.setAttribute("role","status");n.setAttribute("aria-live","polite");n.style.fontSize=".85rem";a.insertAdjacentElement("afterend",n);}
+ n.textContent=text||"";n.style.color=ok?"#1f6b35":"#8a4b00";
+ clearTimeout(n._t);n._t=setTimeout(function(){n.textContent="";},6000);
+}
+function load(retry){
+ fetch(STATUS,{credentials:"same-origin",cache:"no-store",headers:{Accept:"application/json"}})
+ .then(function(r){if(!r.ok){throw new Error("HTTP "+r.status);}return r.json();})
+ .then(function(d){G.statuses={};var s=(d&&d.statuses)||{};Object.keys(s).forEach(function(k){G.statuses[String(k)]=s[k];});paintAll();})
+ .catch(function(){if((retry||0)<3){setTimeout(function(){load((retry||0)+1);},1000);}});
+}
+document.addEventListener("click",function(ev){
+ var a=ev.target&&ev.target.closest?ev.target.closest(".local-ga-enrol-status[data-editionid]"):null;
+ if(!a){return;}
+ var id=String(a.getAttribute("data-editionid")),st=G.statuses&&G.statuses[id];
+ var key=(window.M&&M.cfg&&M.cfg.sesskey)?M.cfg.sesskey:"";
+ if(!st||!key){return;} // State unknown: keep the plain link as fallback.
+ ev.preventDefault();ev.stopPropagation();
+ if(G.busy[id]||a.getAttribute("aria-disabled")==="true"){return;}
+ var action;
+ if(st.enrolled&&st.canunenrol){if(!window.confirm("¿Quieres desapuntarte de este taller? Tu plaza quedará libre.")){return;}action="unenrol";}
+ else if(!st.enrolled&&!st.closed){action="enrol";}
+ else{return;}
+ G.busy[id]=true;var old=a.textContent;a.textContent="…";a.classList.add("disabled");
+ var body="id="+encodeURIComponent(id)+"&action="+action+"&sesskey="+encodeURIComponent(key);
+ fetch(TOGGLE,{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/x-www-form-urlencoded",Accept:"application/json"},body:body})
+ .then(function(r){return r.json();})
+ .then(function(d){
+  if(d&&d.status){G.statuses[id]=d.status;}
+  buttons(id).forEach(function(b){paint(b,G.statuses[id]);});
+  var msg=(d&&d.message)||"";
+  if(d&&d.success&&action==="enrol"){msg="Te has apuntado. Las actividades del taller se abrirán al recargar la página.";}
+  if(d&&d.success&&action==="unenrol"){msg="Te has desapuntado del taller.";}
+  note(a,msg,!!(d&&d.success));
+ })
+ .catch(function(){a.textContent=old;a.classList.remove("disabled");note(a,"No se ha podido completar. Inténtalo de nuevo.",false);})
+ .then(function(){G.busy[id]=false;});
+},true);
+function start(){
+ load(0);
+ var pending=false;
+ var obs=new MutationObserver(function(){if(pending){return;}pending=true;setTimeout(function(){pending=false;paintAll();},150);});
+ obs.observe(document.documentElement,{childList:true,subtree:true});
+ setTimeout(function(){obs.disconnect();},15000);
+}
+if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",start,{once:true});}else{start();}
+})();
+JS;
+    return str_replace(['__STATUS__', '__TOGGLE__'], [$status, $toggle], $js);
 }
 
 /**
@@ -521,70 +598,7 @@ function local_gestion_actividades_require_card_status_js(int $courseid): void {
         return;
     }
     $loadedcourses[$courseid] = true;
-
-    $url = (new moodle_url('/local/gestion_actividades/card_status.php', ['courseid' => $courseid]))->out(false);
-    $javascript = <<<JS
-(function() {
-    function applyVisualState(action, status) {
-        action.classList.remove('btn-primary', 'btn-secondary', 'btn-success', 'btn-warning', 'disabled');
-        action.style.borderColor = '';
-        action.style.backgroundColor = '';
-        action.style.color = '';
-        action.removeAttribute('aria-disabled');
-
-        if (status.enrolled) {
-            action.classList.add('btn', 'btn-outline-danger');
-            var editionid = action.getAttribute('data-editionid');
-            var root = (window.M && M.cfg && M.cfg.wwwroot) ? M.cfg.wwwroot : '';
-            var key = (window.M && M.cfg && M.cfg.sesskey) ? M.cfg.sesskey : '';
-            if (editionid && key) {
-                action.setAttribute('href', root + '/local/gestion_actividades/unenrol.php?id='
-                    + encodeURIComponent(editionid) + '&sesskey=' + encodeURIComponent(key));
-            }
-        } else if (status.closed) {
-            action.classList.add('btn', 'disabled');
-            action.style.backgroundColor = '#fff0d5';
-            action.style.borderColor = '#efbd68';
-            action.style.color = '#8a4b00';
-            action.setAttribute('aria-disabled', 'true');
-            action.removeAttribute('href');
-        } else {
-            action.classList.add('btn', 'btn-primary');
-        }
-    }
-
-    function updateCards() {
-        var cards = document.querySelectorAll('.local-ga-card-actions[data-editionid]');
-        if (!cards.length) { return; }
-        fetch('$url', {
-            credentials: 'same-origin',
-            cache: 'no-store',
-            headers: {'Accept': 'application/json'}
-        })
-            .then(function(response) { return response.ok ? response.json() : null; })
-            .then(function(data) {
-                if (!data || !data.statuses) { return; }
-                cards.forEach(function(card) {
-                    var id = card.getAttribute('data-editionid');
-                    var status = data.statuses[id];
-                    if (!status) { return; }
-                    var action = card.querySelector('.local-ga-enrol-status');
-                    if (!action) { return; }
-                    action.textContent = status.label;
-                    applyVisualState(action, status);
-                });
-            })
-            .catch(function() {});
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', updateCards, {once: true});
-    } else {
-        updateCards();
-    }
-})();
-JS;
-    $PAGE->requires->js_init_code($javascript);
+    $PAGE->requires->js_init_code(local_gestion_actividades_card_script($courseid));
 }
 
 /**
@@ -623,26 +637,11 @@ function local_gestion_actividades_before_footer(): void {
 function local_gestion_actividades_before_standard_html_head(): string {
     global $PAGE;
 
-    if (strpos((string)$PAGE->pagetype, 'course-view') !== 0 || empty($PAGE->course->id)) {
+    if (strpos((string)$PAGE->pagetype, 'course-view') !== 0 || empty($PAGE->course->id)
+            || !isloggedin() || isguestuser()) {
         return '';
     }
-
-    $url = (new moodle_url('/local/gestion_actividades/card_status.php', [
-        'courseid' => (int)$PAGE->course->id,
-    ]))->out(false);
-    $urljson = json_encode($url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-    return '<script>(function(){"use strict";'
-        . 'var endpoint=' . $urljson . ',running=false,done=false,observer=null,retries=0;'
-        . 'function paint(a,st){a.textContent=st.label||"";a.classList.remove("btn-primary","btn-secondary","btn-success","btn-warning","disabled");a.style.borderColor="";a.style.backgroundColor="";a.style.color="";a.removeAttribute("aria-disabled");'
-        . 'if(st.enrolled){a.classList.add("btn","btn-outline-danger");var eid=a.getAttribute("data-editionid"),root=(window.M&&M.cfg&&M.cfg.wwwroot)?M.cfg.wwwroot:"",key=(window.M&&M.cfg&&M.cfg.sesskey)?M.cfg.sesskey:"";if(eid&&key){a.setAttribute("href",root+"/local/gestion_actividades/unenrol.php?id="+encodeURIComponent(eid)+"&sesskey="+encodeURIComponent(key));}}'
-        . 'else if(st.closed){a.classList.add("btn","disabled");a.style.backgroundColor="#fff0d5";a.style.borderColor="#efbd68";a.style.color="#8a4b00";a.setAttribute("aria-disabled","true");a.removeAttribute("href");}'
-        . 'else{a.classList.add("btn","btn-primary");}}'
-        . 'function update(){if(running||done){return;}var cards=document.querySelectorAll(".local-ga-card-actions[data-editionid]");if(!cards.length){if(retries++<40){setTimeout(update,250);}return;}running=true;'
-        . 'fetch(endpoint,{credentials:"same-origin",cache:"no-store",headers:{Accept:"application/json"}}).then(function(r){if(!r.ok){throw new Error("HTTP "+r.status);}return r.json();}).then(function(data){if(!data||!data.statuses){throw new Error("Invalid response");}cards.forEach(function(card){var st=data.statuses[String(card.getAttribute("data-editionid"))]||data.statuses[card.getAttribute("data-editionid")];var a=card.querySelector(".local-ga-enrol-status");if(st&&a){paint(a,st);}});done=true;if(observer){observer.disconnect();}}).catch(function(){running=false;if(retries++<8){setTimeout(update,750);}});}'
-        . 'function start(){update();observer=new MutationObserver(function(){if(!done){update();}});observer.observe(document.documentElement,{childList:true,subtree:true});setTimeout(update,0);setTimeout(update,1000);setTimeout(update,3000);}'
-        . 'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",start,{once:true});}else{start();}'
-        . '})();</script>';
+    return '<script>' . local_gestion_actividades_card_script((int)$PAGE->course->id) . '</script>';
 }
 
 /**
@@ -652,26 +651,10 @@ function local_gestion_actividades_before_standard_html_head(): string {
 function local_gestion_actividades_before_standard_footer_html(): string {
     global $PAGE;
 
-    if (strpos((string)$PAGE->pagetype, 'course-view') !== 0 || empty($PAGE->course->id)) {
+    if (strpos((string)$PAGE->pagetype, 'course-view') !== 0 || empty($PAGE->course->id)
+            || !isloggedin() || isguestuser()) {
         return '';
     }
-
-    $url = (new moodle_url('/local/gestion_actividades/card_status.php', [
-        'courseid' => (int)$PAGE->course->id,
-    ]))->out(false);
-    $urljson = json_encode($url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-    return '<script>(function(){'
-        . 'function run(){var cards=document.querySelectorAll(".local-ga-card-actions[data-editionid]");if(!cards.length){return;}'
-        . 'fetch(' . $urljson . ',{credentials:"same-origin",cache:"no-store",headers:{Accept:"application/json"}})'
-        . '.then(function(r){return r.ok?r.json():null;}).then(function(data){if(!data||!data.statuses){return;}'
-        . 'cards.forEach(function(card){var st=data.statuses[card.getAttribute("data-editionid")];if(!st){return;}'
-        . 'var a=card.querySelector(".local-ga-enrol-status");if(!a){return;}a.textContent=st.label;'
-        . 'a.classList.remove("btn-primary","btn-secondary","btn-success","btn-warning","disabled");'
-        . 'a.style.borderColor="";a.style.backgroundColor="";a.style.color="";a.removeAttribute("aria-disabled");'
-        . 'if(st.enrolled){a.classList.add("btn","disabled");a.style.backgroundColor="#dff3e4";a.style.borderColor="#9fd3ad";a.style.color="#1f6b35";a.setAttribute("aria-disabled","true");a.removeAttribute("href");}'
-        . 'else if(st.closed){a.classList.add("btn","disabled");a.style.backgroundColor="#fff0d5";a.style.borderColor="#efbd68";a.style.color="#8a4b00";a.setAttribute("aria-disabled","true");a.removeAttribute("href");}'
-        . 'else{a.classList.add("btn","btn-primary");}});}).catch(function(){});}'
-        . 'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",run,{once:true});}else{run();}'
-        . '})();</script>';
+    // Same guarded script: a no-op when the head callback already installed it.
+    return '<script>' . local_gestion_actividades_card_script((int)$PAGE->course->id) . '</script>';
 }

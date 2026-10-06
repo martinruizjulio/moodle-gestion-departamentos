@@ -1304,6 +1304,25 @@ class manager {
      * Uses the explicit enrolment deadline when configured and otherwise
      * closes at the end of the workshop day.
      */
+    /**
+     * State of the course-page enrol button for one user and edition.
+     * Shared by card_status.php, the page-load statuses and enrol_toggle.php.
+     *
+     * @return array{enrolled: bool, closed: bool, canunenrol: bool, label: string}
+     */
+    public static function enrol_button_status(\stdClass $edition, int $userid): array {
+        $enrolled = self::is_active_enrolment(self::get_edition_enrolment((int)$edition->id, $userid));
+        $closed = self::is_edition_enrolment_closed($edition);
+        $started = !empty($edition->sessiondate) && time() >= (int)$edition->sessiondate;
+        $canunenrol = $enrolled && !$started;
+        if ($enrolled) {
+            $label = $canunenrol ? 'Desapuntarme' : 'Apuntado';
+        } else {
+            $label = $closed ? get_string('enrolmentclosed', 'local_gestion_actividades') : 'Apuntarme';
+        }
+        return ['enrolled' => $enrolled, 'closed' => $closed, 'canunenrol' => $canunenrol, 'label' => $label];
+    }
+
     public static function is_edition_enrolment_closed(\stdClass $edition, ?int $now = null): bool {
         $now = $now ?? time();
         if (!empty($edition->enrolenddate)) {
