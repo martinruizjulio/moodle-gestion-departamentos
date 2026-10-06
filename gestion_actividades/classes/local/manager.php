@@ -2130,6 +2130,287 @@ class manager {
     }
 
 
+    /**
+     * Summary of HEE workshop test data currently attached to one Moodle course.
+     * Used by the explicit destructive test cleanup screen.
+     */
+    public static function course_test_data_summary(int $courseid): \stdClass {
+        global $DB;
+
+        $summary = (object)[
+            'courseid' => $courseid,
+            'series' => 0,
+            'workshops' => 0,
+            'editions' => 0,
+            'enrolments' => 0,
+            'certificates' => 0,
+            'hours' => 0,
+            'reflections' => 0,
+            'submissions' => 0,
+            'transfers' => 0,
+            'groups' => 0,
+        ];
+
+        if (!$DB->record_exists('course', ['id' => $courseid])) {
+            return $summary;
+        }
+
+        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_series'))) {
+            $summary->series = $DB->count_records('local_ga_workshop_series', ['courseid' => $courseid]);
+        }
+        if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshops'))) {
+            return $summary;
+        }
+
+        $workshopids = $DB->get_fieldset_select('local_ga_workshops', 'id', 'courseid = :courseid', ['courseid' => $courseid]);
+        $workshopids = array_map('intval', $workshopids);
+        $summary->workshops = count($workshopids);
+        if (!$workshopids || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_editions'))) {
+            return $summary;
+        }
+
+        [$winsql, $wparams] = $DB->get_in_or_equal($workshopids, SQL_PARAMS_NAMED, 'tw');
+        $editionids = $DB->get_fieldset_select('local_ga_workshop_editions', 'id', "workshopid $winsql", $wparams);
+        $editionids = array_map('intval', $editionids);
+        $summary->editions = count($editionids);
+        if (!$editionids) {
+            return $summary;
+        }
+
+        [$einsql, $eparams] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'te');
+        $checks = [
+            'local_ga_edition_enrolments' => 'enrolments',
+            'local_ga_certificates' => 'certificates',
+            'local_ga_hour_history' => 'hours',
+            'local_ga_typeb_reflections' => 'reflections',
+            'local_ga_task_submissions' => 'submissions',
+            'local_ga_typeb_transfers' => 'transfers',
+        ];
+        foreach ($checks as $table => $field) {
+            if ($DB->get_manager()->table_exists(new \xmldb_table($table))
+                    && array_key_exists('editionid', $DB->get_columns($table))) {
+                $summary->$field = $DB->count_records_select($table, "editionid $einsql", $eparams);
+            }
+        }
+
+        $groupids = $DB->get_fieldset_select('local_ga_workshop_editions', 'groupid',
+            "id $einsql AND groupid > 0", $eparams);
+        $summary->groups = count(array_unique(array_map('intval', $groupids)));
+
+        return $summary;
+    }
+
+    /**
+     * Destructively remove HEE workshop/edition TEST data for one course.
+     *
+     * This is intentionally scoped: Moodle users, the course itself, external
+     * Type B uploads, institutional recognition and unrelated course content
+     * are not removed. Only records/modules/groups explicitly referenced by
+     * HEE workshops and their Ediciones in the selected course are purged.
+     */
+    public static function purge_course_test_data(int $courseid): \stdClass {
+        global $DB, $CFG;
+        require_once($CFG->dirroot . '/course/lib.php');
+        require_once($CFG->dirroot . '/group/lib.php');
+
+        $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+        $summary = self::course_test_data_summary($courseid);
+        $summary->modulesdeleted = 0;
+        $summary->groupsdeleted = 0;
+        $summary->sectionsdeleted = 0;
+
+        $dbman = $DB->get_manager();
+        $workshopids = $dbman->table_exists(new \xmldb_table('local_ga_workshops'))
+            ? array_map('intval', $DB->get_fieldset_select('local_ga_workshops', 'id',
+                'courseid = :courseid', ['courseid' => $courseid]))
+            : [];
+
+        $editionids = [];
+        $editions = [];
+        if ($workshopids && $dbman->table_exists(new \xmldb_table('local_ga_workshop_editions'))) {
+            [$winsql, $wparams] = $DB->get_in_or_equal($workshopids, SQL_PARAMS_NAMED, 'pw');
+            $editions = $DB->get_records_select('local_ga_workshop_editions', "workshopid $winsql", $wparams);
+            $editionids = array_map('intval', array_keys($editions));
+        }
+
+        $series = $dbman->table_exists(new \xmldb_table('local_ga_workshop_series'))
+            ? $DB->get_records('local_ga_workshop_series', ['courseid' => $courseid])
+            : [];
+        $seriesids = array_map('intval', array_keys($series));
+
+        $items = [];
+        if ($seriesids && $dbman->table_exists(new \xmldb_table('local_ga_series_items'))) {
+            [$sinsql, $sparams] = $DB->get_in_or_equal($seriesids, SQL_PARAMS_NAMED, 'ps');
+            $items = $DB->get_records_select('local_ga_series_items', "seriesid $sinsql", $sparams);
+        }
+
+        // Delete Moodle activities explicitly owned/referenced by these HEE test records.
+        $cmids = [];
+        foreach ($editions as $edition) {
+            foreach (['attendancecmid', 'certificatecmid', 'requiredcmid', 'requiredassigncmid', 'requiredquizcmid'] as $field) {
+                if (!empty($edition->$field)) {
+                    $cmids[(int)$edition->$field] = true;
+                }
+            }
+        }
+        foreach ($series as $row) {
+            if (!empty($row->calendarcmid)) {
+                $cmids[(int)$row->calendarcmid] = true;
+            }
+        }
+        foreach ($items as $item) {
+            foreach (['notescmid', 'subsectioncmid'] as $field) {
+                if (!empty($item->$field)) {
+                    $cmids[(int)$item->$field] = true;
+                }
+            }
+        }
+        foreach (array_keys($cmids) as $cmid) {
+            if ($cmid <= 0) {
+                continue;
+            }
+            $cm = $DB->get_record('course_modules', ['id' => $cmid, 'course' => $courseid], 'id', IGNORE_MISSING);
+            if (!$cm) {
+                continue;
+            }
+            try {
+                course_delete_module($cmid);
+                $summary->modulesdeleted++;
+            } catch (\Throwable $e) {
+                debugging('No se pudo borrar el módulo HEE de prueba CMID ' . $cmid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+
+        // Delete plugin records tied to the concrete workshop editions.
+        if ($editionids) {
+            [$einsql, $eparams] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'pe');
+            foreach ([
+                'local_ga_edition_teachers',
+                'local_ga_edition_enrolments',
+                'local_ga_hour_history',
+                'local_ga_certificates',
+                'local_ga_typeb_reflections',
+                'local_ga_task_submissions',
+                'local_ga_typeb_transfers',
+                'local_ga_materials',
+            ] as $table) {
+                if ($dbman->table_exists(new \xmldb_table($table))
+                        && array_key_exists('editionid', $DB->get_columns($table))) {
+                    $DB->delete_records_select($table, "editionid $einsql", $eparams);
+                }
+            }
+        }
+
+        // Remove any remaining workshop-scoped records for these bases.
+        if ($workshopids) {
+            [$winsql, $wparams] = $DB->get_in_or_equal($workshopids, SQL_PARAMS_NAMED, 'pdw');
+            foreach (['local_ga_hour_history', 'local_ga_certificates', 'local_ga_typeb_transfers', 'local_ga_materials'] as $table) {
+                if ($dbman->table_exists(new \xmldb_table($table))
+                        && array_key_exists('workshopid', $DB->get_columns($table))) {
+                    $DB->delete_records_select($table, "workshopid $winsql", $wparams);
+                }
+            }
+        }
+
+        // Delete edition-owned Moodle groups.
+        $groupids = [];
+        foreach ($editions as $edition) {
+            if (!empty($edition->groupid)) {
+                $groupids[(int)$edition->groupid] = true;
+            }
+        }
+        foreach (array_keys($groupids) as $groupid) {
+            if ($groupid > 0 && $DB->record_exists('groups', ['id' => $groupid, 'courseid' => $courseid])) {
+                try {
+                    groups_delete_group($groupid);
+                    $summary->groupsdeleted++;
+                } catch (\Throwable $e) {
+                    debugging('No se pudo borrar el grupo HEE de prueba ' . $groupid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+        }
+
+        if ($seriesids && $dbman->table_exists(new \xmldb_table('local_ga_series_items'))) {
+            [$sinsql, $sparams] = $DB->get_in_or_equal($seriesids, SQL_PARAMS_NAMED, 'pds');
+            $DB->delete_records_select('local_ga_series_items', "seriesid $sinsql", $sparams);
+        }
+        if ($editionids && $dbman->table_exists(new \xmldb_table('local_ga_workshop_editions'))) {
+            [$einsql, $eparams] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'pde');
+            $DB->delete_records_select('local_ga_workshop_editions', "id $einsql", $eparams);
+        }
+        if ($seriesids && $dbman->table_exists(new \xmldb_table('local_ga_workshop_series'))) {
+            [$sinsql, $sparams] = $DB->get_in_or_equal($seriesids, SQL_PARAMS_NAMED, 'pdss');
+            $DB->delete_records_select('local_ga_workshop_series', "id $sinsql", $sparams);
+        }
+        if ($workshopids) {
+            [$winsql, $wparams] = $DB->get_in_or_equal($workshopids, SQL_PARAMS_NAMED, 'pww');
+            $DB->delete_records_select('local_ga_workshops', "id $winsql", $wparams);
+        }
+
+        // Course-context files created by local_gestion_actividades belong to
+        // the HEE course data being reset. External Type B files live outside
+        // this course context and are therefore not touched.
+        try {
+            $coursecontext = \context_course::instance($courseid);
+            get_file_storage()->delete_area_files($coursecontext->id, 'local_gestion_actividades');
+        } catch (\Throwable $e) {
+            debugging('No se pudieron limpiar todos los archivos HEE de prueba: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+
+        // Remove plugin-created parent sections only when they are now empty.
+        foreach ($series as $row) {
+            if (empty($row->sectionid)) {
+                continue;
+            }
+            $section = $DB->get_record('course_sections', ['id' => (int)$row->sectionid, 'course' => $courseid], '*', IGNORE_MISSING);
+            if (!$section) {
+                continue;
+            }
+            $sequence = trim((string)($section->sequence ?? ''));
+            if ($sequence === '') {
+                try {
+                    if (course_delete_section($course, (int)$section->section, true)) {
+                        $summary->sectionsdeleted++;
+                    }
+                } catch (\Throwable $e) {
+                    // Keep a harmless hidden section rather than deleting
+                    // anything Moodle considers foreign/non-empty.
+                    course_update_section($courseid, $section, [
+                        'summary' => '',
+                        'summaryformat' => FORMAT_HTML,
+                        'visible' => 0,
+                        'availability' => null,
+                    ]);
+                }
+            } else {
+                course_update_section($courseid, $section, [
+                    'summary' => '',
+                    'summaryformat' => FORMAT_HTML,
+                    'visible' => 0,
+                    'availability' => null,
+                ]);
+            }
+        }
+
+        // Clear/hide old parallel legacy surfaces, if present.
+        foreach (['TALLERES TIPO A', 'TALLERES TIPO B'] as $legacyname) {
+            $legacy = $DB->get_record('course_sections', ['course' => $courseid, 'name' => $legacyname], '*', IGNORE_MULTIPLE);
+            if ($legacy) {
+                course_update_section($courseid, $legacy, [
+                    'summary' => '',
+                    'summaryformat' => FORMAT_HTML,
+                    'visible' => 0,
+                    'availability' => null,
+                ]);
+            }
+        }
+
+        self::invalidate_teacher_block_cache([], $editionids);
+        rebuild_course_cache($courseid, true);
+        return $summary;
+    }
+
+
     public static function cleanup_generated_course_entries_for_course(int $courseid): int {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/course/lib.php');
