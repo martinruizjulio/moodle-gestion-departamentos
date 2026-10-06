@@ -551,6 +551,7 @@ class manager {
             'section' => $sectionnum,
             'module' => (int)$DB->get_field('modules', 'id', ['name' => 'attendance'], MUST_EXIST),
             'modulename' => 'attendance',
+            'cmidnumber' => 'HEE_EDITION_' . $editionid . '_ATTENDANCE',
             'name' => $name !== '' ? $name : ('Asistencia ' . (string)$workshop->code),
             'visible' => 1,
             'visibleoncoursepage' => 1,
@@ -773,6 +774,9 @@ class manager {
         $moduleinfo->section = $sectionnum;
         $moduleinfo->module = (int)$DB->get_field('modules', 'id', ['name' => $type], MUST_EXIST);
         $moduleinfo->modulename = $type;
+        // add_moduleinfo() reads cmidnumber for graded modules (PHP warning,
+        // which breaks redirects with debugging on, when it is missing).
+        $moduleinfo->cmidnumber = 'HEE_EDITION_' . $editionid . '_REQUIRED_' . strtoupper($type);
         $moduleinfo->name = $name;
         $moduleinfo->visible = 1;
         $moduleinfo->visibleoncoursepage = 1;
@@ -3579,6 +3583,7 @@ class manager {
         global $DB;
         $now = time();
         $id = !empty($data->id) ? (int)$data->id : 0;
+        $old = null;
         $workshop = self::get_workshop((int)$data->workshopid);
         $mandatoryactivitytype = self::is_typeb_workshop($workshop) ? '' : 'assign';
 
@@ -3651,15 +3656,27 @@ class manager {
             }
         }
 
-        // Los Tipo B no tienen actividad calificable; solo en ellos se desvincula.
+        // Tipo B: its required activity is the reflection assignment. Saving the
+        // edition must keep it linked. (Older code unlinked it on every save, so
+        // each «Guardar cambios» created a NEW reflection and left the students'
+        // submissions in an orphaned one.) Only a quiz link is dropped.
         if ($mandatoryactivitytype === '') {
+            $keepassign = 0;
+            if (!empty($old)) {
+                $keepassign = !empty($old->requiredassigncmid) ? (int)$old->requiredassigncmid
+                    : ((string)($old->requiredmodname ?? '') === 'assign' ? (int)($old->requiredcmid ?? 0) : 0);
+                if ($keepassign <= 0 && !empty($old->requiredcmid)
+                        && self::get_module_name_from_cmid((int)$old->requiredcmid) === 'assign') {
+                    $keepassign = (int)$old->requiredcmid;
+                }
+            }
             $clear = (object)[
                 'id' => $editionid,
-                'requiredcmid' => 0,
-                'requiredassigncmid' => 0,
+                'requiredcmid' => $keepassign,
+                'requiredassigncmid' => $keepassign,
                 'requiredquizcmid' => 0,
-                'requiredmodname' => '',
-                'activitycreationtype' => '',
+                'requiredmodname' => $keepassign > 0 ? 'assign' : '',
+                'activitycreationtype' => $keepassign > 0 ? 'assign' : '',
                 'timemodified' => $now,
             ];
             $DB->update_record('local_ga_workshop_editions', self::filter_record_to_existing_fields('local_ga_workshop_editions', $clear));
@@ -3745,7 +3762,10 @@ class manager {
 
     public static function get_edition_teachers(int $editionid): array {
         global $DB;
-        return $DB->get_records_sql("SELECT u.id, u.firstname, u.lastname, u.email
+        // All name fields, so fullname() never triggers "missing name fields"
+        // debugging (which, with developer debugging, breaks redirects).
+        $namefields = 'u.firstname, u.lastname, u.firstnamephonetic, u.lastnamephonetic, u.middlename, u.alternatename';
+        return $DB->get_records_sql("SELECT u.id, $namefields, u.email
                                        FROM {local_ga_edition_teachers} et
                                        JOIN {user} u ON u.id = et.userid
                                       WHERE et.editionid = :editionid

@@ -974,6 +974,7 @@ class workshop_series {
             'module' => (int)$module->id,
             'modulename' => 'subsection',
             'add' => 'subsection',
+            'cmidnumber' => '',
             'section' => $parentsectionnum,
             'name' => $name,
             'visible' => 1,

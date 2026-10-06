@@ -48,7 +48,7 @@ if ($action === 'publish' && $id > 0 && confirm_sesskey()) {
         workshop_series::refresh_for_workshop((int)$workshop->id);
         course_layout::synchronise_course((int)$course->id);
         redirect(
-            new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']),
+            new moodle_url('/local/gestion_actividades/edition_edit.php', ['id' => $id, 'workshopid' => $workshopid]),
             $ok ? 'Taller publicado/actualizado en el curso.' : 'No se pudo publicar el taller en el curso.',
             null,
             $ok ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_WARNING
@@ -213,12 +213,26 @@ if (data_submitted() && confirm_sesskey()) {
         // Refresh the calendar/date range shown in the course.
         workshop_series::ensure_course_structure((int)$seriesextension->seriesid);
     }
+    // Saving also publishes: the same steps as «Publicar en curso», so the
+    // course shows the changes without a second click.
+    $published = false;
+    $freshworkshop = manager::get_workshop($workshopid);
+    if (manager::is_workshop_publishable($freshworkshop)) {
+        $published = manager::ensure_workshop_course_visuals_safely($workshopid);
+        workshop_series::refresh_for_workshop($workshopid);
+    }
     course_layout::synchronise_course((int)$course->id);
-    $savedmessage = get_string('changessaved');
+    $savedmessage = $published ? 'Cambios guardados y publicados en el curso.' : get_string('changessaved');
     if ($seriesextension) {
         $savedmessage .= ' ' . workshop_series::extension_message($seriesextension);
     }
-    redirect(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $istypebworkshop ? 'typeb' : 'typea']), $savedmessage,
+    // Stay on this same form after saving.
+    redirect(new moodle_url('/local/gestion_actividades/edition_edit.php', [
+            'id' => $savededitionid,
+            'workshopid' => $workshopid,
+            'seriesid' => $seriesid,
+            'sortorder' => $sortorder,
+        ]), $savedmessage,
         null, $seriesextension ? \core\output\notification::NOTIFY_WARNING : \core\output\notification::NOTIFY_SUCCESS);
 }
 
