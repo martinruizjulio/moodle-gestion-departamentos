@@ -472,7 +472,17 @@ Prueba real en navegador (Chromium + Moodle 5.0.11, alumno real): Apuntarme → 
 
 Julio instaló los ZIP de `7467de6` (local 1.5.141-alpha, bloque 1.0.26-alpha) en su Moodle y confirma que el funcionamiento es correcto («Está perfecto»): creación de talleres con grupo, asistencia y cuestionario/reflexión; Apuntarme/Desapuntarme con recarga en el sitio.
 
+## Carpeta de materiales por taller (2026-10-06, 1.5.142-alpha / `2026100557`)
+
+Decisión de Julio: los archivos de un taller solo los ve el alumnado apuntado a ese taller, desde que el taller empieza hasta que termina (cierra) el cuestionario.
+
+- Nueva clase `classes/local/materials_folder.php`: cada taller de una Edición recibe una carpeta Moodle «Materiales T0X» (idnumber `HEE_EDITION_<id>_MATERIALS`) dentro de su subsección TALLER; el profesor solo arrastra archivos.
+- Disponibilidad: grupo del taller (oculta a los demás) Y desde el inicio del taller Y hasta el cierre del cuestionario (`quiz.timeclose`). Tipo B: hasta el plazo de la reflexión (`cutoffdate`, si no `duedate`). Sin fecha de cierre no hay límite final.
+- Se recalcula en cada sincronización de la estructura (cambio de fecha del taller) y con el observador `\core\event\course_module_updated` cuando se cambian las fechas del cuestionario o de la reflexión.
+- Prueba real (Moodle 5.0.11, 8 talleres A/B manual y Excel): carpeta creada en su subsección; apuntado antes del inicio → «Disponible a partir de…» sin acceso; taller empezado → acceso; alumno no apuntado → no la ve; al fijar/adelantar el cierre del cuestionario o del plazo de reflexión la carpeta se limita y, cerrado, deja de estar accesible. 303 comprobaciones correctas en total.
+- Los materiales subidos por «Añadir material» de Gestión HEE mantienen su regla anterior (apuntado y desde el inicio, sin límite final).
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.141-alpha** (`2026100556`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.142-alpha** (`2026100557`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
