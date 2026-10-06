@@ -370,7 +370,15 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - La plantilla XLSX descargable elimina la columna obsoleta **Crear cuestionario**; conserva **Cierre cuestionario**.
 - No hay cambios de esquema ni savepoint nuevo.
 
+**Unificación real de creación Tipo A (2026-10-06):**
+- Creación manual e importación Excel usan ahora la misma rutina canónica `ensure_typea_default_activities()`.
+- Todo Taller Tipo A moderno garantiza grupo Moodle + **Asistencia** + **Cuestionario vacío**; si ya existen, se reutilizan.
+- En creación manual, primero se vincula el taller a su Edición y después se crean las actividades, evitando que caigan en el flujo legacy.
+- En importación Excel se elimina la llamada legacy `ensure_workshop_course_visuals_safely()`.
+- Tras cada importación Tipo A se valida explícitamente que el cuestionario CMID exista y esté vinculado; si no, la importación falla en vez de mostrar éxito incompleto.
+- No hay cambios de esquema ni savepoint nuevo.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.131-alpha** (`2026100546`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.132-alpha** (`2026100547`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
