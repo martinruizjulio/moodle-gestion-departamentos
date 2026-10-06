@@ -26,12 +26,24 @@ function local_ga_wr_send_csv(array $rows): void {
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     echo "\xEF\xBB\xBF";
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['Taller', 'Edición', 'Alumno', 'Horas', 'Actividad', 'Estado actividad', 'Resultado', 'Asistencia'], ';');
+    fputcsv($out, ['Apellidos', 'Nombre', 'Correo', 'Taller', 'Edición', 'Horas', 'Calificación', 'Asistencia', 'Resultado'], ';');
     foreach ($rows as $row) {
         fputcsv($out, $row, ';');
     }
     fclose($out);
     exit;
+}
+
+function local_ga_wr_series_title(int $seriesid, string $fallback): string {
+    global $DB;
+    static $cache = [];
+    if ($seriesid <= 0) {
+        return $fallback;
+    }
+    if (!array_key_exists($seriesid, $cache)) {
+        $cache[$seriesid] = (string)$DB->get_field(\local_gestion_actividades\local\workshop_series::TABLE, 'title', ['id' => $seriesid]);
+    }
+    return $cache[$seriesid] !== '' ? $cache[$seriesid] : $fallback;
 }
 
 function local_ga_wr_activity_status(stdClass $edition, stdClass $workshop, int $userid, $attended): array {
@@ -44,9 +56,8 @@ function local_ga_wr_activity_status(stdClass $edition, stdClass $workshop, int 
         $summary = typeb_reflection_activity::submission_summary((int)$edition->id, $userid);
         $submitted = !empty($summary->submitted);
         return [
-            'Tarea Moodle de reflexión',
             $submitted ? 'Reflexión entregada' : 'Reflexión pendiente',
-            ($attendanceok && $submitted) ? 'Apto' : 'Pendiente',
+            ($attendanceok && $submitted) ? 'Apto' : ($submitted ? 'No apto' : 'Pendiente'),
         ];
     }
 
@@ -55,21 +66,21 @@ function local_ga_wr_activity_status(stdClass $edition, stdClass $workshop, int 
         $requirement = manager::get_quiz_requirement($edition);
         $cmid = (int)$requirement->cmid;
         if ($cmid <= 0) {
-            return ['Cuestionario Moodle', 'Pendiente de vincular', 'Pendiente'];
+            return ['Sin cuestionario', 'Pendiente'];
         }
         $finished = manager::user_submitted_required_activity($userid, $cmid);
         $grade = $finished ? manager::get_user_quiz_grade_out_of_10($userid, $cmid) : null;
         if (!$finished) {
-            $status = 'Cuestionario no finalizado';
+            $status = 'No realizado';
             $result = 'Pendiente';
         } else if ($grade === null) {
-            $status = 'Finalizado · pendiente de calificación';
+            $status = 'Pendiente de calificar';
             $result = 'Pendiente';
         } else {
-            $status = 'Finalizado · ' . format_float((float)$grade, 2, true) . '/10';
+            $status = format_float((float)$grade, 2, true);
             $result = ($attendanceok && (float)$grade >= (float)$requirement->minimum) ? 'Apto' : 'No apto';
         }
-        return ['Cuestionario Moodle', $status, $result];
+        return [$status, $result];
     }
 
     // Compatibilidad histórica: algunas ediciones Tipo A antiguas usaban una tarea interna.
@@ -85,14 +96,13 @@ function local_ga_wr_activity_status(stdClass $edition, stdClass $workshop, int 
         ? (float)$submission->grade
         : null;
     if (!$submitted) {
-        return ['Tarea Moodle (histórica)', 'No entregada', 'Pendiente'];
+        return ['No entregada', 'Pendiente'];
     }
     if ($grade === null) {
-        return ['Tarea Moodle (histórica)', 'Entregada · pendiente de nota', 'Pendiente'];
+        return ['Pendiente de calificar', 'Pendiente'];
     }
     return [
-        'Tarea Moodle (histórica)',
-        'Entregada · ' . format_float($grade, 2, true) . '/10',
+        format_float($grade, 2, true),
         ($attendanceok && $grade >= 5.0) ? 'Apto' : 'No apto',
     ];
 }
@@ -118,6 +128,7 @@ if ($selected) {
     $sql = "SELECT " . $DB->sql_concat('e.id', "'-'", 'u.id') . " AS uniqid,
                    e.id AS editionid,
                    e.name AS editionname,
+                   e.seriesid,
                    w.id AS workshopid,
                    w.name AS workshopname,
                    w.code AS workshopcode,
@@ -133,13 +144,13 @@ if ($selected) {
               JOIN {local_ga_edition_enrolments} ee ON ee.editionid = e.id AND " . manager::active_enrolment_sql('ee') . "
               JOIN {user} u ON u.id = ee.userid AND u.deleted = 0
              WHERE e.id $insql
-          ORDER BY w.name ASC, e.sessiondate ASC, e.id ASC, u.lastname ASC, u.firstname ASC";
+          ORDER BY e.sessiondate ASC, w.code ASC, e.id ASC, u.lastname ASC, u.firstname ASC";
     $records = $DB->get_records_sql($sql, $params);
 
     foreach ($records as $r) {
         $edition = manager::get_workshop_edition((int)$r->editionid);
         $workshop = manager::get_workshop((int)$r->workshopid);
-        [$activity, $activitystatus, $result] = local_ga_wr_activity_status(
+        [$grade, $result] = local_ga_wr_activity_status(
             $edition,
             $workshop,
             (int)$r->userid,
@@ -149,14 +160,15 @@ if ($selected) {
             ? 'Sin registrar'
             : (!empty($r->attended) ? 'Presente' : 'Ausente');
         $reportrows[] = [
+            (string)$r->lastname,
+            (string)$r->firstname,
+            (string)$r->email,
             trim((string)$r->workshopcode . ' - ' . (string)$r->workshopname, ' -'),
-            (string)($r->editionname ?: '-'),
-            fullname($r),
+            local_ga_wr_series_title((int)($r->seriesid ?? 0), (string)($r->editionname ?: '-')),
             format_float((float)$r->hours, 2, true),
-            $activity,
-            $activitystatus,
-            $result,
+            $grade,
             $attendance,
+            $result,
         ];
     }
 }
@@ -178,7 +190,7 @@ echo html_writer::div(
 echo $OUTPUT->heading('Listado personalizado de talleres');
 echo html_writer::tag(
     'p',
-    'Selecciona uno, varios o todos los talleres. El listado usa la actividad real de cada edición: cuestionario Moodle en Tipo A nuevo, tarea histórica cuando corresponda y reflexión Moodle en Tipo B.',
+    'Selecciona uno, varios o todos los talleres. Columnas: Apellidos, Nombre, Correo, Taller, Edición, Horas, Calificación (nota del cuestionario en Tipo A; reflexión entregada o pendiente en Tipo B), Asistencia y Resultado (Apto / No apto). Descargable en CSV para Excel.',
     ['class' => 'alert alert-info']
 );
 
@@ -249,7 +261,7 @@ if ($selected) {
     } else {
         $table = new html_table();
         $table->attributes['class'] = 'generaltable table-sm';
-        $table->head = ['Taller', 'Edición', 'Alumno', 'Horas', 'Actividad', 'Estado actividad', 'Resultado', 'Asistencia'];
+        $table->head = ['Apellidos', 'Nombre', 'Correo', 'Taller', 'Edición', 'Horas', 'Calificación', 'Asistencia', 'Resultado'];
         foreach ($reportrows as $row) {
             $table->data[] = array_map('s', $row);
         }

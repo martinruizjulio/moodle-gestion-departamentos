@@ -581,3 +581,7 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 
 ## 2026-10-07 · `local_hee_demo` 0.1.1-demo
 - Acceso directo en el curso: menú «Más» › «Datos de demostración HEE» (solo administradores del sitio), con el curso ya elegido. Motivo: la página no aparece en la tabla «Gestionar plugins locales»; solo como enlace en Administración › Plugins › Plugins locales. Validado en Moodle 5.0.11 local.
+
+## 2026-10-07 · local 1.5.153-alpha · Listado personalizado de talleres
+- `workshop_report.php` (tarjeta «8. Listado personalizado de talleres»): columnas **Apellidos · Nombre · Correo · Taller · Edición (título de la Edición) · Horas · Calificación · Asistencia · Resultado**, en pantalla y en CSV. Calificación = nota /10 del cuestionario (Tipo A) o «Reflexión entregada/pendiente» (Tipo B); Resultado Apto/No apto. Orden: fecha del taller, código, apellidos.
+- Validado en Moodle 5.0.11 local con la demo (320 filas, CSV descargado y revisado).
