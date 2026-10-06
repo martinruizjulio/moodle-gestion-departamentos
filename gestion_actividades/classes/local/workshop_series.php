@@ -18,7 +18,7 @@ class workshop_series {
         global $DB;
         if (!$DB->get_manager()->table_exists(new \xmldb_table(self::TABLE))
                 || !$DB->get_manager()->table_exists(new \xmldb_table(self::ITEMTABLE))) {
-            throw new \coding_exception('El esquema de Ediciones de talleres no está instalado. Ejecuta la actualización de Moodle.');
+            throw new \coding_exception('El esquema de Ediciones de seminarios no está instalado. Ejecuta la actualización de Moodle.');
         }
     }
 
@@ -258,15 +258,18 @@ class workshop_series {
             'dateto' => $dateto,
         ], IGNORE_MULTIPLE);
         if ($conflict) {
-            throw new \RuntimeException('Este taller ya pertenece a otra Edición de talleres cuyo rango de fechas se solapa: ' . $conflict->title . '.');
+            throw new \RuntimeException('Este taller ya pertenece a otra Edición de seminarios cuyo rango de fechas se solapa: ' . $conflict->title . '.');
         }
     }
 
     /**
-     * Remove an Edición de seminarios from active management without deleting
-     * academic evidence. Linked concrete editions are archived/unlinked, the
-     * Moodle parent section is hidden, and the series container/items are
-     * removed. This is intentionally conservative for real student data.
+     * Remove an Edición de seminarios from active management. Only allowed
+     * while its editions have no academic evidence (enrolments, hours,
+     * certificates, reflections, submissions, transfers); otherwise the
+     * manager must use "Finalizar y ocultar", which keeps everything. When
+     * allowed, linked editions are archived/unlinked, the Moodle parent
+     * section is hidden (never deleted) and the series container/items are
+     * removed. No Moodle activity or student record is deleted.
      */
     public static function delete_series(int $seriesid): void {
         global $DB, $CFG;
@@ -277,6 +280,13 @@ class workshop_series {
         $editionids = self::editions_have_seriesid()
             ? $DB->get_fieldset_select('local_ga_workshop_editions', 'id', 'seriesid = :seriesid', ['seriesid' => $seriesid])
             : [];
+        $evidence = self::academic_evidence_summary(array_map('intval', $editionids));
+        if ($evidence) {
+            throw new \RuntimeException(
+                'No se puede borrar esta Edición porque ya contiene datos académicos (' . implode(', ', $evidence) . '). '
+                . 'Usa «Finalizar y ocultar»: conserva inscripciones, asistencia, reflexiones, certificados y horas, '
+                . 'y la mueve al histórico.');
+        }
         $columns = $DB->get_columns('local_ga_workshop_editions');
         foreach ($editionids as $editionid) {
             $update = (object)['id' => (int)$editionid, 'timemodified' => time()];
@@ -317,6 +327,43 @@ class workshop_series {
         manager::sync_workshop_section_summary((int)$series->courseid, 'typea');
         manager::sync_workshop_section_summary((int)$series->courseid, 'typeb');
         rebuild_course_cache((int)$series->courseid, true);
+    }
+
+    /**
+     * Academic evidence attached to the given editions, as human-readable
+     * labels with counts. An empty array means the editions are empty and the
+     * series can be withdrawn without losing anything a student produced.
+     *
+     * @param int[] $editionids
+     * @return string[]
+     */
+    public static function academic_evidence_summary(array $editionids): array {
+        global $DB;
+        $editionids = array_values(array_unique(array_filter(array_map('intval', $editionids))));
+        if (!$editionids) {
+            return [];
+        }
+        $checks = [
+            'local_ga_edition_enrolments' => 'inscripciones',
+            'local_ga_hour_history' => 'horas registradas',
+            'local_ga_certificates' => 'certificados',
+            'local_ga_typeb_reflections' => 'reflexiones',
+            'local_ga_task_submissions' => 'entregas',
+            'local_ga_typeb_transfers' => 'traspasos de horas',
+        ];
+        $dbman = $DB->get_manager();
+        $out = [];
+        [$insql, $params] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'ev');
+        foreach ($checks as $table => $label) {
+            if (!$dbman->table_exists(new \xmldb_table($table))) {
+                continue;
+            }
+            $count = $DB->count_records_select($table, "editionid $insql", $params);
+            if ($count > 0) {
+                $out[] = $count . ' ' . $label;
+            }
+        }
+        return $out;
     }
 
     public static function next_sortorder(int $seriesid): int {
@@ -559,9 +606,11 @@ class workshop_series {
                 ]);
             }
             self::update_calendar_section($calendarsectionid, $seriesid);
+            // Calendar first, then TALLER 01, TALLER 02... (items() is sorted).
+            $ordered = [$calendarcmid];
 
             foreach (self::items($seriesid) as $item) {
-                $title = sprintf('TALLER %02d: %s', (int)$item->sortorder, $item->name);
+                $title = self::subsection_title((int)$item->sortorder, (string)$item->name);
                 [$cmid, $sectionid] = self::ensure_subsection($course, (int)$section->section, (int)$item->subsectioncmid, $title);
                 if ($cmid !== (int)$item->subsectioncmid || $sectionid !== (int)$item->subsectionsectionid) {
                     $DB->update_record(self::ITEMTABLE, (object)[
@@ -573,7 +622,9 @@ class workshop_series {
                 }
                 self::configure_workshop_subsection($sectionid, $series, $item);
                 self::move_workshop_modules((int)$item->workshopid, $sectionid, (int)$item->notescmid, $series);
+                $ordered[] = $cmid;
             }
+            self::order_parent_section((int)$section->id, $ordered);
         } else {
             $DB->update_record('course_sections', (object)[
                 'id' => (int)$section->id,
@@ -653,6 +704,17 @@ class workshop_series {
                 $time .= '–' . $endtime;
             }
             $deadline = !empty($edition->enrolenddate) ? userdate((int)$edition->enrolenddate, '%d/%m/%Y %H:%M') : '-';
+            // This HTML is shared by every course user, so the link must not
+            // mutate anything: it opens the seminar page, which shows the
+            // user's own status and the sesskey-protected "Inscribirme".
+            // The label is constant because this HTML is cached in the section
+            // summary and must not go stale when the enrolment deadline passes.
+            $viewurl = new \moodle_url('/local/gestion_actividades/workshop_view.php', [
+                'id' => (int)$item->workshopid,
+                'editionid' => (int)$edition->id,
+            ]);
+            $access = '<a class="btn btn-sm btn-outline-primary" href="' . $viewurl->out(true) . '">'
+                . 'Ver / Inscribirme</a>';
             $rows[] = '<tr>' .
                 '<td style="padding:10px;white-space:nowrap;font-weight:700;border-bottom:1px solid #edf0ea">' . sprintf('%02d', (int)$item->sortorder) . '</td>' .
                 '<td style="padding:10px;border-bottom:1px solid #edf0ea"><strong>' . s($item->name) . '</strong></td>' .
@@ -662,10 +724,11 @@ class workshop_series {
                 '<td style="padding:10px;border-bottom:1px solid #edf0ea">' . s($teachernames ? implode(', ', $teachernames) : '-') . '</td>' .
                 '<td style="padding:10px;white-space:nowrap;text-align:center;border-bottom:1px solid #edf0ea">' . (int)$edition->places . '</td>' .
                 '<td style="padding:10px;white-space:nowrap;border-bottom:1px solid #edf0ea">' . s($deadline) . '</td>' .
+                '<td style="padding:10px;white-space:nowrap;border-bottom:1px solid #edf0ea">' . $access . '</td>' .
                 '</tr>';
         }
         $range = userdate((int)$series->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$series->dateto, '%d/%m/%Y');
-        $body = $rows ? implode('', $rows) : '<tr><td colspan="8" style="padding:16px;text-align:center;color:#687064">No hay talleres publicados en esta edición.</td></tr>';
+        $body = $rows ? implode('', $rows) : '<tr><td colspan="9" style="padding:16px;text-align:center;color:#687064">No hay talleres publicados en esta edición.</td></tr>';
         return '<div class="ga-workshop-calendar" style="max-width:1180px;margin:0 auto">' .
             '<div style="margin-bottom:14px"><h3 style="margin:0 0 3px">' . s($series->title) . '</h3><div style="color:#64705e">' . s($range) . '</div></div>' .
             '<div style="overflow-x:auto;border:1px solid #d7ddd2;border-radius:10px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.03)">' .
@@ -679,7 +742,43 @@ class workshop_series {
             '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Profesorado</th>' .
             '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:center">Plazas</th>' .
             '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Cierre inscripción</th>' .
+            '<th style="padding:10px;border-bottom:1px solid #d7ddd2;text-align:left">Acceso</th>' .
             '</tr></thead><tbody>' . $body . '</tbody></table></div></div>';
+    }
+
+    /**
+     * Canonical title of a workshop subsection inside its Edición. Shared with
+     * course_layout so both code paths never rename it differently.
+     */
+    public static function subsection_title(int $sortorder, string $name): string {
+        return sprintf('TALLER %02d: %s', $sortorder, trim($name));
+    }
+
+    /**
+     * Put the given course modules (calendar + workshop subsections) at the
+     * top of the parent section in the given order. Other modules a teacher
+     * added to the parent section keep their relative order after them.
+     * Only the order of the sequence changes; no module is added or removed.
+     */
+    private static function order_parent_section(int $sectionid, array $orderedcmids): void {
+        global $DB;
+        $section = $DB->get_record('course_sections', ['id' => $sectionid], 'id, course, sequence', IGNORE_MISSING);
+        if (!$section) {
+            return;
+        }
+        $current = array_values(array_filter(array_map('intval', explode(',', (string)$section->sequence))));
+        $wanted = array_values(array_filter(array_map('intval', $orderedcmids), static function(int $cmid) use ($current): bool {
+            return in_array($cmid, $current, true);
+        }));
+        $wanted = array_values(array_unique($wanted));
+        $rest = array_values(array_filter($current, static function(int $cmid) use ($wanted): bool {
+            return !in_array($cmid, $wanted, true);
+        }));
+        $sequence = array_merge($wanted, $rest);
+        if ($sequence !== $current) {
+            $DB->set_field('course_sections', 'sequence', implode(',', $sequence), ['id' => $sectionid]);
+            rebuild_course_cache((int)$section->course, true);
+        }
     }
 
     private static function subsections_supported(): bool {

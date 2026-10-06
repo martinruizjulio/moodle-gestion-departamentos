@@ -473,6 +473,24 @@ class manager {
         return self::get_workshop_type($workshop) === 'typeb';
     }
 
+    /**
+     * Section number of the Edición parent section an edition is linked to
+     * (seriesid), or -1 when the edition is legacy or the section is missing.
+     */
+    public static function series_parent_section_number(\stdClass $edition, int $courseid): int {
+        global $DB;
+        $seriesid = (int)($edition->seriesid ?? 0);
+        if ($seriesid <= 0 || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_series'))) {
+            return -1;
+        }
+        $sectionid = (int)$DB->get_field('local_ga_workshop_series', 'sectionid', ['id' => $seriesid, 'courseid' => $courseid]);
+        if ($sectionid <= 0) {
+            return -1;
+        }
+        $num = $DB->get_field('course_sections', 'section', ['id' => $sectionid, 'course' => $courseid]);
+        return $num === false ? -1 : (int)$num;
+    }
+
     public static function ensure_workshop_sections(int $courseid): \stdClass {
         return (object)[
             'main' => self::get_or_create_course_section($courseid, self::get_main_workshop_section_name()),
@@ -522,7 +540,13 @@ class manager {
             return $result;
         }
 
-        $sectionnum = self::get_or_create_course_section((int)$course->id, self::get_main_workshop_section_name());
+        // Modern editions: create the activity inside their Edición so no
+        // legacy TALLERES TIPO A section is created; ensure_course_structure()
+        // then moves it into the edition's TALLER subsection.
+        $sectionnum = self::series_parent_section_number($edition, (int)$course->id);
+        if ($sectionnum < 0) {
+            $sectionnum = self::get_or_create_course_section((int)$course->id, self::get_main_workshop_section_name());
+        }
 
         $name = $type === 'quiz'
             ? get_string('quizforworkshop', 'local_gestion_actividades', $workshop->name)
@@ -1020,14 +1044,20 @@ class manager {
      */
     public static function sync_workshop_section_summary(int $courseid, string $type = 'typea'): bool {
         global $DB, $CFG;
+        if (self::$legacysyncsuspended > 0) {
+            // A bulk import is creating editions that will be attached to an
+            // Edición moments later; rendering them now would create the
+            // legacy TALLERES TIPO A/B section for nothing.
+            return true;
+        }
         require_once($CFG->dirroot . '/course/lib.php');
 
         $sectionname = self::get_main_workshop_section_name_for_type($type);
 
         // Once a course uses the modern Edición de seminarios structure for
-        // this type, the parallel legacy TALLERES TIPO A/B surface must not be
-        // rendered at all. Otherwise importing a new Excel appears to "bring
-        // back" every old workshop alongside the new edition.
+        // this type, old workshops must not "come back" in the legacy
+        // TALLERES TIPO A/B surface when a new Excel is imported (see the
+        // filter below). Legacy-only courses keep their cards unchanged.
         $modernseries = false;
         if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_series'))
                 && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_series_items'))) {
@@ -1044,7 +1074,6 @@ class manager {
         }
 
         $cards = '';
-        if (!$modernseries) {
         foreach (self::list_workshops($courseid, $type) as $workshop) {
             if (!self::is_workshop_publishable($workshop)) {
                 continue;
@@ -1058,8 +1087,18 @@ class manager {
             if (property_exists($edition, 'seriesid') && (int)$edition->seriesid > 0) {
                 continue;
             }
+            if ($modernseries) {
+                // Mixed course: once this type uses Ediciones, the legacy
+                // section only keeps genuinely open legacy editions (enrolment
+                // still open, workshop not attached to any Edición). Old
+                // workshops nobody finished explicitly no longer reappear,
+                // but a still-open legacy seminar keeps its enrolment card.
+                if (self::is_edition_enrolment_closed($edition)
+                        || workshop_series::item_for_workshop((int)$workshop->id)) {
+                    continue;
+                }
+            }
             $cards .= self::render_workshop_card($workshop, $edition);
-        }
         }
 
         $section = null;
@@ -1104,6 +1143,17 @@ class manager {
             rebuild_course_cache($courseid, true);
         }
         return true;
+    }
+
+    /** @var int Nesting counter used by suspend_legacy_section_sync(). */
+    private static $legacysyncsuspended = 0;
+
+    /**
+     * Temporarily skip the legacy TALLERES TIPO A/B summary rebuild (used by
+     * the Excel import while editions are not yet linked to their Edición).
+     */
+    public static function suspend_legacy_section_sync(bool $suspend): void {
+        self::$legacysyncsuspended = max(0, self::$legacysyncsuspended + ($suspend ? 1 : -1));
     }
 
     public static function ensure_workshop_url_in_main_section(\stdClass $workshop): bool {
@@ -1278,6 +1328,17 @@ class manager {
         if ($source !== 'manual' && !empty($edition->enrolenddate) && $now > (int)$edition->enrolenddate) {
             $result->message = get_string('enrolclosed', 'local_gestion_actividades');
             return $result;
+        }
+
+        // Self-enrolment never reopens an archived/finished edition or one whose
+        // Edición de talleres is finished (enrol.php can be reached directly).
+        if ($source !== 'manual') {
+            $series = workshop_series::series_for_edition($editionid);
+            if (!empty($edition->archived) || self::is_edition_finished($edition)
+                    || ($series && (string)($series->status ?? '') === 'finished')) {
+                $result->message = get_string('enrolclosed', 'local_gestion_actividades');
+                return $result;
+            }
         }
 
         $existing = self::get_edition_enrolment($editionid, $userid);

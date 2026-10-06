@@ -206,7 +206,7 @@ class course_layout {
             self::rename_section(
                 $courseid,
                 (int)$item->subsectionsectionid,
-                sprintf('Seminario %02d · %s', (int)$item->sortorder, (string)$item->name)
+                workshop_series::subsection_title((int)$item->sortorder, (string)$item->name)
             );
         }
     }
@@ -216,6 +216,10 @@ class course_layout {
         $section = $DB->get_record('course_sections', ['id' => $sectionid, 'course' => $courseid], '*', IGNORE_MISSING);
         if ($section && (string)$section->name !== $name) {
             course_update_section($courseid, $section, ['name' => $name]);
+            // Keep the mod_subsection instance name aligned with its section.
+            if ((string)($section->component ?? '') === 'mod_subsection' && (int)($section->itemid ?? 0) > 0) {
+                $DB->set_field('subsection', 'name', $name, ['id' => (int)$section->itemid]);
+            }
         }
     }
 

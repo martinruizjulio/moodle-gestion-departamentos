@@ -127,6 +127,10 @@ class bulk_workshops {
             'messages' => $seriesextension ? [workshop_series::extension_message($seriesextension)] : [],
         ];
         $transaction = $DB->start_delegated_transaction();
+        // New editions get their seriesid in attach_workshop(); until then the
+        // legacy section renderer must not see them as legacy seminars.
+        manager::suspend_legacy_section_sync(true);
+        $suspended = true;
         try {
             $order = workshop_series::next_sortorder($seriesid);
             foreach ($validrows as $row) {
@@ -145,6 +149,12 @@ class bulk_workshops {
                     'activitycreationtype' => $defaultactivitytype,
                     'status' => 'open', 'teachers' => $row['teacherids'],
                 ]);
+                // Link the edition to its Edición now (attach_workshop() below
+                // confirms it) so generated activities are created inside the
+                // Edición and never in a legacy TALLERES TIPO A/B section.
+                if (array_key_exists('seriesid', $DB->get_columns('local_ga_workshop_editions'))) {
+                    $DB->set_field('local_ga_workshop_editions', 'seriesid', $seriesid, ['id' => $editionid]);
+                }
                 $edition = manager::get_workshop_edition($editionid);
 
                 // Keep bulk creation aligned with the canonical rule: every new
@@ -194,9 +204,14 @@ class bulk_workshops {
                 $summary->messages[] = $row['code'] . ': creado como Taller ' . sprintf('%02d', $order) . ' de ' . $series->title . '.';
                 $order++;
             }
+            manager::suspend_legacy_section_sync(false);
+            $suspended = false;
             workshop_series::ensure_course_structure($seriesid);
             $transaction->allow_commit();
         } catch (\Throwable $e) {
+            if ($suspended) {
+                manager::suspend_legacy_section_sync(false);
+            }
             $transaction->rollback($e);
         }
         @unlink(self::path_from_token($token));
