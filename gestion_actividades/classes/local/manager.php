@@ -1533,6 +1533,18 @@ class manager {
         // Any active state (enrolled/attended/manual) is kept as is: re-adding
         // must neither reset 'attended' nor add another manual place.
         if (self::is_active_enrolment($existing)) {
+            try {
+                $groupid = self::get_or_create_edition_group($editionid);
+                if (!groups_is_member($groupid, $userid)) {
+                    if (!groups_add_member($groupid, $userid)) {
+                        $result->message = 'La inscripción existe, pero Moodle no ha podido añadir al alumno al grupo del taller.';
+                        return $result;
+                    }
+                }
+            } catch (\Throwable $e) {
+                $result->message = 'La inscripción existe, pero no se ha podido sincronizar el grupo del taller: ' . $e->getMessage();
+                return $result;
+            }
             $result->success = true;
             $result->message = get_string('alreadyenrolled', 'local_gestion_actividades');
             return $result;
@@ -1553,11 +1565,16 @@ class manager {
                 $newgroupid = self::get_or_create_edition_group((int)$editionid);
                 $edition->groupid = $newgroupid;
             }
-            if (!empty($edition->groupid) && $DB->record_exists('groups', ['id' => (int)$edition->groupid])) {
-                groups_add_member((int)$edition->groupid, $userid);
+            if (empty($edition->groupid)
+                    || !$DB->record_exists('groups', ['id' => (int)$edition->groupid])
+                    || (!groups_is_member((int)$edition->groupid, $userid)
+                        && !groups_add_member((int)$edition->groupid, $userid))) {
+                $result->message = 'Moodle no ha podido añadir al alumno al grupo del taller. La inscripción no se ha guardado.';
+                return $result;
             }
         } catch (\Throwable $e) {
-            // Do not block internal enrolment if group creation/add fails.
+            $result->message = 'No se ha podido añadir al alumno al grupo del taller: ' . $e->getMessage();
+            return $result;
         }
 
         $record = (object)[
