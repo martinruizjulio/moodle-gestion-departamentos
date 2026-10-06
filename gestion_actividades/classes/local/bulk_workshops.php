@@ -104,9 +104,6 @@ class bulk_workshops {
         $minstart = 0;
         $maxend = 0;
         foreach ($validrows as $row) {
-            if (!empty($row['createquiz']) && $quiztemplatecmid <= 0) {
-                throw new \RuntimeException('Hay talleres que requieren cuestionario. Selecciona un cuestionario Moodle modelo antes de confirmar.');
-            }
             $minstart = $minstart > 0 ? min($minstart, (int)$row['sessiondate']) : (int)$row['sessiondate'];
             $maxend = max($maxend, (int)$row['sessionenddate']);
         }
@@ -196,18 +193,32 @@ class bulk_workshops {
                         throw new \RuntimeException($row['code'] . ': ' . ($reflection->message ?? 'no se pudo crear la tarea de reflexión Tipo B.'));
                     }
                     $summary->reflectioncreated++;
-                } else if (!empty($row['createquiz'])) {
+                } else if ($quiztemplatecmid > 0) {
+                    // Optional advanced path: explicitly duplicate one selected
+                    // model instead of creating the normal empty quiz.
                     require_once($CFG->dirroot . '/course/lib.php');
-                    $quizcmid = self::duplicate_template($course, $quiztemplatecmid, $groupid, 'Cuestionario T-' . (int)$order, $row['quizclose']);
+                    $quizcmid = self::duplicate_template(
+                        $course,
+                        $quiztemplatecmid,
+                        $groupid,
+                        'Cuestionario T-' . (int)$order,
+                        $row['quizclose']
+                    );
                     $columns = $DB->get_columns('local_ga_workshop_editions');
-                    $update = (object)['id' => $editionid, 'requiredcmid' => $quizcmid, 'requiredmodname' => 'quiz', 'activitycreationtype' => 'quiz', 'timemodified' => time()];
+                    $update = (object)[
+                        'id' => $editionid,
+                        'requiredcmid' => $quizcmid,
+                        'requiredmodname' => 'quiz',
+                        'activitycreationtype' => 'quiz',
+                        'timemodified' => time(),
+                    ];
                     if (isset($columns['requiredquizcmid'])) $update->requiredquizcmid = $quizcmid;
                     if (isset($columns['requiredassigncmid'])) $update->requiredassigncmid = 0;
                     $DB->update_record('local_ga_workshop_editions', $update);
                     $summary->quizcreated++;
                 } else {
-                    // Type A always starts with a real, empty Moodle quiz.
-                    // The Excel flag only controls whether a model is duplicated.
+                    // Canonical Type A path: always create a real empty Moodle
+                    // quiz. No model or Excel flag is required.
                     $quiz = manager::create_required_activity_for_edition($editionid, null, 'quiz');
                     if (empty($quiz->success) || empty($quiz->cmid)) {
                         throw new \RuntimeException($row['code'] . ': ' . ($quiz->message ?? 'no se pudo crear el cuestionario vacío.'));
@@ -264,9 +275,21 @@ class bulk_workshops {
 
     private static function module_templates(int $courseid, string $modname, bool $placeholder): array {
         global $DB;
-        $out = $placeholder ? [0 => 'Selecciona un cuestionario modelo vacío'] : [];
-        $sql = "SELECT cm.id, x.name FROM {course_modules} cm JOIN {modules} m ON m.id=cm.module JOIN {{$modname}} x ON x.id=cm.instance WHERE cm.course=:courseid AND m.name=:modname AND cm.deletioninprogress=0 ORDER BY x.name";
+        $out = $placeholder ? [0 => 'No duplicar modelo · crear cuestionario vacío automáticamente'] : [];
+        $sql = "SELECT cm.id, cm.idnumber, x.name
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module
+                  JOIN {{$modname}} x ON x.id = cm.instance
+                 WHERE cm.course = :courseid
+                   AND m.name = :modname
+                   AND cm.deletioninprogress = 0
+              ORDER BY x.name";
         foreach ($DB->get_records_sql($sql, ['courseid' => $courseid, 'modname' => $modname]) as $row) {
+            if ($modname === 'quiz'
+                    && (strpos((string)($row->idnumber ?? ''), 'HEE_') === 0
+                        || preg_match('/^Cuestionario T-\\d+$/u', trim((string)$row->name)))) {
+                continue;
+            }
             $out[(int)$row->id] = format_string($row->name) . ' (CMID ' . (int)$row->id . ')';
         }
         return $out;
@@ -290,8 +313,18 @@ class bulk_workshops {
             if ($table === 'quiz' && $timeclose > 0 && isset($columns['timeclose'])) $record->timeclose = $timeclose;
             $DB->update_record($table, $record);
         }
+        $cmcolumns = $DB->get_columns('course_modules');
+        if (isset($cmcolumns['visible'])) {
+            $DB->set_field('course_modules', 'visible', 1, ['id' => $newcmid]);
+        }
+        if (isset($cmcolumns['visibleoncoursepage'])) {
+            $DB->set_field('course_modules', 'visibleoncoursepage', 1, ['id' => $newcmid]);
+        }
+        if (isset($cmcolumns['idnumber'])) {
+            $DB->set_field('course_modules', 'idnumber', 'HEE_DUPLICATED_' . strtoupper($table) . '_' . $newcmid, ['id' => $newcmid]);
+        }
         if ($groupid > 0) {
-            $availability = json_encode(['op' => '&', 'c' => [['type' => 'group', 'id' => $groupid]], 'showc' => [false]], JSON_UNESCAPED_SLASHES);
+            $availability = json_encode(['op' => '&', 'c' => [['type' => 'group', 'id' => $groupid]], 'showc' => [true]], JSON_UNESCAPED_SLASHES);
             $DB->set_field('course_modules', 'availability', $availability, ['id' => $newcmid]);
         }
         rebuild_course_cache($course->id, true);
