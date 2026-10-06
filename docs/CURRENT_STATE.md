@@ -331,7 +331,12 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Antes de borrar un contenedor HEE, cualquier actividad restante se mueve a la sección oculta de conservación; después se eliminan las subsecciones generadas y la sección padre si queda vacía.
 - La pantalla de limpieza informa por separado de las secciones Moodle HEE y de las secciones huérfanas eliminadas.
 
+**Corrección de la pantalla de limpieza con admin ya vacío (2026-10-06):**
+- La purga ya podía eliminar estructuras Moodle HEE huérfanas, pero la interfaz ocultaba el botón cuando `workshops=0` y `series=0`. Esto impedía ejecutar precisamente la limpieza visual después de una purga administrativa previa.
+- `course_test_data_summary()` cuenta ahora también **estructuras HEE huérfanas en el curso** (secciones legacy `TALLERES TIPO A/B`, secciones `Eliminada · …` y padres con calendario HEE).
+- `test_cleanup.php` muestra ese recuento y permite ejecutar **BORRAR PRUEBAS** aunque todos los registros administrativos estén a cero, siempre que queden estructuras HEE Moodle.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.126-alpha** (`2026100541`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.127-alpha** (`2026100542`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
