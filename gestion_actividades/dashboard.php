@@ -107,11 +107,23 @@ function local_ga_dash_course_series_url(stdClass $series): moodle_url {
     return new moodle_url('/course/view.php', $params);
 }
 
-$returncourseid = $courseid;
-if ($returncourseid <= 0) {
-    $fw = $DB->get_record_sql("SELECT courseid FROM {local_ga_workshops} ORDER BY id DESC", [], IGNORE_MULTIPLE);
-    $returncourseid = $fw ? (int)$fw->courseid : 0;
+// Preserve the Moodle course from which the manager entered Gestión HEE.
+// Several management pages can return to dashboard.php without carrying the
+// courseid parameter; using "the latest workshop course" as a fallback could
+// therefore send "Volver al curso" to the wrong place (and fails completely
+// after a test purge removes all workshop rows).
+if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
+    $SESSION->local_ga_return_courseid = $courseid;
 }
+
+$returncourseid = $courseid;
+if ($returncourseid <= 0 && !empty($SESSION->local_ga_return_courseid)) {
+    $candidatecourseid = (int)$SESSION->local_ga_return_courseid;
+    if ($DB->record_exists('course', ['id' => $candidatecourseid])) {
+        $returncourseid = $candidatecourseid;
+    }
+}
+
 $returncourse = $returncourseid > 0
     ? $DB->get_record('course', ['id' => $returncourseid], 'id,fullname,shortname', IGNORE_MISSING)
     : null;
