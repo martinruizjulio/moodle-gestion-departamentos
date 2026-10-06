@@ -2283,10 +2283,12 @@ class manager {
             if ($modname === false) {
                 continue;
             }
-            // Shared by several editions, course-wide tools or the final
-            // self-assessment: not HEE test material of one edition.
+            // Shared by several editions, course-wide tools, linked
+            // assign/quiz activities or the final self-assessment are preserved.
+            // There is no persistent ownership flag that can prove an assign/quiz
+            // was created by HEE rather than linked from existing course content.
             if ($count > 1 || $cmid === $selfassessmentcmid
-                    || in_array((string)$modname, ['attendance', 'customcert', 'certificate', 'subsection'], true)) {
+                    || in_array((string)$modname, ['assign', 'quiz', 'attendance', 'customcert', 'certificate', 'subsection'], true)) {
                 $summary->modulespreserved++;
                 continue;
             }
