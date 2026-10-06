@@ -2197,6 +2197,15 @@ class manager {
         $workshop = self::get_workshop($workshopid);
         $summary->labelsdeleted = self::delete_workshop_course_entries($workshop);
 
+        // Remove the workshop's modern Moodle subsection(s) before deleting
+        // edition/workshop records, otherwise empty HEE boxes survive in the
+        // course after the administrative data is gone.
+        try {
+            workshop_series::remove_workshop_structure($workshopid);
+        } catch (\Throwable $e) {
+            debugging('No se pudo retirar la estructura Moodle del taller ' . $workshopid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+
         if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_editions'))) {
             $editions = $DB->get_records('local_ga_workshop_editions', ['workshopid' => $workshopid]);
             foreach ($editions as $edition) {
