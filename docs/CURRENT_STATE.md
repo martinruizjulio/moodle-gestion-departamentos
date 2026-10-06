@@ -301,7 +301,17 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Los identificadores técnicos internos (`workshop_*`, tablas, clases y rutas) no se renombraron.
 - Verificación real sobre el árbol del repositorio con búsqueda recursiva: **0 apariciones del término anterior** en `gestion_actividades`, `gestion_hee` y `docs`.
 
+**Limpieza masiva de datos de prueba HEE (2026-10-06):**
+- Nueva pantalla `test_cleanup.php`, accesible desde **Talleres** y **Ediciones de talleres**.
+- Permite seleccionar un curso y ver antes del borrado cuántas Ediciones, talleres, ediciones concretas, inscripciones, certificados, horas, reflexiones, entregas, traspasos y grupos HEE contiene.
+- La ejecución exige POST + `sesskey` + escribir exactamente **BORRAR PRUEBAS** + confirmación del navegador.
+- El borrado está acotado al curso seleccionado y elimina datos HEE de Talleres/Ediciones de prueba, módulos Moodle referenciados por esos registros, grupos propios de las ediciones y archivos del componente en el contexto del curso.
+- **No** elimina usuarios Moodle, el curso, contenido ajeno a Gestión HEE, formaciones Tipo B externas ni reconocimiento institucional.
+- Después de la limpieza se invalidan cachés de alumnos/profesores, se recalculan las notas HEE del curso y se actualiza la disponibilidad de la autoevaluación.
+- Las secciones HEE padre solo se eliminan si quedan vacías; si Moodle detecta contenido restante, se conservan ocultas para no borrar contenido ajeno por error.
+- Validación estática: `php -l` correcto en `manager.php`, `test_cleanup.php`, `workshop_series.php` y `workshops.php`.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.122-alpha** (`2026100537`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.123-alpha** (`2026100538`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
