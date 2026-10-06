@@ -11,12 +11,14 @@ define([], function() {
         action.removeAttribute('aria-disabled');
 
         if (status.enrolled) {
-            action.classList.add('btn', 'disabled');
-            action.style.backgroundColor = '#dff3e4';
-            action.style.borderColor = '#9fd3ad';
-            action.style.color = '#1f6b35';
-            action.setAttribute('aria-disabled', 'true');
-            action.removeAttribute('href');
+            action.classList.add('btn', 'btn-outline-danger');
+            var editionid = action.getAttribute('data-editionid');
+            var root = (window.M && M.cfg && M.cfg.wwwroot) ? M.cfg.wwwroot : '';
+            var key = (window.M && M.cfg && M.cfg.sesskey) ? M.cfg.sesskey : '';
+            if (editionid && key) {
+                action.setAttribute('href', root + '/local/gestion_actividades/unenrol.php?id='
+                    + encodeURIComponent(editionid) + '&sesskey=' + encodeURIComponent(key));
+            }
         } else if (status.closed) {
             action.classList.add('btn', 'disabled');
             action.style.backgroundColor = '#fff0d5';
