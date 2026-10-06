@@ -122,13 +122,14 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
         'Entregas' => $summary->submissions,
         'Traspasos' => $summary->transfers,
         'Grupos de Edición' => $summary->groups,
+        'Estructuras HEE huérfanas en el curso' => $summary->orphanstructures,
     ] as $label => $value) {
         $preview->data[] = [$label, (int)$value];
     }
     echo html_writer::table($preview);
 
-    if ((int)$summary->workshops === 0 && (int)$summary->series === 0) {
-        echo $OUTPUT->notification('No hay datos de Talleres/Ediciones HEE que limpiar en este curso.', 'info');
+    if ((int)$summary->workshops === 0 && (int)$summary->series === 0 && (int)$summary->orphanstructures === 0) {
+        echo $OUTPUT->notification('No hay datos ni estructuras HEE que limpiar en este curso.', 'info');
     } else {
         echo html_writer::tag('p',
             'Esta acción es irreversible. Para confirmar, escribe exactamente <strong>BORRAR PRUEBAS</strong>.',
