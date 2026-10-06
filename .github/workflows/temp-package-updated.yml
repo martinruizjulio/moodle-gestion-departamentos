@@ -1,0 +1,32 @@
+name: Temporary package updated Moodle plugins
+
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-package-updated.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package local plugin
+        run: |
+          mkdir -p dist
+          zip -r dist/local_gestion_actividades.zip gestion_actividades -x "*/.git/*"
+      - name: Package block plugin
+        run: |
+          zip -r dist/block_gestion_hee.zip gestion_hee -x "*/.git/*"
+      - name: Upload local plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: local_gestion_actividades
+          path: dist/local_gestion_actividades.zip
+      - name: Upload block plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: block_gestion_hee
+          path: dist/block_gestion_hee.zip
