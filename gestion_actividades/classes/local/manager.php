@@ -509,6 +509,80 @@ class manager {
 
 
 
+    /**
+     * Create the Moodle Attendance activity for one concrete workshop edition.
+     * The activity is linked through attendancecmid and restricted to the
+     * edition group. Returns success=false when mod_attendance is unavailable.
+     */
+    public static function create_attendance_activity_for_edition(int $editionid, string $name = ''): \stdClass {
+        global $DB, $CFG;
+
+        require_once($CFG->dirroot . '/course/lib.php');
+        require_once($CFG->dirroot . '/course/modlib.php');
+
+        $result = (object)['success' => false, 'message' => '', 'cmid' => 0];
+        $edition = self::get_workshop_edition($editionid);
+        $workshop = self::get_workshop((int)$edition->workshopid);
+        $course = $DB->get_record('course', ['id' => (int)$workshop->courseid], '*', MUST_EXIST);
+
+        if (!empty($edition->attendancecmid)
+                && $DB->record_exists('course_modules', ['id' => (int)$edition->attendancecmid, 'course' => (int)$course->id])) {
+            $result->success = true;
+            $result->cmid = (int)$edition->attendancecmid;
+            $result->message = 'La actividad de asistencia ya existe.';
+            return $result;
+        }
+
+        if (!$DB->record_exists('modules', ['name' => 'attendance'])
+                || !$DB->get_manager()->table_exists(new \xmldb_table('attendance'))) {
+            $result->message = 'mod_attendance no está disponible en este Moodle.';
+            return $result;
+        }
+
+        $sectionnum = self::series_parent_section_number($edition, (int)$course->id);
+        if ($sectionnum < 0) {
+            $sectionnum = self::get_or_create_course_section((int)$course->id, self::get_main_workshop_section_name_for_type(self::get_workshop_type($workshop)));
+        }
+
+        $moduleinfo = (object)[
+            'course' => (int)$course->id,
+            'section' => $sectionnum,
+            'module' => (int)$DB->get_field('modules', 'id', ['name' => 'attendance'], MUST_EXIST),
+            'modulename' => 'attendance',
+            'name' => $name !== '' ? $name : ('Asistencia ' . (string)$workshop->code),
+            'visible' => 1,
+            'visibleoncoursepage' => 1,
+            'groupmode' => 0,
+            'groupingid' => 0,
+            'completion' => 0,
+            'intro' => '',
+            'introformat' => FORMAT_HTML,
+            'grade' => 0,
+        ];
+
+        try {
+            $created = add_moduleinfo($moduleinfo, $course);
+            $cmid = (int)($created->coursemodule ?? $created->coursemoduleid ?? $created->cmid ?? 0);
+            if ($cmid <= 0) {
+                $result->message = 'Moodle no ha devuelto el CMID de la actividad Attendance.';
+                return $result;
+            }
+
+            $DB->set_field('local_ga_workshop_editions', 'attendancecmid', $cmid, ['id' => $editionid]);
+            self::restrict_required_activity_to_edition_group($editionid, $cmid);
+            rebuild_course_cache((int)$course->id, true);
+
+            $result->success = true;
+            $result->cmid = $cmid;
+            $result->message = 'Actividad de asistencia creada.';
+            return $result;
+        } catch (\Throwable $e) {
+            $result->message = 'No se pudo crear Attendance: ' . $e->getMessage();
+            return $result;
+        }
+    }
+
+
     public static function create_required_activity_for_edition(int $editionid, ?int $userid = null, string $forcedtype = ''): \stdClass {
         global $DB, $CFG, $USER;
 
