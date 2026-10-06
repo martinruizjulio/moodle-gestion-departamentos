@@ -713,8 +713,11 @@ class workshop_series {
                 'id' => (int)$item->workshopid,
                 'editionid' => (int)$edition->id,
             ]);
-            $access = '<a class="btn btn-sm btn-outline-primary" href="' . $viewurl->out(true) . '">'
-                . 'Ver / Inscribirme</a>';
+            $access = '<span class="local-ga-card-actions" data-editionid="' . (int)$edition->id . '">'
+                . '<a class="btn btn-sm btn-primary local-ga-enrol-status" data-editionid="' . (int)$edition->id . '" '
+                . 'href="' . $viewurl->out(true) . '">Inscribirme</a> '
+                . '<a class="btn btn-sm btn-outline-secondary" href="' . $viewurl->out(true) . '">Ver taller</a>'
+                . '</span>';
             $rows[] = '<tr>' .
                 '<td style="padding:10px;white-space:nowrap;font-weight:700;border-bottom:1px solid #edf0ea">' . sprintf('%02d', (int)$item->sortorder) . '</td>' .
                 '<td style="padding:10px;border-bottom:1px solid #edf0ea"><strong>' . s($item->name) . '</strong></td>' .
