@@ -437,7 +437,21 @@ Decisiones de Julio: el Moodle de la universidad tiene `mod_attendance`; la asis
 
 Pendiente Moodle real: crear un taller → comprobar sesión creada para su grupo con fecha/duración correctas; pasar lista (Presente / Retraso / Falta) → solo Presente queda asistido en HEE; corregir Presente→Falta → se retira; con certificado emitido → no se retira; cambiar la fecha del taller antes de pasar lista → la sesión se mueve.
 
+## Cuestionario/reflexión vinculados al taller y su grupo — causa raíz y prueba real (2026-10-06, 1.5.138-alpha / `2026100553`)
+
+Problema real: al crear talleres (manual o Excel) el cuestionario no quedaba vinculado a su taller y grupo.
+
+Causas encontradas y corregidas:
+1. **Reutilización de un cuestionario ajeno (causa principal).** `get_required_activity_for_edition_by_type()` devolvía, si la edición no tenía actividad vinculada, cualquier cuestionario/tarea del curso cuyo nombre contuviera «cuestionario», «tarea» o «taller». Al crear el TALLER 02 se «encontraba» el cuestionario del TALLER 01: no se creaba uno nuevo, el TALLER 02 quedaba sin cuestionario y el del TALLER 01 se re-restringía al grupo del TALLER 02. Podía apropiarse también de un cuestionario propio del profesor. Ahora solo cuenta la actividad vinculada explícitamente a esa edición; las coincidencias por nombre quedan solo como sugerencia en «Vincular actividad».
+2. **Reflexión Tipo B imposible en Moodle 4.5/5.x**: faltaban campos obligatorios de `assign` (`cutoffdate`, `gradingduedate`, `markingworkflow`…) → «Error writing to database». Añadidos, junto con la configuración de envío (texto en línea + 1 archivo).
+3. **Transacción abierta tras un fallo**: `add_moduleinfo()` abre su propia transacción; al capturar el error y seguir, Moodle deshacía al final de la petición todo lo hecho después. Ahora se cierra (o, dentro de la importación Excel, se relanza para deshacer la importación completa).
+4. **Tipo B manual**: la edición se vincula a su Edición antes de crear asistencia y reflexión (como el Excel), evitando la ruta antigua que sacaba la actividad de la página del curso.
+
+**Prueba real ejecutada** (Moodle 5.0.11 + PostgreSQL 16 + mod_attendance MOODLE_500_STABLE, instalación limpia con ambos plugins): Tipo A y B manual y por Excel (2 talleres cada uno). 130 comprobaciones correctas: grupo propio, subsección TALLER con Apuntarme y restricción de grupo, asistencia y sesión del grupo con duración del taller, cuestionario/reflexión creados, distintos por taller, vinculados, dentro de su subsección, visibles y restringidos al grupo; alumno no inscrito sin acceso, inscrito con acceso; re-guardar no duplica ni renombra; asistencia (solo Presente, corrección Presente→Falta); calendario primero y orden TALLER 01/02; sin sección legacy; cuestionario propio del profesor intacto.
+
+Pendiente: cursos donde ya se crearon talleres con versiones anteriores pueden tener cuestionarios cruzados (restringidos al grupo de otro taller) o ediciones sin cuestionario: revisar en «Vincular actividad» de cada taller; no se corrige automáticamente para no tocar datos existentes.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.137-alpha** (`2026100552`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.138-alpha** (`2026100553`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
