@@ -1,0 +1,21 @@
+name: Temporary Type A creation validation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-typea-create-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          php -l gestion_actividades/classes/local/manager.php
+          php -l gestion_actividades/edition_edit.php
+          php -l gestion_actividades/classes/local/bulk_workshops.php
+          php -l gestion_actividades/classes/local/workshop_series.php
