@@ -1,0 +1,26 @@
+name: Temporary package local 1.5.131
+
+on:
+  push:
+    paths:
+      - '.github/workflows/temp-package-131.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          find gestion_actividades -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Package
+        run: |
+          zip -qr local_gestion_actividades_1.5.131-alpha.zip gestion_actividades
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: local_gestion_actividades_1.5.131-alpha
+          path: local_gestion_actividades_1.5.131-alpha.zip
