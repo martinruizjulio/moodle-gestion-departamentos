@@ -10,8 +10,14 @@ if (!manager::can_manage_globally((int)$USER->id)) {
 }
 
 $courseid = optional_param('courseid', 0, PARAM_INT);
-// 0 = whole course; otherwise only that Edición de talleres.
-$seriesid = optional_param('seriesid', 0, PARAM_INT);
+// What to delete must always be chosen explicitly: '' = nothing chosen yet,
+// 'all' = every Edición of the course, 's<ID>' = only that Edición.
+// There is NO default, so a single click can never turn into «delete all».
+$scope = optional_param('scope', '', PARAM_ALPHANUMEXT);
+$seriesid = preg_match('/^s(\d+)$/', $scope, $m) ? (int)$m[1] : 0;
+if ($scope !== 'all' && $seriesid <= 0) {
+    $scope = '';
+}
 $action = optional_param('action', '', PARAM_ALPHA);
 $message = '';
 $error = '';
@@ -25,8 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // user must also be able to manage that course's activities.
         require_capability('moodle/course:manageactivities', context_course::instance($courseid));
         $confirm = trim(required_param('confirmtext', PARAM_TEXT));
-        if ($confirm !== 'BORRAR PRUEBAS') {
-            $error = 'Escribe exactamente BORRAR PRUEBAS para confirmar la limpieza.';
+        $expected = $scope === 'all' ? 'BORRAR TODO' : 'BORRAR PRUEBAS';
+        if ($scope === '') {
+            $error = 'Elige primero qué quieres borrar.';
+        } else if ($seriesid > 0 && !$DB->record_exists('local_ga_workshop_series', ['id' => $seriesid, 'courseid' => $courseid])) {
+            $error = 'La Edición elegida no pertenece a este curso. No se ha borrado nada.';
+        } else if ($confirm !== $expected) {
+            $error = 'Escribe exactamente ' . $expected . ' para confirmar. No se ha borrado nada.';
         } else {
             try {
                 // Deleting many activities is slow (each one also goes through
@@ -35,11 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 \core_php_time_limit::raise();
                 raise_memory_limit(MEMORY_HUGE);
                 ignore_user_abort(true);
-                $seriesid = optional_param('seriesid', 0, PARAM_INT);
-                $result = manager::purge_course_test_data($courseid, $seriesid > 0 ? [$seriesid] : []);
-                $message = $seriesid > 0
-                    ? 'Edición borrada. El resto de Ediciones del curso no se ha tocado.'
-                    : 'Limpieza completada. El curso mantiene usuarios y contenido ajeno a Gestión HEE.';
+                $result = manager::purge_course_test_data($courseid, $scope === 'all' ? [] : [$seriesid]);
+                $message = $scope === 'all'
+                    ? 'Limpieza completada. El curso mantiene usuarios y contenido ajeno a Gestión HEE.'
+                    : 'Edición borrada. El resto de Ediciones del curso no se ha tocado.';
+                $scope = '';
                 $seriesid = 0;
             } catch (Throwable $e) {
                 $error = $e->getMessage();
@@ -115,12 +126,16 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
     // Step 2: what to delete — one Edición or the whole course.
     $courseseries = $DB->get_records('local_ga_workshop_series', ['courseid' => $courseid], 'datefrom ASC, id ASC');
     if ($seriesid > 0 && !isset($courseseries[$seriesid])) {
+        $scope = '';
         $seriesid = 0;
     }
     echo html_writer::start_div('card mb-4');
     echo html_writer::start_div('card-body');
     echo html_writer::tag('h3', '2. ¿Qué quieres borrar?', ['class' => 'h5']);
-    echo html_writer::start_tag('form', ['method' => 'get']);
+    echo html_writer::tag('p', 'Al marcar una opción se muestra al momento qué se borrará. No hay ninguna opción marcada por defecto.', ['class' => 'text-muted']);
+    // Choosing an option reloads the page with that scope, so the confirmation
+    // below always matches what is checked here.
+    echo html_writer::start_tag('form', ['method' => 'get', 'id' => 'ga-cleanup-scope']);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
     foreach ($courseseries as $cs) {
         $types = $DB->get_fieldset_sql("SELECT DISTINCT w.workshoptype FROM {local_ga_series_items} i
@@ -131,20 +146,27 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
             . userdate((int)$cs->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$cs->dateto, '%d/%m/%Y')
             . ((string)$cs->status === 'finished' ? ' · finalizada' : '');
         echo html_writer::start_div('form-check');
-        echo html_writer::empty_tag('input', ['type' => 'radio', 'class' => 'form-check-input', 'name' => 'seriesid',
-            'id' => 'series' . $cs->id, 'value' => $cs->id] + ($seriesid === (int)$cs->id ? ['checked' => 'checked'] : []));
+        echo html_writer::empty_tag('input', ['type' => 'radio', 'class' => 'form-check-input', 'name' => 'scope',
+            'id' => 'series' . $cs->id, 'value' => 's' . $cs->id, 'onchange' => 'this.form.submit()']
+            + ($seriesid === (int)$cs->id ? ['checked' => 'checked'] : []));
         echo html_writer::label('Solo la Edición «' . $label . '»', 'series' . $cs->id, false, ['class' => 'form-check-label']);
         echo html_writer::end_div();
     }
     echo html_writer::start_div('form-check mt-2');
-    echo html_writer::empty_tag('input', ['type' => 'radio', 'class' => 'form-check-input', 'name' => 'seriesid', 'id' => 'seriesall',
-        'value' => 0] + ($seriesid === 0 ? ['checked' => 'checked'] : []));
+    echo html_writer::empty_tag('input', ['type' => 'radio', 'class' => 'form-check-input', 'name' => 'scope', 'id' => 'seriesall',
+        'value' => 'all', 'onchange' => 'this.form.submit()'] + ($scope === 'all' ? ['checked' => 'checked'] : []));
     echo html_writer::label('<strong>Todas</strong> las Ediciones y datos HEE de prueba de este curso', 'seriesall', false, ['class' => 'form-check-label']);
     echo html_writer::end_div();
     echo html_writer::tag('button', 'Ver qué se borrará', ['type' => 'submit', 'class' => 'btn btn-primary mt-3']);
     echo html_writer::end_tag('form');
     echo html_writer::end_div();
     echo html_writer::end_div();
+
+    if ($scope === '') {
+        echo $OUTPUT->notification('Elige en el paso 2 qué Edición quieres borrar (o «Todas»). Hasta entonces no se puede borrar nada.', 'info');
+        echo $OUTPUT->footer();
+        exit;
+    }
 
     $summary = manager::course_test_data_summary($courseid, $seriesid > 0 ? [$seriesid] : []);
     $scopelabel = $seriesid > 0
@@ -179,8 +201,10 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
     if ((int)$summary->workshops === 0 && (int)$summary->series === 0 && (int)$summary->orphanstructures === 0) {
         echo $OUTPUT->notification('No hay datos ni estructuras HEE que limpiar en este curso.', 'info');
     } else {
+        $expected = $scope === 'all' ? 'BORRAR TODO' : 'BORRAR PRUEBAS';
         echo html_writer::tag('p',
-            'Esta acción es irreversible. Para confirmar, escribe exactamente <strong>BORRAR PRUEBAS</strong>.',
+            'Esta acción es irreversible. Se borrará <strong>' . $scopelabel . '</strong>. Para confirmar, escribe exactamente <strong>'
+                . $expected . '</strong>.',
             ['class' => 'alert alert-danger']
         );
         echo html_writer::start_tag('form', [
@@ -190,12 +214,12 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
         echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
         echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'purge']);
         echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'courseid', 'value' => $courseid]);
-        echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'seriesid', 'value' => $seriesid]);
+        echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'scope', 'value' => $scope]);
         echo html_writer::empty_tag('input', [
             'type' => 'text',
             'name' => 'confirmtext',
             'class' => 'form-control mb-3',
-            'placeholder' => 'BORRAR PRUEBAS',
+            'placeholder' => $expected,
             'autocomplete' => 'off',
             'required' => 'required',
         ]);

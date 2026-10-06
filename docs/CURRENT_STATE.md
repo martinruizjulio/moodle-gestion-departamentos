@@ -588,3 +588,8 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 
 ## 2026-10-07 · local 1.5.154-alpha · Estado de talleres en Ediciones finalizadas
 - `workshops.php` y `dashboard.php`: la columna «Estado» mostraba «Abierto» (estado interno del taller) aunque su Edición estuviera finalizada/oculta. Ahora, si la Edición está finalizada, cada taller se muestra «Finalizado». Solo visual; no cambia datos. Validado en Moodle 5.0.11 local.
+
+## 2026-10-07 · local 1.5.155-alpha · «Borrar pruebas»: corrección de seguridad
+- **Fallo (reportado por Julio)**: en `test_cleanup.php` la opción «Todas» venía marcada por defecto y el formulario de confirmación llevaba el ámbito calculado al cargar la página. Marcar una Edición sin pulsar «Ver qué se borrará» y confirmar borraba TODAS las Ediciones del curso.
+- **Corrección**: parámetro `scope` explícito (`s<ID>` o `all`), sin valor por defecto; sin elección no se muestra el formulario de borrado. Al marcar una opción la página se recarga sola con ese ámbito, así la confirmación siempre coincide con lo marcado. El servidor comprueba que la Edición pertenece al curso. Borrar «Todas» exige escribir **BORRAR TODO**; una sola Edición, **BORRAR PRUEBAS**. El aviso rojo nombra lo que se va a borrar.
+- **Validado** (Moodle 5.0.11 local, navegador): sin opción marcada no hay formulario de borrado; marcar Edición A → borra solo A, B intacta (grupos y actividades); «Todas» + BORRAR PRUEBAS → rechazado sin borrar.
