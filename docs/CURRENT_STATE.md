@@ -295,7 +295,13 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Exportación de privacidad.
 - Revisión externa final del ZIP con el servicio de Plugin Reviewer solicitado por la Universidad.
 
+**Unificación terminológica (2026-10-06):**
+- Toda la interfaz, ayuda, informes, CSV/PDF y documentación usa ahora **Taller / Talleres** de forma consistente.
+- Se actualizaron también expresiones como **Edición de talleres**, **Talleres Tipo A/B**, **Nota Talleres A**, encabezados de tablas y nombres visibles de exportación.
+- Los identificadores técnicos internos (`workshop_*`, tablas, clases y rutas) no se renombraron.
+- Verificación real sobre el árbol del repositorio con búsqueda recursiva: **0 apariciones del término anterior** en `gestion_actividades`, `gestion_hee` y `docs`.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.121-alpha** (`2026100536`). Último savepoint de esquema: **2026100516**.
-- `block_gestion_hee`: **1.0.25-alpha** (`2026100509`).
+- `local_gestion_actividades`: **1.5.122-alpha** (`2026100537`). Último savepoint de esquema: **2026100516**.
+- `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
