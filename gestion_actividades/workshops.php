@@ -125,7 +125,12 @@ echo html_writer::div(
     html_writer::link(
         new moodle_url('/local/gestion_actividades/repair_course_visuals.php', ['sesskey' => sesskey()]),
         local_ga_workshops_btn_icon('t/reload', get_string('repaircoursevisuals', 'local_gestion_actividades')),
-        ['class' => 'btn btn-secondary mb-1']
+        ['class' => 'btn btn-secondary me-1 mb-1']
+    ) . ' ' .
+    html_writer::link(
+        new moodle_url('/local/gestion_actividades/test_cleanup.php'),
+        local_ga_workshops_btn_icon('t/delete', 'Limpieza de pruebas'),
+        ['class' => 'btn btn-danger mb-1']
     ),
     'mb-3'
 );
