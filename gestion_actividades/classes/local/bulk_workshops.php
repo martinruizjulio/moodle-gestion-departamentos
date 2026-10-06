@@ -179,21 +179,27 @@ class bulk_workshops {
                 $edition = manager::get_workshop_edition($editionid);
                 $notescmid = 0;
 
-                $attendance = manager::create_attendance_activity_for_edition(
-                    $editionid,
-                    'Asistencia T' . sprintf('%02d', $order)
-                );
-                if (empty($attendance->success)) {
-                    throw new \RuntimeException($row['code'] . ': ' . ($attendance->message ?? 'no se pudo crear la lista de asistencia.'));
-                }
-
                 if ($row['type'] === 'typeb') {
+                    $attendance = manager::create_attendance_activity_for_edition(
+                        $editionid,
+                        'Asistencia T' . sprintf('%02d', $order)
+                    );
+                    if (empty($attendance->success)) {
+                        throw new \RuntimeException($row['code'] . ': ' . ($attendance->message ?? 'no se pudo crear la lista de asistencia.'));
+                    }
                     $reflection = typeb_reflection_activity::ensure_for_edition($editionid);
                     if (empty($reflection->success)) {
                         throw new \RuntimeException($row['code'] . ': ' . ($reflection->message ?? 'no se pudo crear la tarea de reflexión Tipo B.'));
                     }
                     $summary->reflectioncreated++;
                 } else if ($quiztemplatecmid > 0) {
+                    $attendance = manager::create_attendance_activity_for_edition(
+                        $editionid,
+                        'Asistencia T' . sprintf('%02d', $order)
+                    );
+                    if (empty($attendance->success)) {
+                        throw new \RuntimeException($row['code'] . ': ' . ($attendance->message ?? 'no se pudo crear la lista de asistencia.'));
+                    }
                     // Optional advanced path: explicitly duplicate one selected
                     // model instead of creating the normal empty quiz.
                     require_once($CFG->dirroot . '/course/lib.php');
@@ -217,32 +223,32 @@ class bulk_workshops {
                     $DB->update_record('local_ga_workshop_editions', $update);
                     $summary->quizcreated++;
                 } else {
-                    // Canonical Type A path: always create a real empty Moodle
-                    // quiz. No model or Excel flag is required.
-                    $quiz = manager::create_required_activity_for_edition($editionid, null, 'quiz');
-                    if (empty($quiz->success) || empty($quiz->cmid)) {
-                        throw new \RuntimeException($row['code'] . ': ' . ($quiz->message ?? 'no se pudo crear el cuestionario vacío.'));
+                    $defaults = manager::ensure_typea_default_activities($editionid, $order);
+                    if (empty($defaults->success) || empty($defaults->quizcmid)) {
+                        throw new \RuntimeException($row['code'] . ': ' . ($defaults->message ?? 'no se pudo preparar asistencia y cuestionario.'));
                     }
-                    $quizcmid = (int)$quiz->cmid;
-                    $quizcm = get_coursemodule_from_id('quiz', $quizcmid, $courseid, false, IGNORE_MISSING);
-                    if ($quizcm && $DB->record_exists('quiz', ['id' => (int)$quizcm->instance])) {
-                        $DB->set_field('quiz', 'name', 'Cuestionario T-' . (int)$order, ['id' => (int)$quizcm->instance]);
-                    }
-                    $cmcolumns = $DB->get_columns('course_modules');
-                    if (isset($cmcolumns['visible'])) {
-                        $DB->set_field('course_modules', 'visible', 1, ['id' => $quizcmid]);
-                    }
-                    if (isset($cmcolumns['visibleoncoursepage'])) {
-                        $DB->set_field('course_modules', 'visibleoncoursepage', 1, ['id' => $quizcmid]);
-                    }
+                    $quizcmid = (int)$defaults->quizcmid;
                     $summary->quizcreated++;
                 }
                 if (!empty($row['createnotes']) && $notestemplatecmid > 0) {
                     $notescmid = self::duplicate_template($course, $notestemplatecmid, $groupid, 'Apuntes ' . $row['code'], 0);
                     $summary->notescreated++;
                 }
-                manager::ensure_workshop_course_visuals_safely($workshopid);
                 workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid, $row['sessionenddate'], $editionid);
+
+                if ($row['type'] === 'typea') {
+                    $savededition = manager::get_workshop_edition($editionid);
+                    $finalquizcmid = !empty($savededition->requiredquizcmid)
+                        ? (int)$savededition->requiredquizcmid
+                        : (int)($savededition->requiredcmid ?? 0);
+                    $finalquizcm = $finalquizcmid > 0
+                        ? get_coursemodule_from_id('quiz', $finalquizcmid, $courseid, false, IGNORE_MISSING)
+                        : false;
+                    if (!$finalquizcm) {
+                        throw new \RuntimeException($row['code'] . ': el cuestionario Tipo A no quedó creado/vinculado en Moodle.');
+                    }
+                }
+
                 $summary->created++;
                 $summary->messages[] = $row['code'] . ': creado como Taller ' . sprintf('%02d', $order) . ' de ' . $series->title . '.';
                 $order++;
