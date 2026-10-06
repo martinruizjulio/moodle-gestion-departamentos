@@ -1104,6 +1104,13 @@ class workshop_series {
                 . 'style="margin:.25rem 0 .45rem;">'
                 . '<a class="btn btn-sm btn-primary local-ga-enrol-status" data-editionid="' . (int)$edition->id . '" '
                 . 'href="' . $viewurl->out(true) . '">Apuntarme</a>'
+                // Printable class list: hidden by default (this HTML is shared
+                // by everybody); the course-page script shows it only to the
+                // teachers/managers of this edition. edition_roster.php checks
+                // the permission again.
+                . ' <a class="btn btn-sm local-ga-roster-btn" data-editionid="' . (int)$edition->id . '" '
+                . 'href="' . (new \moodle_url('/local/gestion_actividades/edition_roster.php', ['id' => (int)$edition->id]))->out(true) . '" '
+                . 'style="display:none;background:#f0883e;border-color:#f0883e;color:#fff;margin-left:.35rem;">Lista de clase</a>'
                 . '</div>';
 
             if (!empty($edition->groupid)) {

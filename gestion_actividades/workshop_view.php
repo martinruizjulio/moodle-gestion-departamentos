@@ -110,7 +110,7 @@ if ($canmanage) {
     if ($editionid > 0) {
         $topbuttons .= html_writer::link(
             new moodle_url('/local/gestion_actividades/edition_roster.php', ['id' => $editionid]),
-            local_ga_btn_icon('i/users', 'Listado de apuntados'),
+            local_ga_btn_icon('i/users', 'Lista de clase'),
             ['class' => 'btn btn-outline-primary mb-2']
         );
     }

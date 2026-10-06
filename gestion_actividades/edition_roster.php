@@ -21,7 +21,7 @@ if (!manager::can_manage_edition($editionid, (int)$USER->id)) {
 $PAGE->set_context($context);
 $PAGE->set_course($course);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/edition_roster.php', ['id' => $editionid]));
-$PAGE->set_title('Listado de apuntados');
+$PAGE->set_title('Lista de clase');
 $PAGE->set_heading(format_string($course->fullname));
 
 $students = manager::list_edition_enrolled_users_ultrasafe($editionid);
@@ -66,20 +66,20 @@ echo html_writer::tag(
 );
 echo html_writer::end_div();
 
-echo $OUTPUT->heading('Listado de apuntados');
+echo $OUTPUT->heading('Lista de clase');
 echo html_writer::tag('h3', format_string($workshop->code . ' - ' . $workshop->name), ['class' => 'h5']);
 echo html_writer::tag('p', '<strong>Fecha:</strong> ' . s($sessiondate) . ' &nbsp; <strong>Inscritos:</strong> ' . count($students), ['class' => 'mb-3']);
 
 if ($students) {
     $table = new html_table();
     $table->attributes['class'] = 'generaltable local-ga-roster-table';
-    $table->head = ['N.º', get_string('lastname'), get_string('firstname'), 'Asistencia / firma', 'Observaciones'];
+    $table->head = ['N.º', 'Apellidos', 'Nombre', 'Correo', 'Firma'];
     foreach ($students as $index => $student) {
         $table->data[] = [
             (string)($index + 1),
             s((string)$student->lastname),
             s((string)$student->firstname),
-            '',
+            s((string)($student->email ?? '')),
             '',
         ];
     }
@@ -106,11 +106,12 @@ echo html_writer::tag('style', '
         color: #000 !important;
         background: #fff !important;
     }
-    .local-ga-roster-table th:nth-child(1) { width: 6%; }
+    .local-ga-roster-table th:nth-child(1) { width: 5%; }
     .local-ga-roster-table th:nth-child(2) { width: 24%; }
-    .local-ga-roster-table th:nth-child(3) { width: 22%; }
-    .local-ga-roster-table th:nth-child(4) { width: 25%; }
-    .local-ga-roster-table th:nth-child(5) { width: 23%; }
+    .local-ga-roster-table th:nth-child(3) { width: 17%; }
+    .local-ga-roster-table th:nth-child(4) { width: 27%; }
+    .local-ga-roster-table th:nth-child(5) { width: 27%; }
+    .local-ga-roster-table td { height: 38px; }
     a[href]:after { content: none !important; }
 }
 ');

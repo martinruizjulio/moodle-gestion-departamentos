@@ -1329,7 +1329,8 @@ class manager {
         } else {
             $label = $closed ? get_string('enrolmentclosed', 'local_gestion_actividades') : 'Apuntarme';
         }
-        return ['enrolled' => $enrolled, 'closed' => $closed, 'canunenrol' => $canunenrol, 'label' => $label];
+        return ['enrolled' => $enrolled, 'closed' => $closed, 'canunenrol' => $canunenrol, 'label' => $label,
+            'canmanage' => self::can_manage_edition((int)$edition->id, $userid)];
     }
 
     public static function is_edition_enrolment_closed(\stdClass $edition, ?int $now = null): bool {

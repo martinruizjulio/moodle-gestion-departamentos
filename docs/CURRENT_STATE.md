@@ -544,7 +544,16 @@ Decisiones de Julio: dos plantillas con nombre inequívoco y, al terminar una Ed
 - **Edición finalizada**: además de ocultarse a los alumnos e ir al histórico inferior, su sección se pliega (contenido e índice del curso) para todos los usuarios que ven secciones ocultas (profesores, gestores, administradores) mediante su preferencia `coursesectionspreferences_<curso>`; al reabrirla se despliega. Los certificados pendientes se emiten al finalizar también cuando se cambia el estado desde el formulario de la Edición.
 - Prueba real (Moodle 5.0.11): ambas plantillas descargadas desde la página; vacías; rellenadas → 2 talleres A (`TA-E80-01/02`) y 2 B (`TB-E81-01/02`) con el tipo correcto; Edición A finalizada → oculta, plegada para profesor y administrador (comprobado en el navegador: contenido e índice plegados), reabierta → visible y desplegada. Regresión: 303 + Tipo B + certificados correctos.
 
+## Botón «Lista de clase» en cada taller (2026-10-06, 1.5.150-alpha / `2026100565`)
+
+Petición de Julio: junto a «Apuntarme», un botón naranja «Lista de clase» con el listado imprimible para pasar lista en papel (apellidos, nombre, correo y un campo vacío para firmar).
+
+- La subsección TALLER incluye el botón naranja «Lista de clase» → `edition_roster.php`. Como el resumen es común a todos, va oculto y el script del curso solo lo muestra a quien gestiona esa edición (Gestor HEE y el Profesor HEE asignado; `enrol_button_status()` devuelve `canmanage`). La página vuelve a comprobar el permiso.
+- `edition_roster.php` pasa a llamarse «Lista de clase»: columnas N.º, Apellidos, Nombre, Correo y Firma (vacía), ordenado por apellidos; al imprimir se oculta la navegación de Moodle.
+- Prueba en navegador (Moodle 5.0.11): administrador ve los 8 botones, profesor asignado a 4 talleres ve solo esos 4, alumno ninguno; la lista se abre y en vista de impresión muestra la tabla con firma.
+- En cursos ya creados el botón aparece en cuanto se actualiza la Edición (guardar un taller o «Actualizar»).
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.149-alpha** (`2026100564`). Último savepoint de esquema: **2026100563**.
+- `local_gestion_actividades`: **1.5.150-alpha** (`2026100565`). Último savepoint de esquema: **2026100563**.
 - `block_gestion_hee`: **1.0.27-alpha** (`2026100511`).

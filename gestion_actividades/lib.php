@@ -530,6 +530,10 @@ function paintAll(){
  document.querySelectorAll(".local-ga-enrol-status[data-editionid]").forEach(function(a){
   var st=G.statuses[String(a.getAttribute("data-editionid"))];if(st){paint(a,st);}
  });
+ document.querySelectorAll(".local-ga-roster-btn[data-editionid]").forEach(function(r){
+  var st=G.statuses[String(r.getAttribute("data-editionid"))],want=(st&&st.canmanage)?"inline-block":"none";
+  if(r.style.display!==want){r.style.display=want;}
+ });
 }
 function note(a,text,ok){
  var n=a.parentNode&&a.parentNode.querySelector(".local-ga-enrol-note");
