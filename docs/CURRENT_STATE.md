@@ -468,6 +468,10 @@ Prueba real (Moodle 5.0.11): manual A, manual B, Excel A, Excel B y Excel A con 
 
 Prueba real en navegador (Chromium + Moodle 5.0.11, alumno real): Apuntarme → «Desapuntarme» sin cambiar de página, los 2 botones del taller cambian, se guarda inscripción y grupo; Desapuntarme con confirmación → vuelve a «Apuntarme»; cancelar no desapunta; el estado persiste al recargar; sin errores JavaScript.
 
+## Validación en el Moodle real de Julio (2026-10-06)
+
+Julio instaló los ZIP de `7467de6` (local 1.5.141-alpha, bloque 1.0.26-alpha) en su Moodle y confirma que el funcionamiento es correcto («Está perfecto»): creación de talleres con grupo, asistencia y cuestionario/reflexión; Apuntarme/Desapuntarme con recarga en el sitio.
+
 ## Versiones actuales
 
 - `local_gestion_actividades`: **1.5.141-alpha** (`2026100556`). Último savepoint de esquema: **2026100516**.
