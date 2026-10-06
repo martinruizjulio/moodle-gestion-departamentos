@@ -378,7 +378,18 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Tras cada importación Tipo A se valida explícitamente que el cuestionario CMID exista y esté vinculado; si no, la importación falla en vez de mostrar éxito incompleto.
 - No hay cambios de esquema ni savepoint nuevo.
 
+**Auditoría del ciclo grupo/actividades por taller (2026-10-06):**
+- Cada **edición concreta de taller** moderno tiene un único grupo Moodle propio. Los nuevos grupos incluyen el ID de edición en el nombre (`HEE-E{id}`) para impedir reutilización accidental por coincidencia de código/nombre.
+- Si se edita una edición existente se conserva su mismo grupo; si el mismo taller base se usa en otra edición, esa nueva edición recibe otro grupo.
+- **Tipo A manual y Excel**: grupo + Attendance + cuestionario Moodle vacío (o duplicado de modelo si se selecciona expresamente).
+- **Tipo B manual y Excel**: grupo + Attendance + tarea de reflexión.
+- Asistencia, cuestionario/reflexión y recursos generados se restringen al grupo; además la propia subsección `TALLER XX` está restringida al mismo grupo, por lo que materiales que el profesor añada dentro heredan la barrera de acceso de la subsección.
+- `Apuntarme` exige ahora que Moodle añada realmente al alumno al grupo antes de guardar la inscripción; una inscripción activa repara membresía faltante. `Desapuntarme` elimina la membresía del grupo.
+- Corregido un orden de operaciones que volvía a poner el cuestionario Tipo A en `visibleoncoursepage=0`: ahora se aplica primero la restricción y después se restaura la visibilidad dentro de la subsección.
+- La creación manual Tipo B se alinea con Excel y crea también Attendance.
+- No hay cambios de esquema ni savepoint nuevo.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.132-alpha** (`2026100547`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.133-alpha** (`2026100548`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
