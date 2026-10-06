@@ -320,7 +320,12 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - Las secciones HEE padre solo se eliminan si quedan vacías; si Moodle detecta contenido restante, se conservan ocultas para no borrar contenido ajeno por error.
 - Validación estática: `php -l` correcto en `manager.php`, `test_cleanup.php`, `workshop_series.php` y `workshops.php`.
 
+**Revisión de los cambios de Claude (2026-10-06):**
+- Se aceptan sus mejoras de la limpieza: conservación de actividades compartidas/curso, traslado del contenido restante a una sección oculta, borrado solo de grupos HEE, transacción para registros del plugin y requisito adicional `moodle/course:manageactivities`.
+- Se detectó y corrigió un riesgo residual: una tarea o cuestionario Moodle preexistente, vinculado manualmente a una única Edición, podía seguir considerándose “propio” por tener una sola referencia y borrarse. Como no existe un marcador persistente fiable de propiedad, la limpieza **nunca borra módulos `assign` ni `quiz` vinculados**; se conservan/desvinculan y, si estaban dentro de una subsección HEE, se mueven a la sección oculta de conservación.
+- No hay cambios de esquema ni savepoint nuevo.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.124-alpha** (`2026100539`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.125-alpha** (`2026100540`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
