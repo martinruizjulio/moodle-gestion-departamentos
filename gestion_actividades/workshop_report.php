@@ -12,7 +12,7 @@ if (!manager::can_manage_globally((int)$USER->id)) {
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/workshop_report.php'));
-$PAGE->set_title('Listado personalizado de seminarios');
+$PAGE->set_title('Listado personalizado de talleres');
 $PAGE->set_heading('Gestión HEE');
 
 $selected = optional_param_array('editions', [], PARAM_INT);
@@ -22,11 +22,11 @@ $selected = array_values(array_unique(array_filter(array_map('intval', $selected
 function local_ga_wr_send_csv(array $rows): void {
     \core\session\manager::write_close();
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="listado_seminarios_seleccionados.csv"');
+    header('Content-Disposition: attachment; filename="listado_talleres_seleccionados.csv"');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     echo "\xEF\xBB\xBF";
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['Seminario', 'Edición', 'Alumno', 'Horas', 'Actividad', 'Estado actividad', 'Resultado', 'Asistencia'], ';');
+    fputcsv($out, ['Taller', 'Edición', 'Alumno', 'Horas', 'Actividad', 'Estado actividad', 'Resultado', 'Asistencia'], ';');
     foreach ($rows as $row) {
         fputcsv($out, $row, ';');
     }
@@ -175,22 +175,22 @@ echo html_writer::div(
     )
 );
 
-echo $OUTPUT->heading('Listado personalizado de seminarios');
+echo $OUTPUT->heading('Listado personalizado de talleres');
 echo html_writer::tag(
     'p',
-    'Selecciona uno, varios o todos los seminarios. El listado usa la actividad real de cada edición: cuestionario Moodle en Tipo A nuevo, tarea histórica cuando corresponda y reflexión Moodle en Tipo B.',
+    'Selecciona uno, varios o todos los talleres. El listado usa la actividad real de cada edición: cuestionario Moodle en Tipo A nuevo, tarea histórica cuando corresponda y reflexión Moodle en Tipo B.',
     ['class' => 'alert alert-info']
 );
 
 if (!$editions) {
-    echo $OUTPUT->notification('No hay ediciones de seminarios disponibles.', 'info');
+    echo $OUTPUT->notification('No hay ediciones de talleres disponibles.', 'info');
     echo $OUTPUT->footer();
     exit;
 }
 
 echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'card mb-4']);
 echo html_writer::start_div('card-body');
-echo html_writer::tag('h3', 'Seleccionar seminarios', ['class' => 'h5']);
+echo html_writer::tag('h3', 'Seleccionar talleres', ['class' => 'h5']);
 echo html_writer::tag('div',
     html_writer::tag('button', 'Seleccionar todos', ['type' => 'button', 'class' => 'btn btn-outline-secondary btn-sm me-2', 'id' => 'ga-select-all']) .
     html_writer::tag('button', 'Quitar selección', ['type' => 'button', 'class' => 'btn btn-outline-secondary btn-sm', 'id' => 'ga-clear-all']),
@@ -245,11 +245,11 @@ if ($selected) {
     );
 
     if (!$reportrows) {
-        echo $OUTPUT->notification('Los seminarios seleccionados no tienen alumnado inscrito.', 'info');
+        echo $OUTPUT->notification('Los talleres seleccionados no tienen alumnado inscrito.', 'info');
     } else {
         $table = new html_table();
         $table->attributes['class'] = 'generaltable table-sm';
-        $table->head = ['Seminario', 'Edición', 'Alumno', 'Horas', 'Actividad', 'Estado actividad', 'Resultado', 'Asistencia'];
+        $table->head = ['Taller', 'Edición', 'Alumno', 'Horas', 'Actividad', 'Estado actividad', 'Resultado', 'Asistencia'];
         foreach ($reportrows as $row) {
             $table->data[] = array_map('s', $row);
         }
