@@ -198,7 +198,7 @@ try {
 
         if ($edition && $istypeb) {
             echo html_writer::tag('h4', 'Tarea de reflexión', ['class' => 'mt-3']);
-            echo html_writer::tag('p', 'Escribe un breve párrafo describiendo cómo ha sido el taller y tus impresiones. Puedes responder en línea o adjuntar un archivo. Con asistencia confirmada y reflexión entregada quedarás Apto.', ['class' => 'text-muted']);
+            echo html_writer::tag('p', 'Escribe un breve párrafo describiendo cómo ha sido el taller y tus impresiones. Escríbela como texto en línea en la tarea de reflexión. Con asistencia confirmada y reflexión entregada quedarás Apto.', ['class' => 'text-muted']);
             $cmid = (int)($edition->requiredcmid ?? 0);
             if ($cmid > 0) {
                 // Same rule used for Apto/certificate: latest Moodle submission sent.

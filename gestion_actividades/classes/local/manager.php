@@ -822,9 +822,9 @@ class manager {
             $moduleinfo->markinganonymous = 0;
             $moduleinfo->submissionattachments = 0;
             $moduleinfo->gradepenalty = 0;
-            // Submission plugins (online text + one optional file).
+            // Submission plugins. Type B reflection: online text only.
             $moduleinfo->assignsubmission_onlinetext_enabled = 1;
-            $moduleinfo->assignsubmission_file_enabled = 1;
+            $moduleinfo->assignsubmission_file_enabled = self::is_typeb_workshop($workshop) ? 0 : 1;
             $moduleinfo->assignsubmission_file_maxfiles = 1;
             $moduleinfo->assignsubmission_file_maxsizebytes = 0;
             $moduleinfo->assignfeedback_comments_enabled = 1;

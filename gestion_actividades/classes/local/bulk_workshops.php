@@ -71,7 +71,7 @@ class bulk_workshops {
                     $row['createquiz'] = false;
                     $row['warnings'][] = 'Tipo B: el cuestionario se ignora; se creará automáticamente una tarea Moodle de reflexión.';
                 }
-                $row['warnings'][] = 'Tipo B: se creará automáticamente una tarea de reflexión con texto en línea y archivo adjunto opcional.';
+                $row['warnings'][] = 'Tipo B: se creará automáticamente una tarea de reflexión con texto en línea (sin archivo adjunto).';
             }
             if ($row['createquiz'] && $row['quizclose'] <= 0) $row['warnings'][] = 'Sin cierre de cuestionario: conservará la fecha del modelo.';
 

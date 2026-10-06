@@ -83,7 +83,7 @@ class typeb_reflection_activity {
             $update->name = 'Reflexión · ' . $workshop->name;
         }
         if (isset($columns['intro'])) {
-            $update->intro = '<p>Escribe un breve párrafo describiendo cómo ha sido el taller y tus impresiones sobre la actividad. Puedes responder mediante texto en línea o, si lo prefieres, adjuntar un archivo.</p>';
+            $update->intro = '<p>Escribe un breve párrafo describiendo cómo ha sido el taller y tus impresiones sobre la actividad. Escríbela directamente en el cuadro de texto en línea.</p>';
         }
         if (isset($columns['introformat'])) {
             $update->introformat = FORMAT_HTML;
@@ -102,10 +102,10 @@ class typeb_reflection_activity {
         }
         $DB->update_record('assign', $update);
 
-        // Enable both simple submission routes: online paragraph or one attachment.
+        // Type B reflection = online text only (agreed 2026-10-06): the student
+        // writes the assessment of the workshop; no file attachment.
         self::set_plugin_config((int)$assign->id, 'onlinetext', 'enabled', '1');
-        self::set_plugin_config((int)$assign->id, 'file', 'enabled', '1');
-        self::set_plugin_config((int)$assign->id, 'file', 'maxfilesubmissions', '1');
+        self::set_plugin_config((int)$assign->id, 'file', 'enabled', '0');
 
         // Mark completion automatically on submission; this is the canonical Apto
         // condition used by HEE together with attendance.

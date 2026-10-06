@@ -187,7 +187,7 @@ echo html_writer::start_div('card mb-3');
 echo html_writer::start_div('card-body');
 if ($istypeb) {
     echo html_writer::tag('h3', 'Tarea de reflexión del Taller Tipo B');
-    echo html_writer::tag('p', 'La actividad es una Tarea Moodle sin nota numérica. El alumno puede escribir un párrafo en línea o adjuntar un archivo. Con asistencia confirmada y reflexión entregada queda Apto.', ['class' => 'text-muted']);
+    echo html_writer::tag('p', 'La actividad es una Tarea Moodle sin nota numérica. El alumno escribe su valoración del taller como texto en línea (sin archivos adjuntos). Con asistencia confirmada y reflexión entregada queda Apto.', ['class' => 'text-muted']);
     $reflectioncm = $edition ? local_ga_valid_activity_cm((int)($edition->requiredcmid ?? 0), (int)$course->id, ['assign']) : null;
     if ($reflectioncm) {
         echo html_writer::link(new moodle_url('/mod/assign/view.php', ['id' => (int)$reflectioncm->id]), local_ga_btn_icon('t/edit', 'Abrir tarea de reflexión en Moodle'), ['class' => 'btn btn-primary']);

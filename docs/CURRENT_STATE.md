@@ -520,7 +520,15 @@ Informe de Julio: la plantilla descargada venía con dos filas rellenas (un ejem
 - Los ejemplos y las instrucciones pasan a una hoja aparte `INSTRUCCIONES`, que nunca se importa.
 - Prueba (Moodle 5.0.11): descarga desde la página → hojas TALLERES e INSTRUCCIONES; plantilla sin rellenar → 0 talleres; rellenada con dos filas Tipo B → ambas válidas.
 
+## Tipo B: reflexión solo en texto en línea (2026-10-06, local 1.5.147-alpha / bloque 1.0.27-alpha)
+
+Decisión de Julio: los talleres Tipo B son como los A pero sin cuestionario; en su lugar tienen una tarea en línea (sin archivo adjunto) para escribir la valoración del taller.
+
+- La tarea de reflexión se crea y se configura solo con «Texto en línea»; el envío de archivos queda desactivado (también en las ya existentes, al guardar su edición).
+- Textos actualizados: introducción de la tarea, vista del profesor, vista del taller, formulario de edición, aviso de la importación y ayuda del bloque (ES/EN).
+- Prueba real (Moodle 5.0.11) con la plantilla nueva: Excel con 2 talleres B → cada uno con Apuntarme, grupo propio, «Asistencia T0X», «Reflexión · …» solo texto en línea y restringida al grupo, «Materiales T0X», sin cuestionario. Alumna con asistencia + reflexión → certificado y 2 h Tipo B al cerrar el plazo; asistencia sin reflexión o reflexión sin asistencia → nada. En el navegador el alumno solo ve el editor de texto, sin selector de archivos.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.146-alpha** (`2026100561`). Último savepoint de esquema: **2026100516**.
-- `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
+- `local_gestion_actividades`: **1.5.147-alpha** (`2026100562`). Último savepoint de esquema: **2026100516**.
+- `block_gestion_hee`: **1.0.27-alpha** (`2026100511`).

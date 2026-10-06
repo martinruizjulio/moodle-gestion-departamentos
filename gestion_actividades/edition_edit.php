@@ -304,7 +304,7 @@ echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'activityid'
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'attendancecmid', 'value' => $record->attendancecmid ?? 0]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'certificatecmid', 'value' => $record->certificatecmid ?? 0]);
 if ($istypebworkshop) {
-    echo html_writer::tag('div', '<strong>Actividad asociada:</strong> Tarea Moodle de reflexión. El alumno puede escribir el párrafo en línea o adjuntar un archivo. Con asistencia confirmada + entrega de la reflexión queda Apto y puede generarse el certificado.', ['class' => 'alert alert-info']);
+    echo html_writer::tag('div', '<strong>Actividad asociada:</strong> Tarea Moodle de reflexión. El alumno escribe su valoración del taller como texto en línea (sin archivos adjuntos). Con asistencia confirmada + entrega de la reflexión queda Apto y puede generarse el certificado.', ['class' => 'alert alert-info']);
     $requiredcmidvalue = $record->requiredcmid ?? 0;
 } else {
     if (!$record) {
