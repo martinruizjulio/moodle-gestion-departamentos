@@ -355,7 +355,13 @@ La nueva jerarquía A/B de `course_layout`, el listado imprimible, el modal de i
 - La sección `HEE · Actividades conservadas tras limpieza` elimina automáticamente restos propios de HEE y solo se mantiene si contiene contenido realmente manual/ajeno.
 - No hay cambios de esquema ni savepoint nuevo.
 
+**Borrado de talleres — retirada real de la estructura Moodle (2026-10-06):**
+- `delete_workshop()` retira ahora también la estructura moderna asociada al taller antes de borrar sus registros administrativos.
+- Se eliminan el `local_ga_series_item` y su `mod_subsection`; si quedara contenido manual dentro, se mueve primero a la sección oculta de conservación.
+- Al reconstruir una Edición, se podan automáticamente subsecciones HEE vacías y huérfanas dejadas por versiones anteriores, identificadas por nombre `TALLER XX` o por el resumen de inscripción `local-ga-enrol-*`.
+- Esto corrige las cajas vacías con botón **Apuntarme** que quedaban visibles tras borrar talleres.
+
 ## Versiones actuales
 
-- `local_gestion_actividades`: **1.5.129-alpha** (`2026100544`). Último savepoint de esquema: **2026100516**.
+- `local_gestion_actividades`: **1.5.130-alpha** (`2026100545`). Último savepoint de esquema: **2026100516**.
 - `block_gestion_hee`: **1.0.26-alpha** (`2026100510`).
