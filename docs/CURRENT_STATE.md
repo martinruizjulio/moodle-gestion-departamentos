@@ -632,3 +632,8 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 - **Bloque**: instrucciones de profesores y alumnos mencionan los talleres de dos días.
 - **Demo**: el generador pasa lista en todas las sesiones (los ausentes faltan un día).
 - **Validado (Moodle 5.0.11 local)**: `dos_dias_test.php` ALL OK (importación A 6 talleres/2 de dos días y B 4/1 de dos días desde las plantillas descargadas del panel; 2 sesiones con fechas y duración correctas; Inicio 2/Fin 2 distintos y vacíos; cierre del cuestionario aplicado; A 2 días: ambos días + 8 → sí, falta día 2 → no, día 2 sin pasar → no, ambos + 4 → no; A 1 día sin cambios; B 2 días: ambos + reflexión → sí, falta día 2 → no, corrección → sí; certificados al finalizar exactamente los esperados; fechas dobles en el certificado; horas 4 + 2 = 6). Regresión: hee_e2e 303 OK, typeb, cert, codes, tpl_fold ALL OK. Capturas de tabla, formulario y lista de clase.
+
+## 2026-10-07 · local 1.5.161-alpha · «Nota Talleres A» solo con talleres superados
+- Decisión de Julio: en la media de «Nota Talleres A» (60 % de la nota final) solo cuentan los talleres A superados: «Presente» todos los días del taller (o certificado ya emitido) y nota ≥ 5/10. Si asiste y suspende, o aprueba sin asistir, ese taller no cuenta. La nota institucional importada se mantiene como una nota más.
+- `grade_manager::get_typea_average_map()` filtra las notas por `local_ga_edition_enrolments.attended` (activo) o certificado + nota ≥ 5. Textos del portafolio y del ítem del cuaderno actualizados.
+- Validado (Moodle 5.0.11 local, `nota_a_test.php`): 8 (2 días, ambos) + 7 → 7,5; 8 con falta día 2 y 9 sin asistir → sin nota A; 8 con día 2 sin pasar → no cuenta; 4 con ambos días → no cuenta. Regresión hee_e2e y cert ALL OK.

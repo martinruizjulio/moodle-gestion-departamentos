@@ -448,7 +448,7 @@ class grade_manager {
                 $courseid,
                 self::ITEM_TYPEA,
                 'Nota Talleres A',
-                'Media aritmética de las notas disponibles de los talleres Tipo A y del reconocimiento institucional.'
+                'Media de las notas de los talleres Tipo A superados (asistencia todos los días y 5 o más) y del reconocimiento institucional.'
             ),
             'portfolio' => self::ensure_manual_grade_item(
                 $courseid,
@@ -1061,6 +1061,45 @@ class grade_manager {
             unset($institutionalparams['courseid'], $institutionalparams['typeatransferstatus']);
             foreach ($DB->get_records_sql($sql, $institutionalparams) as $record) {
                 $grades[(int)$record->userid]['institutional:' . (int)$record->id] = self::clamp_grade((float)$record->taskgrade);
+            }
+        }
+
+        // Only talleres the student PASSED count towards «Nota Talleres A»:
+        // «Presente» on every day of the taller (or a certificate already
+        // issued) AND at least 5/10. Attending and failing, or passing the
+        // quiz without attending, does not give the taller, so its grade is
+        // left out. Institutional grades are kept as imported.
+        $attended = [];
+        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
+            $columns = $DB->get_columns('local_ga_edition_enrolments');
+            $attendancecondition = isset($columns['attended'])
+                ? "(ee.attended = 1 OR ee.status = 'attended')"
+                : "ee.status = 'attended'";
+            [$asql, $aparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'ap');
+            $rs = $DB->get_recordset_sql("SELECT ee.id, ee.userid, ee.editionid FROM {local_ga_edition_enrolments} ee
+                                           WHERE ee.userid $asql AND $attendancecondition AND " . manager::active_enrolment_sql('ee'), $aparams);
+            foreach ($rs as $r) {
+                $attended[(int)$r->userid][(int)$r->editionid] = true;
+            }
+            $rs->close();
+        }
+        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_certificates'))) {
+            [$csql, $cparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'cp');
+            $rs = $DB->get_recordset_select('local_ga_certificates', "userid $csql", $cparams, '', 'id, userid, editionid');
+            foreach ($rs as $r) {
+                $attended[(int)$r->userid][(int)$r->editionid] = true;
+            }
+            $rs->close();
+        }
+        foreach ($grades as $userid => $usergrades) {
+            foreach ($usergrades as $key => $grade) {
+                if (strpos($key, 'edition:') !== 0) {
+                    continue;
+                }
+                $editionid = (int)substr($key, strlen('edition:'));
+                if ((float)$grade < 5.0 || empty($attended[(int)$userid][$editionid])) {
+                    unset($grades[$userid][$key]);
+                }
             }
         }
 

@@ -254,7 +254,7 @@ if ($gradesummary) {
         [
             'Nota Talleres A',
             $gradesummary->typeagrade,
-            'Media de las actividades evaluadas de Tipo A; el cuestionario Moodle es la actividad predeterminada.',
+            'Media de las notas de los talleres Tipo A superados (asistencia todos los días y 5 o más) y del reconocimiento institucional.',
         ],
         [
             'Portafolio',
