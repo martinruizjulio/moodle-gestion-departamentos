@@ -32,13 +32,8 @@ class auto_certificates {
             return $close;
         }
         $workshop = manager::get_workshop((int)$edition->workshopid);
-        $end = 0;
-        if (!empty($edition->seriesid)) {
-            $end = (int)$DB->get_field('local_ga_series_items', 'sessionenddate', [
-                'seriesid' => (int)$edition->seriesid,
-                'workshopid' => (int)$workshop->id,
-            ], IGNORE_MULTIPLE);
-        }
+        // End of the last day (second day for two-day talleres).
+        $end = workshop_series::last_end(workshop_series::item_for_edition($edition));
         if ($end <= 0 && $start > 0) {
             $hours = (float)($workshop->hours ?? 0);
             $end = $start + (int)round(($hours > 0 ? $hours : 1) * HOURSECS);

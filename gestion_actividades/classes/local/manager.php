@@ -6544,6 +6544,10 @@ class manager {
     public static function replace_certificate_placeholders(string $html, \stdClass $user, \stdClass $workshop, \stdClass $edition, string $certcode): string {
         $hours = !empty($workshop->hours) ? (string)(float)$workshop->hours : '';
         $date = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, get_string('strftimedatefullshort', 'langconfig')) : userdate(time(), get_string('strftimedatefullshort', 'langconfig'));
+        // Two-day taller: both dates on the certificate.
+        if (!empty($edition->sessiondate) && ($day2 = workshop_series::second_day(workshop_series::item_for_edition($edition)))) {
+            $date .= ' y ' . userdate($day2[0], get_string('strftimedatefullshort', 'langconfig'));
+        }
         $taskgrade = null;
         if (!empty($edition->id) && !empty($user->id) && in_array('assign', self::get_required_activity_types($edition), true)) {
             $taskgrade = self::get_internal_task_grade((int)$edition->id, (int)$user->id);

@@ -75,6 +75,17 @@ if (data_submitted() && confirm_sesskey()) {
     if ($sessiondate <= 0 || $sessionenddate <= $sessiondate) {
         throw new moodle_exception('invaliddata', 'error', '', 'La hora de fin debe ser posterior a la hora de inicio.');
     }
+    // Optional second day (two-day taller). Empty = one day.
+    $day2text = trim(optional_param('session2date_text', '', PARAM_TEXT));
+    $day2endtext = trim(optional_param('session2enddate_text', '', PARAM_TEXT));
+    $session2date = $day2text !== '' ? date_helper::parse_user_datetime($day2text) : 0;
+    $session2enddate = $day2text !== '' && $day2endtext !== '' ? date_helper::parse_user_datetime($day2endtext) : 0;
+    if ($day2text !== '' && ($session2date <= 0 || $session2enddate <= $session2date)) {
+        throw new moodle_exception('invaliddata', 'error', '', 'Segundo día: indica inicio y fin, y el fin debe ser posterior al inicio.');
+    }
+    if ($session2date > 0 && $session2date < $sessionenddate) {
+        throw new moodle_exception('invaliddata', 'error', '', 'El segundo día debe ser posterior al primero.');
+    }
     if ($enrolenddate <= 0 || $enrolenddate >= $sessiondate) {
         throw new moodle_exception('invaliddata', 'error', '', 'La inscripción debe cerrar antes del inicio del taller.');
     }
@@ -88,7 +99,8 @@ if (data_submitted() && confirm_sesskey()) {
     $seriesextension = null;
     if ($targetseriesid > 0) {
         try {
-            $seriesextension = workshop_series::extend_to_cover($targetseriesid, $sessiondate, $sessionenddate, $workshopid);
+            $seriesextension = workshop_series::extend_to_cover($targetseriesid, $sessiondate,
+                max($sessionenddate, $session2enddate), $workshopid);
         } catch (\RuntimeException $e) {
             throw new moodle_exception('invaliddata', 'error', '', $e->getMessage());
         }
@@ -193,6 +205,7 @@ if (data_submitted() && confirm_sesskey()) {
         // series-owned content rather than falling through the legacy path.
         workshop_series::attach_workshop($seriesid, $workshopid, $sortorder, 0, $sessionenddate, $savededitionid);
         workshop_series::set_item_teachernames($seriesid, $workshopid, optional_param('teachernames', '', PARAM_TEXT));
+        workshop_series::set_item_second_day($seriesid, $workshopid, $session2date, $session2enddate);
 
         if (!$istypebworkshop) {
             $defaults = manager::ensure_typea_default_activities($savededitionid, $sortorder);
@@ -280,6 +293,17 @@ echo html_writer::label('Fecha y hora de inicio', 'sessiondate_text');
 echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'sessiondate_text', 'class' => 'form-control mb-2', 'required' => 'required', 'value' => str_replace(' ', 'T', $sessiondatevalue)]);
 echo html_writer::label('Fecha y hora de fin', 'sessionenddate_text');
 echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'sessionenddate_text', 'class' => 'form-control mb-2', 'required' => 'required', 'value' => str_replace(' ', 'T', $sessionendvalue)]);
+$day2 = workshop_series::second_day($item ?: null);
+echo html_writer::start_tag('details', ['class' => 'mb-3 border rounded p-2'] + ($day2 ? ['open' => 'open'] : []));
+echo html_writer::tag('summary', 'Taller de dos días (opcional)');
+echo html_writer::tag('p', 'Rellena solo si el taller se hace en dos días. Se crearán dos sesiones en la lista de asistencia y hará falta «Presente» los dos días. Las horas del taller son el total de ambos días. Déjalo vacío para un taller de un día.', ['class' => 'text-muted small mt-2']);
+echo html_writer::label('Segundo día: fecha y hora de inicio', 'session2date_text');
+echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'session2date_text', 'class' => 'form-control mb-2',
+    'value' => $day2 ? str_replace(' ', 'T', date_helper::input_datetime($day2[0])) : '']);
+echo html_writer::label('Segundo día: fecha y hora de fin', 'session2enddate_text');
+echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'session2enddate_text', 'class' => 'form-control mb-2',
+    'value' => $day2 ? str_replace(' ', 'T', date_helper::input_datetime($day2[1])) : '']);
+echo html_writer::end_tag('details');
 echo html_writer::label('Horas del taller', 'workshophours');
 echo html_writer::empty_tag('input', ['type' => 'text', 'inputmode' => 'decimal', 'name' => 'workshophours', 'class' => 'form-control mb-2', 'required' => 'required', 'value' => $workshophoursvalue]);
 echo html_writer::label('Número de plazas', 'places');

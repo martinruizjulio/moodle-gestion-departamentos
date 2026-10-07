@@ -865,6 +865,19 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026100563, 'local', 'gestion_actividades');
     }
 
+    if ($oldversion < 2026100575) {
+        // Two-day workshops: optional second day (Excel «Fecha 2 / Inicio 2 /
+        // Fin 2»). Non-destructive: adds two columns defaulting to 0.
+        $table = new xmldb_table('local_ga_series_items');
+        foreach (['session2date' => 'teachernames', 'session2enddate' => 'session2date'] as $name => $after) {
+            $field = new xmldb_field($name, XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', $after);
+            if ($dbman->table_exists($table) && !$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026100575, 'local', 'gestion_actividades');
+    }
+
     return true;
 }
 

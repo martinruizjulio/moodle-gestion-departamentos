@@ -238,10 +238,10 @@ class generator {
             return [0, 0];
         }
         $groupid = (int)($edition->groupid ?? 0);
-        $sessions = $DB->get_records_select('attendance_sessions', 'attendanceid = :a AND (groupid = :g OR groupid = 0)',
-            ['a' => $attid, 'g' => $groupid], 'groupid DESC, sessdate ASC, id ASC');
-        $session = reset($sessions);
-        if (!$session) {
+        // One session per day (two-day talleres have two).
+        $sessions = array_values($DB->get_records_select('attendance_sessions', 'attendanceid = :a AND (groupid = :g OR groupid = 0)',
+            ['a' => $attid, 'g' => $groupid], 'sessdate ASC, id ASC'));
+        if (!$sessions) {
             return [0, 0];
         }
         $statuses = $DB->get_records('attendance_statuses', ['attendanceid' => $attid, 'deleted' => 0, 'setnumber' => 0], 'grade DESC, id ASC');
@@ -254,20 +254,26 @@ class generator {
         $p = 0;
         $a = 0;
         foreach ($userids as $uid) {
-            if ($DB->record_exists('attendance_log', ['sessionid' => (int)$session->id, 'studentid' => $uid])) {
+            if ($DB->record_exists('attendance_log', ['sessionid' => (int)$sessions[0]->id, 'studentid' => $uid])) {
                 continue;
             }
             $present = random_int(1, 100) <= $presentpct;
-            $DB->insert_record('attendance_log', (object)[
-                'sessionid' => (int)$session->id, 'studentid' => $uid,
-                'statusid' => $present ? (int)$presentst->id : (int)$absentst->id,
-                'statusset' => implode(',', array_keys($statuses)), 'timetaken' => $now, 'takenby' => (int)$USER->id,
-                'remarks' => '', 'ipaddress' => '',
-            ]);
+            // Absent students miss one day (or the only day).
+            $missday = $present ? -1 : random_int(0, count($sessions) - 1);
+            foreach ($sessions as $i => $session) {
+                $DB->insert_record('attendance_log', (object)[
+                    'sessionid' => (int)$session->id, 'studentid' => $uid,
+                    'statusid' => $i === $missday ? (int)$absentst->id : (int)$presentst->id,
+                    'statusset' => implode(',', array_keys($statuses)), 'timetaken' => $now, 'takenby' => (int)$USER->id,
+                    'remarks' => '', 'ipaddress' => '',
+                ]);
+            }
             $present ? $p++ : $a++;
         }
-        $DB->update_record('attendance_sessions', (object)['id' => (int)$session->id, 'lasttaken' => $now,
-            'lasttakenby' => (int)$USER->id, 'timemodified' => $now]);
+        foreach ($sessions as $session) {
+            $DB->update_record('attendance_sessions', (object)['id' => (int)$session->id, 'lasttaken' => $now,
+                'lasttakenby' => (int)$USER->id, 'timemodified' => $now]);
+        }
         try {
             require_once($CFG->dirroot . '/mod/attendance/locallib.php');
             $att = $DB->get_record('attendance', ['id' => $attid], '*', MUST_EXIST);

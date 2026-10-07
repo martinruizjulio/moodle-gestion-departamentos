@@ -224,6 +224,26 @@ echo local_ga_dash_card(
 );
 echo html_writer::end_div();
 
+// Templates to create Ediciones from Excel, always at hand.
+$tplurl = fn(string $t) => new moodle_url('/local/gestion_actividades/workshop_bulk_import.php',
+    ['action' => 'template', 'templatetype' => $t, 'sesskey' => sesskey()]);
+echo html_writer::start_div('row');
+echo html_writer::start_div('col-12 mb-3');
+echo html_writer::start_div('card shadow-sm');
+echo html_writer::start_div('card-body d-flex flex-wrap align-items-center gap-2');
+echo html_writer::div(html_writer::tag('h3', 'Plantillas de talleres', ['class' => 'h5 card-title mb-1'])
+    . html_writer::tag('p', 'Excel para crear una Edición completa. Una plantilla por tipo; admite talleres de uno o dos días.',
+        ['class' => 'card-text text-muted mb-0']), 'me-auto');
+echo html_writer::link($tplurl('typea'), local_ga_btn_icon('t/download', 'Plantilla_Talleres_A'), ['class' => 'btn btn-primary']);
+echo html_writer::link($tplurl('typeb'), local_ga_btn_icon('t/download', 'Plantilla_Talleres_B'),
+    ['class' => 'btn', 'style' => 'background:#7a3e9d;border-color:#7a3e9d;color:#fff']);
+echo html_writer::link(new moodle_url('/local/gestion_actividades/workshop_bulk_import.php', $courseid > 0 ? ['courseid' => $courseid] : []),
+    local_ga_btn_icon('i/import', 'Crear Edición desde Excel'), ['class' => 'btn btn-outline-secondary']);
+echo html_writer::end_div();
+echo html_writer::end_div();
+echo html_writer::end_div();
+echo html_writer::end_div();
+
 echo html_writer::tag('h3', 'Vista general de talleres ofertados actualmente', ['class' => 'h4 mt-4']);
 echo html_writer::tag(
     'p',
@@ -287,10 +307,9 @@ foreach ($serieslist as $series) {
         foreach ($teachers as $teacher) {
             $teachernames[] = fullname($teacher);
         }
-        $schedule = $sessiondate > 0 ? userdate($sessiondate, '%H:%M') : '-';
-        if ($sessiondate > 0 && $sessionend > 0) {
-            $schedule .= '–' . userdate($sessionend, '%H:%M');
-        }
+        [$datetext, $schedule] = \local_gestion_actividades\local\workshop_series::schedule_parts($sessiondate, $item);
+        $datetext = nl2br(s($datetext));
+        $schedule = nl2br(s($schedule));
         $actions = '-';
         if ($edition) {
             $actions = html_writer::link(
@@ -318,7 +337,7 @@ foreach ($serieslist as $series) {
             'TALLER ' . sprintf('%02d', (int)$item->sortorder),
             local_ga_dash_type_badge($item->workshoptype ?? 'typea'),
             format_string($item->name),
-            $sessiondate > 0 ? userdate($sessiondate, '%d/%m/%Y') : '-',
+            $datetext,
             $schedule,
             format_float((float)($item->hours ?? 0), 2, true) . ' h',
             $edition && (int)($edition->places ?? 0) > 0 ? (int)$edition->places : '-',

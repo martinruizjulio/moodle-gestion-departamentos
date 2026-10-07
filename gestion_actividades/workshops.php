@@ -209,11 +209,9 @@ foreach ($serieslist as $series) {
         $edition = local_ga_series_workshop_edition($series, (int)$item->workshopid);
         $sessiondate = $edition ? (int)($edition->sessiondate ?? 0) : 0;
         $sessionend = (int)($item->sessionenddate ?? 0);
-        $date = $sessiondate > 0 ? userdate($sessiondate, '%d/%m/%Y') : '-';
-        $schedule = $sessiondate > 0 ? userdate($sessiondate, '%H:%M') : '-';
-        if ($sessiondate > 0 && $sessionend > 0) {
-            $schedule .= '–' . userdate($sessionend, '%H:%M');
-        }
+        [$date, $schedule] = \local_gestion_actividades\local\workshop_series::schedule_parts($sessiondate, $item);
+        $date = nl2br(s($date));
+        $schedule = nl2br(s($schedule));
         $places = $edition ? (int)($edition->places ?? 0) : 0;
         $enrolled = $edition ? manager::get_edition_enrolment_count((int)$edition->id) : 0;
 

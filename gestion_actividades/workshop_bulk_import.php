@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // A seminar outside the dates typed for the Edición widens the
                 // Edición instead of aborting (same rule as the manual form).
                 $seriesfrom = min($seriesfrom, (int)$row['sessiondate']);
-                $seriesto = max($seriesto, (int)$row['sessionenddate']);
+                $seriesto = max($seriesto, (int)$row['sessionenddate'], (int)($row['session2enddate'] ?? 0));
                 $types[$row['type'] === 'typeb' ? 'typeb' : 'typea'] = true;
             }
             if (count($types) > 1) {
@@ -182,7 +182,7 @@ if ($token !== '' && $courseid > 0) {
         $messages = [];
         foreach ($row['errors'] as $m) $messages[] = html_writer::span(s($m), 'text-danger d-block');
         foreach ($row['warnings'] as $m) $messages[] = html_writer::span(s($m), 'text-warning d-block');
-        if ($rowvalid && $seriesfrom && $seriesto && ((int)$row['sessiondate'] < $seriesfrom || (int)$row['sessionenddate'] > $seriesto)) {
+        if ($rowvalid && $seriesfrom && $seriesto && ((int)$row['sessiondate'] < $seriesfrom || max((int)$row['sessionenddate'], (int)($row['session2enddate'] ?? 0)) > $seriesto)) {
             $messages[] = html_writer::span('Fuera de las fechas indicadas: la Edición de talleres se ampliará automáticamente para incluirlo.', 'text-warning d-block');
         }
         if ($rowvalid) $valid++;
@@ -192,6 +192,10 @@ if ($token !== '' && $courseid > 0) {
             $schedule = userdate((int)$row['sessiondate'], '%d/%m/%Y %H:%M');
             if (!empty($row['sessionenddate'])) {
                 $schedule .= '–' . userdate((int)$row['sessionenddate'], '%H:%M');
+            }
+            if (!empty($row['session2date']) && !empty($row['session2enddate'])) {
+                $schedule .= '<br>' . userdate((int)$row['session2date'], '%d/%m/%Y %H:%M') . '–'
+                    . userdate((int)$row['session2enddate'], '%H:%M') . ' <span class="badge bg-info text-dark">2 días</span>';
             }
         }
         $table->data[] = [

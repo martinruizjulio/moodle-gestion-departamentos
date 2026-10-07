@@ -47,6 +47,16 @@ class bulk_workshops {
             $row['places'] = max(0, (int)self::decimal($row['places']));
             $row['sessiondate'] = self::parse_datetime(trim($row['date'] . ' ' . $row['start']));
             $row['sessionenddate'] = self::parse_datetime(trim($row['date'] . ' ' . $row['end']));
+            // Optional second day (two-day talleres). «Inicio 2»/«Fin 2» empty
+            // = same times as the first day.
+            $row['session2date'] = 0;
+            $row['session2enddate'] = 0;
+            if (trim((string)($row['date2'] ?? '')) !== '') {
+                $start2 = trim((string)($row['start2'] ?? '')) !== '' ? $row['start2'] : $row['start'];
+                $end2 = trim((string)($row['end2'] ?? '')) !== '' ? $row['end2'] : $row['end'];
+                $row['session2date'] = self::parse_datetime(trim($row['date2'] . ' ' . $start2));
+                $row['session2enddate'] = self::parse_datetime(trim($row['date2'] . ' ' . $end2));
+            }
             $row['enrolenddate'] = self::parse_datetime($row['enrolend']);
             $row['quizclose'] = self::parse_datetime($row['quizclose']);
             $row['createquiz'] = self::yes($row['createquiz']);
@@ -59,6 +69,19 @@ class bulk_workshops {
             if ($row['sessiondate'] <= 0) $row['errors'][] = 'Fecha/hora de inicio del taller no válida.';
             if ($row['sessionenddate'] <= 0) $row['errors'][] = 'Hora de fin del taller no válida.';
             if ($row['sessiondate'] > 0 && $row['sessionenddate'] > 0 && $row['sessionenddate'] <= $row['sessiondate']) $row['errors'][] = 'La hora de fin debe ser posterior a la hora de inicio.';
+            if (trim((string)($row['date2'] ?? '')) !== '') {
+                if ($row['session2date'] <= 0 || $row['session2enddate'] <= 0) {
+                    $row['errors'][] = 'Fecha 2 / horas del segundo día no válidas.';
+                } else if ($row['session2enddate'] <= $row['session2date']) {
+                    $row['errors'][] = 'Segundo día: la hora de fin debe ser posterior a la de inicio.';
+                } else if ($row['sessionenddate'] > 0 && $row['session2date'] < $row['sessionenddate']) {
+                    $row['errors'][] = 'El segundo día debe ser posterior al primero.';
+                }
+            }
+            $lastend = max((int)$row['sessionenddate'], (int)$row['session2enddate']);
+            if ($row['quizclose'] > 0 && $lastend > 0 && $row['quizclose'] <= $lastend) {
+                $row['errors'][] = 'El cierre del cuestionario debe ser posterior al final del taller' . ($row['session2date'] > 0 ? ' (segundo día).' : '.');
+            }
             if ($row['enrolenddate'] <= 0) $row['errors'][] = 'Fecha límite de inscripción no válida.';
             if ($row['sessiondate'] > 0 && $row['enrolenddate'] >= $row['sessiondate']) $row['errors'][] = 'La inscripción debe cerrar antes del taller.';
             // The workshop code is generated on import from type + Edición +
@@ -108,7 +131,7 @@ class bulk_workshops {
         $maxend = 0;
         foreach ($validrows as $row) {
             $minstart = $minstart > 0 ? min($minstart, (int)$row['sessiondate']) : (int)$row['sessiondate'];
-            $maxend = max($maxend, (int)$row['sessionenddate']);
+            $maxend = max($maxend, (int)$row['sessionenddate'], (int)$row['session2enddate']);
         }
         // Seminars outside the Edición's range widen the Edición (same rule as
         // the manual form) instead of aborting the import.
@@ -246,6 +269,15 @@ class bulk_workshops {
                         throw new \RuntimeException($row['code'] . ': ' . ($defaults->message ?? 'no se pudo preparar asistencia y cuestionario.'));
                     }
                     $quizcmid = (int)$defaults->quizcmid;
+                    // «Cierre cuestionario» of the Excel (was only applied to
+                    // duplicated model quizzes).
+                    if (!empty($row['quizclose'])) {
+                        $quizid = (int)$DB->get_field('course_modules', 'instance', ['id' => $quizcmid]);
+                        if ($quizid > 0) {
+                            $DB->set_field('quiz', 'timeclose', (int)$row['quizclose'], ['id' => $quizid]);
+                            $DB->set_field('quiz', 'timemodified', time(), ['id' => $quizid]);
+                        }
+                    }
                     $summary->quizcreated++;
                 }
                 if (!empty($row['createnotes']) && $notestemplatecmid > 0) {
@@ -254,6 +286,7 @@ class bulk_workshops {
                 }
                 workshop_series::attach_workshop($seriesid, $workshopid, $order, $notescmid, $row['sessionenddate'], $editionid);
                 workshop_series::set_item_teachernames($seriesid, $workshopid, $row['teachername']);
+                workshop_series::set_item_second_day($seriesid, $workshopid, (int)$row['session2date'], (int)$row['session2enddate']);
                 // Session duration uses the Excel end time stored by attach_workshop().
                 attendance_sync::ensure_session($editionid);
 
@@ -425,6 +458,8 @@ class bulk_workshops {
         if (!$isb) {
             $headers[] = 'Cierre cuestionario';
         }
+        // Optional second day for two-day talleres.
+        array_push($headers, 'Fecha 2', 'Inicio 2', 'Fin 2');
         $lastcol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
         // Row 1: unmistakable title. Row 2: column headers. Data from row 3.
         $sheet->setCellValue('A1', 'PLANTILLA TALLERES TIPO ' . $letter . ($isb ? ' (asistencia + reflexión en línea)' : ' (asistencia + cuestionario)'));
@@ -437,7 +472,7 @@ class bulk_workshops {
         $col = array_flip($headers);
         $letterof = fn($h) => \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col[$h] + 1);
         // Dates and times as text, so Excel does not reformat them on typing.
-        foreach (['Fecha', 'Inicio', 'Fin', 'Cierre inscripción', 'Cierre cuestionario'] as $h) {
+        foreach (['Fecha', 'Inicio', 'Fin', 'Cierre inscripción', 'Cierre cuestionario', 'Fecha 2', 'Inicio 2', 'Fin 2'] as $h) {
             if (isset($col[$h])) {
                 $c = $letterof($h);
                 $sheet->getStyle($c . '3:' . $c . '300')->getNumberFormat()
@@ -459,8 +494,12 @@ class bulk_workshops {
         $help = $book->createSheet();
         $help->setTitle('INSTRUCCIONES_' . $letter);
         $example = $isb
-            ? ['1','Nombre del taller Tipo B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','Luis Pérez','luis.perez@ucv.es','No']
-            : ['1','Nombre del taller Tipo A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','Ana García','ana.garcia@ucv.es','Sí','23/09/2026 23:59'];
+            ? ['1','Nombre del taller Tipo B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','Luis Pérez','luis.perez@ucv.es','No','','','']
+            : ['1','Nombre del taller Tipo A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','Ana García','ana.garcia@ucv.es','Sí','23/09/2026 23:59','','',''];
+        // Two-day taller: «Horas» is the total of both days.
+        $example2 = $isb
+            ? ['2','Taller de dos días Tipo B','','21/09/2026','10:00','12:00',4,25,'13/09/2026 23:59','Luis Pérez','luis.perez@ucv.es','No','22/09/2026','10:00','12:00']
+            : ['2','Taller de dos días Tipo A','','21/09/2026','12:30','14:30',4,25,'12/09/2026 23:59','Ana García','ana.garcia@ucv.es','No','25/09/2026 23:59','22/09/2026','12:30','14:30'];
         $help->fromArray([
             ['PLANTILLA TALLERES TIPO ' . $letter . ' · cómo rellenar la hoja TALLERES_' . $letter],
             ['Esta plantilla es SOLO para talleres de Tipo ' . $letter . '. Para Tipo ' . ($isb ? 'A' : 'B') . ' descarga Plantilla_Talleres_' . ($isb ? 'A' : 'B') . '.'],
@@ -473,10 +512,11 @@ class bulk_workshops {
             ['Nombre profesor: lo que se mostrará en el calendario del curso (opcional).'],
             ['Email profesor: correo del profesor del curso, para vincularlo al taller (opcional). Varios: sepáralos con «;».'],
             [$isb ? 'Crear apuntes: Sí/No (opcional).' : 'Cierre cuestionario: opcional; si se deja vacío se puede fijar después en el cuestionario.'],
-            [''],
-            ['Ejemplo de fila:'],
+            ['Taller de DOS DÍAS: rellena «Fecha 2» (y, si cambian, «Inicio 2» y «Fin 2»; vacías = mismo horario). «Horas» es el TOTAL de los dos días. Para el certificado hace falta «Presente» los DOS días. Un solo cuestionario/reflexión. Taller de un día: deja «Fecha 2» vacía.'],
+            ['Ejemplos de fila (un día y dos días):'],
             $headers,
             $example,
+            $example2,
         ], null, 'A1');
         $help->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $help->getStyle('A12:' . $lastcol . '12')->getFont()->setBold(true);
@@ -532,7 +572,8 @@ class bulk_workshops {
         foreach ($headers as $i => $name) $index[$name] = $i;
         $aliases = [
             'code' => ['codigo','codigotaller','taller'], 'name' => ['nombre','actividad','nombretaller'], 'type' => ['tipo','tipotaller'],
-            'description' => ['descripcion'], 'date' => ['fecha'], 'start' => ['inicio','horainicio'], 'end' => ['fin','horafin'],
+            'description' => ['descripcion'], 'date' => ['fecha', 'fecha1'], 'start' => ['inicio','horainicio','inicio1'], 'end' => ['fin','horafin','fin1'],
+            'date2' => ['fecha2','fechasegundodia','segundodia'], 'start2' => ['inicio2','horainicio2'], 'end2' => ['fin2','horafin2'],
             'hours' => ['horas'], 'places' => ['plazas'], 'enrolend' => ['cierreinscripcion','fininscripcion','fechalimiteinscripcion'],
             'teacheremail' => ['emailprofesor','correoprofesor','emaildocente','correodocente','profesor'],
             'teachername' => ['nombreprofesor','profesornombre','nombredocente','docente'], 'createnotes' => ['crearapuntes','apuntes'],

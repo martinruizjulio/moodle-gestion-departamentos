@@ -110,8 +110,9 @@ foreach ($serieslist as $series) {
         $teachers = $edition ? manager::get_edition_teachers((int)$edition->id) : [];
         $teachernames = [];
         foreach ($teachers as $teacher) { $teachernames[] = fullname($teacher); }
-        $schedule = $sessiondate > 0 ? userdate($sessiondate, '%H:%M') : '-';
-        if ($sessiondate > 0 && $sessionend > 0) { $schedule .= '–' . userdate($sessionend, '%H:%M'); }
+        [$datetext, $schedule] = \local_gestion_actividades\local\workshop_series::schedule_parts($sessiondate, $item);
+        $datetext = nl2br(s($datetext));
+        $schedule = nl2br(s($schedule));
         $groupname = '-';
         if ($edition && !empty($edition->groupid)) {
             $group = $DB->get_record('groups', ['id' => (int)$edition->groupid], 'id,name', IGNORE_MISSING);
@@ -124,7 +125,7 @@ foreach ($serieslist as $series) {
                 $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => (int)$item->workshopid, 'editionid' => (int)$edition->id]), 'Modificar notas', ['class' => 'btn btn-primary btn-sm mb-1']);
             }
         }
-        $table->data[] = ['Taller ' . sprintf('%02d', (int)$item->sortorder), local_ga_archive_type_badge($item->workshoptype ?? 'typea'), format_string($item->name), $sessiondate > 0 ? userdate($sessiondate, '%d/%m/%Y') : '-', $schedule, format_float((float)($item->hours ?? 0), 2, true) . ' h', $edition && (int)($edition->places ?? 0) > 0 ? (int)$edition->places : '-', $edition ? manager::get_edition_enrolment_count((int)$edition->id) : '-', $teachernames ? s(implode(', ', $teachernames)) : '-', $groupname, $actions];
+        $table->data[] = ['Taller ' . sprintf('%02d', (int)$item->sortorder), local_ga_archive_type_badge($item->workshoptype ?? 'typea'), format_string($item->name), $datetext, $schedule, format_float((float)($item->hours ?? 0), 2, true) . ' h', $edition && (int)($edition->places ?? 0) > 0 ? (int)$edition->places : '-', $edition ? manager::get_edition_enrolment_count((int)$edition->id) : '-', $teachernames ? s(implode(', ', $teachernames)) : '-', $groupname, $actions];
     }
     echo html_writer::table($table);
     echo html_writer::end_div();

@@ -379,6 +379,74 @@ class workshop_series {
         $DB->set_field(self::ITEMTABLE, 'teachernames', $names, ['seriesid' => $seriesid, 'workshopid' => $workshopid]);
     }
 
+    /**
+     * Two-day workshops: store (or clear, with 0/0) the second day of a taller.
+     */
+    public static function set_item_second_day(int $seriesid, int $workshopid, int $start, int $end): void {
+        global $DB;
+        $cols = $DB->get_columns(self::ITEMTABLE);
+        if (!isset($cols['session2date'], $cols['session2enddate'])) {
+            return;
+        }
+        if ($start <= 0 || $end <= $start) {
+            $start = 0;
+            $end = 0;
+        }
+        $DB->set_field(self::ITEMTABLE, 'session2date', $start, ['seriesid' => $seriesid, 'workshopid' => $workshopid]);
+        $DB->set_field(self::ITEMTABLE, 'session2enddate', $end, ['seriesid' => $seriesid, 'workshopid' => $workshopid]);
+        if ($end > 0) {
+            self::extend_to_cover($seriesid, $start, $end, $workshopid);
+        }
+    }
+
+    /** Series item (Edición row) of a workshop edition, or null. */
+    public static function item_for_edition(\stdClass $edition): ?\stdClass {
+        global $DB;
+        if (empty($edition->seriesid) || empty($edition->workshopid)) {
+            return null;
+        }
+        return $DB->get_record(self::ITEMTABLE, ['seriesid' => (int)$edition->seriesid,
+            'workshopid' => (int)$edition->workshopid], '*', IGNORE_MULTIPLE) ?: null;
+    }
+
+    /** [start, end] of the second day, or null for one-day talleres. */
+    public static function second_day(?\stdClass $item): ?array {
+        if (!$item || empty($item->session2date) || empty($item->session2enddate)
+                || (int)$item->session2enddate <= (int)$item->session2date) {
+            return null;
+        }
+        return [(int)$item->session2date, (int)$item->session2enddate];
+    }
+
+    /** End of the last day of a taller (second day when there is one). */
+    public static function last_end(?\stdClass $item): int {
+        if (!$item) {
+            return 0;
+        }
+        $day2 = self::second_day($item);
+        return max((int)($item->sessionenddate ?? 0), $day2 ? $day2[1] : 0);
+    }
+
+    /**
+     * Text for «Fecha» and «Horario» columns, with the second day on a new
+     * line when there is one: [date, time].
+     */
+    public static function schedule_parts(int $sessiondate, ?\stdClass $item): array {
+        if ($sessiondate <= 0) {
+            return ['-', '-'];
+        }
+        $date = userdate($sessiondate, '%d/%m/%Y');
+        $time = userdate($sessiondate, '%H:%M');
+        if ($item && !empty($item->sessionenddate)) {
+            $time .= '–' . userdate((int)$item->sessionenddate, '%H:%M');
+        }
+        if ($day2 = self::second_day($item)) {
+            $date .= "\n" . userdate($day2[0], '%d/%m/%Y');
+            $time .= "\n" . userdate($day2[0], '%H:%M') . '–' . userdate($day2[1], '%H:%M');
+        }
+        return [$date, $time];
+    }
+
     public static function next_sortorder(int $seriesid): int {
         global $DB;
         self::ensure_schema();
@@ -935,12 +1003,10 @@ class workshop_series {
                     $teachernames[] = fullname($teacher);
                 }
             }
-            $date = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%d/%m/%Y') : 'Pendiente';
-            $starttime = !empty($edition->sessiondate) ? userdate((int)$edition->sessiondate, '%H:%M') : '';
-            $endtime = !empty($item->sessionenddate) ? userdate((int)$item->sessionenddate, '%H:%M') : '';
-            $time = $starttime;
-            if ($starttime !== '' && $endtime !== '') {
-                $time .= '–' . $endtime;
+            [$date, $time] = self::schedule_parts((int)($edition->sessiondate ?? 0), $item);
+            if (empty($edition->sessiondate)) {
+                $date = 'Pendiente';
+                $time = '';
             }
             $deadline = !empty($edition->enrolenddate) ? userdate((int)$edition->enrolenddate, '%d/%m/%Y %H:%M') : '-';
             // This HTML is shared by every course user, so the link must not
@@ -960,8 +1026,8 @@ class workshop_series {
             $rows[] = '<tr>' .
                 '<td style="padding:10px;white-space:nowrap;font-weight:700;border-bottom:1px solid #edf0ea">' . sprintf('%02d', (int)$item->sortorder) . '</td>' .
                 '<td style="padding:10px;border-bottom:1px solid #edf0ea"><strong>' . s($item->name) . '</strong></td>' .
-                '<td style="padding:10px;white-space:nowrap;border-bottom:1px solid #edf0ea">' . s($date) . '</td>' .
-                '<td style="padding:10px;white-space:nowrap;border-bottom:1px solid #edf0ea">' . s($time !== '' ? $time : '-') . '</td>' .
+                '<td style="padding:10px;white-space:nowrap;border-bottom:1px solid #edf0ea">' . nl2br(s($date)) . '</td>' .
+                '<td style="padding:10px;white-space:nowrap;border-bottom:1px solid #edf0ea">' . nl2br(s($time !== '' ? $time : '-')) . '</td>' .
                 '<td style="padding:10px;white-space:nowrap;text-align:center;border-bottom:1px solid #edf0ea">' . format_float((float)$item->hours, 2, true) . ' h</td>' .
                 '<td style="padding:10px;border-bottom:1px solid #edf0ea">' . s($teachernames ? implode(', ', $teachernames) : '-') . '</td>' .
                 '<td style="padding:10px;white-space:nowrap;text-align:center;border-bottom:1px solid #edf0ea">' . (int)$edition->places . '</td>' .

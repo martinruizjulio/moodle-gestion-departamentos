@@ -39,6 +39,12 @@ usort($students, static function($a, $b): int {
 $sessiondate = !empty($edition->sessiondate)
     ? userdate((int)$edition->sessiondate, get_string('strftimedatetimeshort', 'langconfig'))
     : '-';
+// Two-day taller: one signature column per day.
+$day2 = \local_gestion_actividades\local\workshop_series::second_day(
+    \local_gestion_actividades\local\workshop_series::item_for_edition($edition));
+if ($day2) {
+    $sessiondate .= ' y ' . userdate($day2[0], get_string('strftimedatetimeshort', 'langconfig'));
+}
 
 $PAGE->requires->js_init_code("(function(){
     var button = document.getElementById('local-ga-print-roster');
@@ -73,7 +79,10 @@ echo html_writer::tag('p', '<strong>Fecha:</strong> ' . s($sessiondate) . ' &nbs
 if ($students) {
     $table = new html_table();
     $table->attributes['class'] = 'generaltable local-ga-roster-table';
-    $table->head = ['N.º', 'Apellidos', 'Nombre', 'Correo', 'Firma'];
+    $table->head = $day2
+        ? ['N.º', 'Apellidos', 'Nombre', 'Correo', 'Firma día 1 (' . userdate((int)$edition->sessiondate, '%d/%m') . ')',
+            'Firma día 2 (' . userdate($day2[0], '%d/%m') . ')']
+        : ['N.º', 'Apellidos', 'Nombre', 'Correo', 'Firma'];
     foreach ($students as $index => $student) {
         $table->data[] = [
             (string)($index + 1),
@@ -81,7 +90,7 @@ if ($students) {
             s((string)$student->firstname),
             s((string)($student->email ?? '')),
             '',
-        ];
+        ] + ($day2 ? [5 => ''] : []);
     }
     echo html_writer::table($table);
 } else {

@@ -69,6 +69,24 @@ class attendance_sync {
      *
      * @return int[] [sessdate, duration]
      */
+    /**
+     * Sessions the attendance list must have: one per day of the taller.
+     *
+     * @return array[] list of [start, duration, label]
+     */
+    private static function session_plan(\stdClass $edition, \stdClass $workshop): array {
+        [$start, $duration] = self::session_times($edition, $workshop);
+        $day2 = workshop_series::second_day(workshop_series::item_for_edition($edition));
+        $base = format_string($workshop->code . ' - ' . $workshop->name);
+        if (!$day2) {
+            return [[$start, $duration, $base]];
+        }
+        return [
+            [$start, $duration, $base . ' · Día 1'],
+            [$day2[0], $day2[1] - $day2[0], $base . ' · Día 2'],
+        ];
+    }
+
     private static function session_times(\stdClass $edition, \stdClass $workshop): array {
         global $DB;
         $start = (int)($edition->sessiondate ?? 0);
@@ -107,7 +125,7 @@ class attendance_sync {
         }
         $workshop = manager::get_workshop((int)$edition->workshopid);
         $groupid = (int)($edition->groupid ?? 0);
-        [$start, $duration] = self::session_times($edition, $workshop);
+        $plan = self::session_plan($edition, $workshop);
 
         $conditions = ['attendanceid' => (int)$attendance->id];
         if (self::is_shared((int)$attendance->cmid)) {
@@ -116,7 +134,7 @@ class attendance_sync {
             }
             $conditions['groupid'] = $groupid;
         }
-        $sessions = $DB->get_records('attendance_sessions', $conditions, 'sessdate ASC, id ASC');
+        $sessions = array_values($DB->get_records('attendance_sessions', $conditions, 'sessdate ASC, id ASC'));
 
         foreach (['/mod/attendance/locallib.php', '/mod/attendance/classes/calendar_helpers.php'] as $lib) {
             if (file_exists($CFG->dirroot . $lib)) {
@@ -124,66 +142,89 @@ class attendance_sync {
             }
         }
 
-        if (!$sessions) {
-            $config = get_config('attendance');
-            $session = (object)[
-                'attendanceid' => (int)$attendance->id,
-                'groupid' => $groupid,
-                'sessdate' => $start,
-                'duration' => $duration,
-                'lasttaken' => 0,
-                'lasttakenby' => 0,
-                'timemodified' => time(),
-                'description' => format_string($workshop->code . ' - ' . $workshop->name),
-                'descriptionformat' => FORMAT_HTML,
-                'studentscanmark' => 0,
-                'allowupdatestatus' => 0,
-                'studentsearlyopentime' => 0,
-                'autoassignstatus' => 0,
-                'studentpassword' => '',
-                'subnet' => '',
-                'automark' => 0,
-                'automarkcompleted' => 0,
-                'statusset' => 0,
-                'absenteereport' => 1,
-                'preventsharedip' => 0,
-                'preventsharediptime' => 0,
-                'caleventid' => 0,
-                'calendarevent' => empty($config->enablecalendar) ? 0 : 1,
-                'includeqrcode' => 0,
-                'rotateqrcode' => 0,
-                'automarkcmid' => 0,
-            ];
-            $session->id = $DB->insert_record('attendance_sessions', $session);
-            if (!empty($session->calendarevent) && function_exists('attendance_create_calendar_event')) {
-                try {
-                    attendance_create_calendar_event($session);
-                } catch (\Throwable $e) {
-                    debugging('No se pudo crear el evento de calendario de la sesión de asistencia: ' . $e->getMessage(), DEBUG_DEVELOPER);
-                }
-            }
-            return;
-        }
-
-        // Keep the single generated session aligned with the workshop date
-        // while attendance has not been taken yet.
-        if (count($sessions) === 1) {
-            $session = reset($sessions);
-            if (empty($session->lasttaken)
-                    && ((int)$session->sessdate !== $start || (int)$session->duration !== $duration
-                        || (int)$session->groupid !== $groupid)) {
-                $session->sessdate = $start;
-                $session->duration = $duration;
-                $session->groupid = $groupid;
-                $session->timemodified = time();
-                $DB->update_record('attendance_sessions', $session);
-                if (!empty($session->caleventid) && function_exists('attendance_update_calendar_event')) {
-                    try {
-                        attendance_update_calendar_event($session);
-                    } catch (\Throwable $e) {
-                        debugging('No se pudo actualizar el evento de calendario de asistencia: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        // Keep the generated sessions aligned with the taller days while
+        // attendance has not been taken in them; create missing days.
+        foreach ($plan as $i => [$start, $duration, $label]) {
+            if (isset($sessions[$i])) {
+                $session = $sessions[$i];
+                if (empty($session->lasttaken)
+                        && ((int)$session->sessdate !== $start || (int)$session->duration !== $duration
+                            || (int)$session->groupid !== $groupid || (string)$session->description !== $label)) {
+                    $session->sessdate = $start;
+                    $session->duration = $duration;
+                    $session->groupid = $groupid;
+                    $session->description = $label;
+                    $session->timemodified = time();
+                    $DB->update_record('attendance_sessions', $session);
+                    if (!empty($session->caleventid) && function_exists('attendance_update_calendar_event')) {
+                        try {
+                            attendance_update_calendar_event($session);
+                        } catch (\Throwable $e) {
+                            debugging('No se pudo actualizar el evento de calendario de asistencia: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                        }
                     }
                 }
+                continue;
+            }
+            self::create_session((int)$attendance->id, $groupid, $start, $duration, $label);
+        }
+
+        // A taller changed from two days to one: drop the generated «Día 2»
+        // session only while nobody has taken attendance in it.
+        if (count($plan) === 1) {
+            foreach (array_slice($sessions, 1) as $session) {
+                if (empty($session->lasttaken) && substr((string)$session->description, -strlen(' · Día 2')) === ' · Día 2') {
+                    if (!empty($session->caleventid) && function_exists('attendance_delete_calendar_events')) {
+                        try {
+                            attendance_delete_calendar_events([(int)$session->id]);
+                        } catch (\Throwable $e) {
+                            debugging('No se pudo borrar el evento de calendario de asistencia: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                        }
+                    }
+                    $DB->delete_records('attendance_log', ['sessionid' => (int)$session->id]);
+                    $DB->delete_records('attendance_sessions', ['id' => (int)$session->id]);
+                }
+            }
+        }
+    }
+
+    private static function create_session(int $attendanceid, int $groupid, int $start, int $duration, string $label): void {
+        global $DB;
+        $config = get_config('attendance');
+        $session = (object)[
+            'attendanceid' => $attendanceid,
+            'groupid' => $groupid,
+            'sessdate' => $start,
+            'duration' => $duration,
+            'lasttaken' => 0,
+            'lasttakenby' => 0,
+            'timemodified' => time(),
+            'description' => $label,
+            'descriptionformat' => FORMAT_HTML,
+            'studentscanmark' => 0,
+            'allowupdatestatus' => 0,
+            'studentsearlyopentime' => 0,
+            'autoassignstatus' => 0,
+            'studentpassword' => '',
+            'subnet' => '',
+            'automark' => 0,
+            'automarkcompleted' => 0,
+            'statusset' => 0,
+            'absenteereport' => 1,
+            'preventsharedip' => 0,
+            'preventsharediptime' => 0,
+            'caleventid' => 0,
+            'calendarevent' => empty($config->enablecalendar) ? 0 : 1,
+            'includeqrcode' => 0,
+            'rotateqrcode' => 0,
+            'automarkcmid' => 0,
+        ];
+        $session->id = $DB->insert_record('attendance_sessions', $session);
+        if (!empty($session->calendarevent) && function_exists('attendance_create_calendar_event')) {
+            try {
+                attendance_create_calendar_event($session);
+            } catch (\Throwable $e) {
+                debugging('No se pudo crear el evento de calendario de la sesión de asistencia: ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
         }
     }
@@ -241,11 +282,23 @@ class attendance_sync {
         }
 
         [$insql, $params] = $DB->get_in_or_equal(array_keys($sessions), SQL_PARAMS_NAMED, 'as');
-        $logs = $DB->get_records_select('attendance_log', "sessionid $insql", $params, '', 'id, studentid, statusid');
-        $byuser = [];
+        $logs = $DB->get_records_select('attendance_log', "sessionid $insql", $params, '', 'id, sessionid, studentid, statusid');
+        // «Presente» is required in EVERY session of the taller (a two-day
+        // taller needs both days). A day without a mark yet counts as not
+        // present; users without any mark are left out (no list taken).
+        $presentdays = [];
+        $marked = [];
         foreach ($logs as $log) {
             $uid = (int)$log->studentid;
-            $byuser[$uid] = !empty($byuser[$uid]) || isset($presentstatus[(int)$log->statusid]);
+            $marked[$uid] = true;
+            if (isset($presentstatus[(int)$log->statusid])) {
+                $presentdays[$uid][(int)$log->sessionid] = true;
+            }
+        }
+        $needed = count($sessions);
+        $byuser = [];
+        foreach (array_keys($marked) as $uid) {
+            $byuser[$uid] = count($presentdays[$uid] ?? []) >= $needed;
         }
         return $byuser;
     }
