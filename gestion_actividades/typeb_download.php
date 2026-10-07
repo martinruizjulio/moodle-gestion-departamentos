@@ -8,6 +8,7 @@ require_login();
 
 $record = portfolio_typeb::get($id);
 $context = context_system::instance();
+$PAGE->set_context($context);
 $canmanage = \local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id);
 
 if ((int)$record->userid !== (int)$USER->id && !$canmanage) {

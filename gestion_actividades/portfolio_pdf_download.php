@@ -7,6 +7,7 @@ $userid = optional_param('userid', 0, PARAM_INT);
 require_login();
 
 $context = context_system::instance();
+$PAGE->set_context($context);
 $canmanage = \local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id);
 
 if ($userid <= 0) {

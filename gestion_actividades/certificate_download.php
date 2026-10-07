@@ -9,6 +9,7 @@ require_login();
 $cert = $DB->get_record('local_ga_certificates', ['id' => $id], '*', MUST_EXIST);
 $course = $DB->get_record('course', ['id' => (int)$cert->courseid], '*', MUST_EXIST);
 $context = context_course::instance((int)$course->id);
+$PAGE->set_context($context);
 
 // Certificates linked to an edition inherit that exact edition permission.
 // Legacy certificates without edition cannot be safely attributed to one

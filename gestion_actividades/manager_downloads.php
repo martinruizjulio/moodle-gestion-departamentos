@@ -16,6 +16,16 @@ if (!manager::can_manage_globally((int)$USER->id)) {
 
 $action = optional_param('action', '', PARAM_ALPHANUMEXT);
 
+/**
+ * «Nombre Apellidos» from a row that only selected firstname/lastname
+ * (fullname() needs every name field and would print a debugging notice
+ * that breaks CSV/ZIP downloads).
+ */
+function local_ga_dl_name(stdClass $r): string {
+    $name = trim((string)($r->firstname ?? '') . ' ' . (string)($r->lastname ?? ''));
+    return $name !== '' ? $name : '-';
+}
+
 function local_ga_dl_clean(string $name, string $fallback = 'documento'): string {
     $name = clean_filename(trim($name));
     return $name !== '' ? $name : $fallback;
@@ -166,7 +176,7 @@ function local_ga_dl_workshop_activity_rows(): array {
     $order = $series->joins !== ''
         ? 'COALESCE(ws.datefrom, e.sessiondate, 0) DESC, COALESCE(ws.id,0) DESC, COALESCE(si.sortorder,999999) ASC, e.sessiondate DESC, e.id DESC, u.lastname ASC, u.firstname ASC'
         : 'e.sessiondate DESC, e.id DESC, w.code ASC, u.lastname ASC, u.firstname ASC';
-    $sql = "SELECT " . $DB->sql_concat('w.id', "'-'", 'e.id', "'-'", 'COALESCE(u.id,0)') . " AS uniqid,
+    $sql = "SELECT " . $DB->sql_concat('w.id', "'-'", 'COALESCE(e.id,0)', "'-'", 'COALESCE(u.id,0)') . " AS uniqid,
                    w.id AS workshopid, w.code, w.name AS workshopname, w.hours, w.workshoptype,
                    c.fullname AS coursename, e.id AS editionid, e.name AS editionname, e.editioncode,
                    e.sessiondate, e.enrolenddate, e.places, e.status AS editionstatus, e.archived,
@@ -284,7 +294,7 @@ function local_ga_dl_internal_typeb_rows(): array {
     $order = $series->joins !== ''
         ? 'COALESCE(ws.datefrom, e.sessiondate, 0) DESC, COALESCE(ws.id,0) DESC, COALESCE(si.sortorder,999999) ASC, e.sessiondate DESC, e.id DESC, u.lastname ASC, u.firstname ASC'
         : 'e.sessiondate DESC, e.id DESC, w.code ASC, u.lastname ASC, u.firstname ASC';
-    $sql = "SELECT " . $DB->sql_concat('w.id', "'-'", 'e.id', "'-'", 'COALESCE(u.id,0)') . " AS uniqid,
+    $sql = "SELECT " . $DB->sql_concat('w.id', "'-'", 'COALESCE(e.id,0)', "'-'", 'COALESCE(u.id,0)') . " AS uniqid,
                    w.id AS workshopid, w.code, w.name AS workshopname, w.hours,
                    c.fullname AS coursename, e.id AS editionid, e.name AS editionname, e.editioncode,
                    e.sessiondate, e.status AS editionstatus, ee.attended,
@@ -495,7 +505,7 @@ if (in_array($action, $downloadactions, true)) {
                 !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%Y-%m-%d %H:%M') : '',
                 !empty($r->enrolenddate) ? userdate((int)$r->enrolenddate, '%Y-%m-%d %H:%M') : '',
                 $r->places ?: '', $r->editionstatus ?: '', !empty($r->archived) ? 'Sí' : 'No',
-                $r->userid ? fullname($r) : '-', $r->email ?? '', $attendancevalue,
+                $r->userid ? local_ga_dl_name($r) : '-', $r->email ?? '', $attendancevalue,
                 $activity->activity, $activity->status, $activity->result,
             ];
         }
@@ -505,35 +515,35 @@ if (in_array($action, $downloadactions, true)) {
         $rows = [];
         foreach (local_ga_dl_internal_typeb_rows() as $r) {
             $submitted = !empty($r->reflectionsubmitted);
-            $rows[] = [$r->seriestitle ?? '', $r->coursename ?? '', $r->code ?? '', $r->workshopname ?? '', round((float)($r->hours ?? 0), 2), $r->editioncode ?? '', $r->editionname ?? '', !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%Y-%m-%d %H:%M') : '', $r->userid ? fullname($r) : '-', $r->email ?? '', !empty($r->attended) ? 'Asiste' : 'No asiste', $submitted ? 'Entregada' : 'Pendiente', trim(strip_tags((string)($r->reflectiontext ?? '')))];
+            $rows[] = [$r->seriestitle ?? '', $r->coursename ?? '', $r->code ?? '', $r->workshopname ?? '', round((float)($r->hours ?? 0), 2), $r->editioncode ?? '', $r->editionname ?? '', !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%Y-%m-%d %H:%M') : '', $r->userid ? local_ga_dl_name($r) : '-', $r->email ?? '', !empty($r->attended) ? 'Asiste' : 'No asiste', $submitted ? 'Entregada' : 'Pendiente', trim(strip_tags((string)($r->reflectiontext ?? '')))];
         }
         local_ga_dl_send_csv('listado_talleres_tipo_b.csv', ['Edición de talleres', 'Curso', 'Código taller', 'Taller', 'Horas', 'Código edición', 'Edición', 'Fecha taller', 'Alumno', 'Email', 'Asistencia', 'Reflexión', 'Texto en línea'], $rows);
     }
     if ($action === 'typea_csv') {
         $rows = [];
         foreach (local_ga_dl_typea_rows() as $c) {
-            $rows[] = [$c->seriestitle ?? '', fullname($c), $c->email ?? '', $c->coursename ?? '', $c->workshopcode ?? '', $c->workshopname ?? '', $c->editioncode ?? '', $c->editionname ?? '', $c->certcode ?? '', $c->status ?? '', !empty($c->timeissued) ? userdate((int)$c->timeissued, '%Y-%m-%d %H:%M') : '', $c->filename ?? ''];
+            $rows[] = [$c->seriestitle ?? '', local_ga_dl_name($c), $c->email ?? '', $c->coursename ?? '', $c->workshopcode ?? '', $c->workshopname ?? '', $c->editioncode ?? '', $c->editionname ?? '', $c->certcode ?? '', $c->status ?? '', !empty($c->timeissued) ? userdate((int)$c->timeissued, '%Y-%m-%d %H:%M') : '', $c->filename ?? ''];
         }
         local_ga_dl_send_csv('listado_certificados_tipo_a.csv', ['Edición de talleres', 'Alumno', 'Email', 'Curso', 'Código taller', 'Taller', 'Código edición', 'Edición', 'Código certificado', 'Estado', 'Fecha emisión', 'Archivo'], $rows);
     }
     if ($action === 'transfers_csv') {
         $rows = [];
         foreach (manager::list_all_typeb_transfers() as $r) {
-            $rows[] = [fullname($r), $r->email ?? '', trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? '')), round((float)($r->hours ?? 0), 2), format_text(\local_gestion_actividades\local\manager::reflection_plain($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : ''];
+            $rows[] = [local_ga_dl_name($r), $r->email ?? '', trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? '')), round((float)($r->hours ?? 0), 2), format_text(\local_gestion_actividades\local\manager::reflection_plain($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : ''];
         }
         local_ga_dl_send_csv('traspasos_tipoa_tipob.csv', ['Alumno', 'Email', 'Taller A traspasado', 'Horas', 'Reflexión', 'Fecha traspaso'], $rows);
     }
     if ($action === 'typeb_csv') {
         $rows = [];
         foreach (local_ga_dl_typeb_rows() as $c) {
-            $rows[] = [fullname($c), $c->email ?? '', $c->activityname ?? '', !empty($c->activitydate) ? userdate((int)$c->activitydate, '%Y-%m-%d') : '', isset($c->hours) ? (string)$c->hours : '', $c->activitydescription ?? '', $c->status ?? '', !empty($c->authorizedconfirm) ? 'Sí' : 'No', trim((string)($c->reflectiontext ?? '')) !== '' ? 'Sí' : 'No', $c->reviewcomment ?? '', !empty($c->timecreated) ? userdate((int)$c->timecreated, '%Y-%m-%d %H:%M') : '', $c->filename ?? ''];
+            $rows[] = [local_ga_dl_name($c), $c->email ?? '', $c->activityname ?? '', !empty($c->activitydate) ? userdate((int)$c->activitydate, '%Y-%m-%d') : '', isset($c->hours) ? (string)$c->hours : '', $c->activitydescription ?? '', $c->status ?? '', !empty($c->authorizedconfirm) ? 'Sí' : 'No', trim((string)($c->reflectiontext ?? '')) !== '' ? 'Sí' : 'No', $c->reviewcomment ?? '', !empty($c->timecreated) ? userdate((int)$c->timecreated, '%Y-%m-%d %H:%M') : '', $c->filename ?? ''];
         }
         local_ga_dl_send_csv('listado_certificados_tipo_b.csv', ['Alumno', 'Email', 'Actividad', 'Fecha actividad', 'Horas', 'Texto justificativo', 'Estado', 'Declaración normativa', 'Reflexión completada', 'Comentario revisión', 'Fecha subida', 'Archivo'], $rows);
     }
     if ($action === 'hours_csv') {
         $rows = [];
         foreach (manager::get_hours_summary_by_student() as $r) {
-            $rows[] = [fullname($r), $r->email ?? '', local_ga_dl_student_group((int)$r->id), (int)($r->completedworkshops ?? 0), round((float)($r->totaltypeahours ?? 0), 2), (int)($r->validatedtypebcount ?? 0), round((float)($r->totaltypebhours ?? 0), 2), round((float)($r->totalhours ?? 0), 2), max(0, round(54 - (float)($r->totalhours ?? 0), 2))];
+            $rows[] = [local_ga_dl_name($r), $r->email ?? '', local_ga_dl_student_group((int)$r->id), (int)($r->completedworkshops ?? 0), round((float)($r->totaltypeahours ?? 0), 2), (int)($r->validatedtypebcount ?? 0), round((float)($r->totaltypebhours ?? 0), 2), round((float)($r->totalhours ?? 0), 2), max(0, round(54 - (float)($r->totalhours ?? 0), 2))];
         }
         local_ga_dl_send_csv('listado_horas_alumnos.csv', ['Alumno', 'Email', 'Grupo', 'Talleres Tipo A completados', 'Horas Tipo A', 'Tipo B validados', 'Horas Tipo B', 'Total reconocido', 'Pendiente hasta 54'], $rows);
     }
@@ -556,7 +566,7 @@ if (in_array($action, $downloadactions, true)) {
         $tempdir = make_request_directory(); $files = []; $n = 1;
         foreach (local_ga_dl_typea_rows() as $c) {
             $date = !empty($c->timeissued) ? userdate((int)$c->timeissued, '%Y%m%d') : 'sin_fecha';
-            $student = local_ga_dl_clean(fullname($c), 'alumno');
+            $student = local_ga_dl_clean(local_ga_dl_name($c), 'alumno');
             $title = local_ga_dl_clean(($c->workshopcode ?? 'tipo_a') . '_' . ($c->workshopname ?? 'certificado'), 'certificado');
             local_ga_dl_add_typea_file($c, sprintf('Certificados_Tipo_A/%03d_%s_%s_%s.pdf', $n++, $date, $student, $title), $tempdir, $files);
         }
@@ -567,7 +577,7 @@ if (in_array($action, $downloadactions, true)) {
         foreach (local_ga_dl_typeb_rows() as $c) {
             if (!portfolio_typeb::is_countable($c)) { continue; }
             $date = !empty($c->activitydate) ? userdate((int)$c->activitydate, '%Y%m%d') : 'sin_fecha';
-            $student = local_ga_dl_clean(fullname($c), 'alumno');
+            $student = local_ga_dl_clean(local_ga_dl_name($c), 'alumno');
             $title = local_ga_dl_clean($c->activityname ?? 'certificado_tipo_b', 'certificado_tipo_b');
             local_ga_dl_add_typeb_file($c, sprintf('Certificados_Tipo_B/%03d_%s_%s_%s.pdf', $n++, $date, $student, $title), $tempdir, $files);
         }
@@ -634,7 +644,7 @@ if ($viewmode !== '') {
             $activity = local_ga_dl_typea_activity_summary($r);
             $attendancevalue = $r->userid ? (!empty($r->attended) ? html_writer::span('Asiste', 'badge bg-success') : html_writer::span('No asiste', 'badge bg-warning text-dark')) : '-';
             $result = $activity->result === 'Apto' ? html_writer::span('Apto', 'badge bg-success') : ($activity->result === 'No apto' ? html_writer::span('No apto', 'badge bg-danger') : ($activity->result === '-' ? '-' : html_writer::span('Pendiente', 'badge bg-warning text-dark')));
-            $rows[] = [s($r->seriestitle ?: '-'), s($r->coursename ?? ''), s($r->code ?? ''), s($r->workshopname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', s($r->editionname ?: '-'), !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%d/%m/%Y %H:%M') : '-', s($r->editionstatus ?: '-'), !empty($r->archived) ? 'Sí' : 'No', $r->userid ? s(fullname($r)) : '-', s($r->email ?? ''), $r->userid ? s(local_ga_dl_student_group((int)$r->userid)) : '-', $attendancevalue, s($activity->activity), s($activity->status), $result];
+            $rows[] = [s($r->seriestitle ?: '-'), s($r->coursename ?? ''), s($r->code ?? ''), s($r->workshopname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', s($r->editionname ?: '-'), !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%d/%m/%Y %H:%M') : '-', s($r->editionstatus ?: '-'), !empty($r->archived) ? 'Sí' : 'No', $r->userid ? s(local_ga_dl_name($r)) : '-', s($r->email ?? ''), $r->userid ? s(local_ga_dl_student_group((int)$r->userid)) : '-', $attendancevalue, s($activity->activity), s($activity->status), $result];
         }
         echo local_ga_dl_render_table(['Edición de talleres', 'Curso', 'Código', 'Taller', 'Horas', 'Edición', 'Fecha taller', 'Estado', 'Archivado', 'Alumno', 'Email', 'Grupo', 'Asistencia', 'Actividad', 'Estado / calificación', 'Resultado'], $rows);
     }
@@ -645,7 +655,7 @@ if ($viewmode !== '') {
         $rows = [];
         foreach (local_ga_dl_internal_typeb_rows() as $r) {
             $submitted = !empty($r->reflectionsubmitted); $text = trim(strip_tags((string)($r->reflectiontext ?? '')));
-            $rows[] = [s($r->seriestitle ?: '-'), s($r->coursename ?? ''), s($r->code ?? ''), s($r->workshopname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', s($r->editionname ?? '-'), !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%d/%m/%Y %H:%M') : '-', $r->userid ? s(fullname($r)) : '-', s($r->email ?? ''), !empty($r->attended) ? html_writer::span('Confirmada', 'badge bg-success') : html_writer::span('No confirmada', 'badge bg-warning text-dark'), $submitted ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), $text !== '' ? s(\core_text::substr($text, 0, 220)) : ($submitted ? 'Entrega mediante archivo' : '-'), !empty($r->certificateid) ? html_writer::span('Generado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), !empty($r->certificatetimeissued) ? userdate((int)$r->certificatetimeissued, '%d/%m/%Y %H:%M') : '-', '-'];
+            $rows[] = [s($r->seriestitle ?: '-'), s($r->coursename ?? ''), s($r->code ?? ''), s($r->workshopname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', s($r->editionname ?? '-'), !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%d/%m/%Y %H:%M') : '-', $r->userid ? s(local_ga_dl_name($r)) : '-', s($r->email ?? ''), !empty($r->attended) ? html_writer::span('Confirmada', 'badge bg-success') : html_writer::span('No confirmada', 'badge bg-warning text-dark'), $submitted ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), $text !== '' ? s(\core_text::substr($text, 0, 220)) : ($submitted ? 'Entrega mediante archivo' : '-'), !empty($r->certificateid) ? html_writer::span('Generado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), !empty($r->certificatetimeissued) ? userdate((int)$r->certificatetimeissued, '%d/%m/%Y %H:%M') : '-', '-'];
         }
         foreach (local_ga_dl_typeb_rows() as $r) {
             $status = (string)($r->status ?? 'pending'); $hasreflection = trim((string)($r->reflectiontext ?? '')) !== '';
@@ -660,7 +670,7 @@ if ($viewmode !== '') {
             } else if ($status === 'rejected') { $confirm = html_writer::span('Rechazado', 'badge bg-danger'); }
             else if ($status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) { $confirm = html_writer::span('Validado · falta reflexión', 'badge bg-warning text-dark'); }
             $evidence = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id'=>(int)$r->id]), local_ga_btn_icon('t/download', 'Ver evidencia'), ['class'=>'btn btn-secondary btn-sm']);
-            $rows[] = ['Externo', 'Externo', '-', s($r->activityname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', 'Subido por el alumno', !empty($r->activitydate) ? userdate((int)$r->activitydate, '%d/%m/%Y') : '-', s(fullname($r)), s($r->email ?? ''), html_writer::span('No procede', 'badge bg-secondary'), $hasreflection ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), $hasreflection ? s(\core_text::substr((string)$r->reflectiontext, 0, 220)) : '-', $status === 'validated' ? html_writer::span('Reconocido', 'badge bg-success') : html_writer::span('No computa', 'badge bg-warning text-dark'), !empty($r->timereviewed) ? userdate((int)$r->timereviewed, '%d/%m/%Y %H:%M') : '-', $evidence . html_writer::div($confirm, 'mt-1')];
+            $rows[] = ['Externo', 'Externo', '-', s($r->activityname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', 'Subido por el alumno', !empty($r->activitydate) ? userdate((int)$r->activitydate, '%d/%m/%Y') : '-', s(local_ga_dl_name($r)), s($r->email ?? ''), html_writer::span('No procede', 'badge bg-secondary'), $hasreflection ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), $hasreflection ? s(\core_text::substr((string)$r->reflectiontext, 0, 220)) : '-', $status === 'validated' ? html_writer::span('Reconocido', 'badge bg-success') : html_writer::span('No computa', 'badge bg-warning text-dark'), !empty($r->timereviewed) ? userdate((int)$r->timereviewed, '%d/%m/%Y %H:%M') : '-', $evidence . html_writer::div($confirm, 'mt-1')];
         }
         echo local_ga_dl_render_table(['Edición de talleres/origen', 'Curso/origen', 'Código', 'Taller', 'Horas', 'Edición/origen', 'Fecha taller', 'Alumno', 'Email', 'Asistencia', 'Reflexión', 'Contenido', 'Reconocimiento', 'Fecha revisión', 'Acciones'], $rows);
     }
@@ -671,7 +681,7 @@ if ($viewmode !== '') {
         $rows = [];
         foreach (local_ga_dl_typea_rows() as $c) {
             $actions = html_writer::link(new moodle_url('/local/gestion_actividades/certificate_download.php', ['id' => $c->id]), local_ga_btn_icon('t/download', 'Descargar'), ['class' => 'btn btn-secondary btn-sm']);
-            $rows[] = [s($c->seriestitle ?: '-'), s(fullname($c)), s($c->email ?? ''), s(local_ga_dl_student_group((int)$c->userid)), s($c->coursename ?? ''), s(trim(($c->workshopcode ?? '') . ' - ' . ($c->workshopname ?? ''), ' -')), s($c->editionname ?? '-'), !empty($c->timeissued) ? userdate((int)$c->timeissued, '%d/%m/%Y %H:%M') : '-', s($c->status ?? ''), s($c->filename ?? ''), $actions];
+            $rows[] = [s($c->seriestitle ?: '-'), s(local_ga_dl_name($c)), s($c->email ?? ''), s(local_ga_dl_student_group((int)$c->userid)), s($c->coursename ?? ''), s(trim(($c->workshopcode ?? '') . ' - ' . ($c->workshopname ?? ''), ' -')), s($c->editionname ?? '-'), !empty($c->timeissued) ? userdate((int)$c->timeissued, '%d/%m/%Y %H:%M') : '-', s($c->status ?? ''), s($c->filename ?? ''), $actions];
         }
         echo local_ga_dl_render_table(['Edición de talleres', 'Alumno', 'Email', 'Grupo', 'Curso', 'Taller', 'Edición', 'Fecha emisión', 'Estado', 'Archivo', 'Acciones'], $rows);
     }
@@ -681,7 +691,7 @@ if ($viewmode !== '') {
         echo html_writer::div(html_writer::link(local_ga_dl_action_url('transfers_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-3']), 'mb-2');
         $rows = [];
         foreach (manager::list_all_typeb_transfers() as $r) {
-            $rows[] = [fullname($r), s($r->email ?? ''), s(local_ga_dl_student_group((int)$r->userid)), s(trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? ''))), format_float((float)($r->hours ?? 0), 2, true) . ' h', format_text(\local_gestion_actividades\local\manager::reflection_plain($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : '-'];
+            $rows[] = [local_ga_dl_name($r), s($r->email ?? ''), s(local_ga_dl_student_group((int)$r->userid)), s(trim((string)($r->workshopcode ?? '') . ' - ' . (string)($r->workshopname ?? ''))), format_float((float)($r->hours ?? 0), 2, true) . ' h', format_text(\local_gestion_actividades\local\manager::reflection_plain($r->reflectiontext ?? ''), FORMAT_PLAIN), !empty($r->timecreated) ? userdate((int)$r->timecreated) : '-'];
         }
         echo local_ga_dl_render_table(['Alumno', 'Email', 'Grupo', 'Taller A traspasado', 'Horas', 'Reflexión', 'Fecha traspaso'], $rows);
     }
@@ -692,7 +702,7 @@ if ($viewmode !== '') {
         $rows = [];
         foreach (local_ga_dl_typeb_rows() as $c) {
             $actions = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id' => $c->id]), local_ga_btn_icon('t/download', 'Descargar PDF'), ['class' => 'btn btn-secondary btn-sm']);
-            $rows[] = [s(fullname($c)), s($c->email ?? ''), s(local_ga_dl_student_group((int)$c->userid)), s($c->activityname ?? ''), !empty($c->activitydate) ? userdate((int)$c->activitydate, '%d/%m/%Y') : '-', format_float((float)($c->hours ?? 0), 2, true) . ' h', s($c->status ?? ''), !empty($c->authorizedconfirm) ? 'Confirmada' : 'No', trim((string)($c->reflectiontext ?? '')) !== '' ? 'Sí' : 'No', s($c->reviewcomment ?? '-'), $actions];
+            $rows[] = [s(local_ga_dl_name($c)), s($c->email ?? ''), s(local_ga_dl_student_group((int)$c->userid)), s($c->activityname ?? ''), !empty($c->activitydate) ? userdate((int)$c->activitydate, '%d/%m/%Y') : '-', format_float((float)($c->hours ?? 0), 2, true) . ' h', s($c->status ?? ''), !empty($c->authorizedconfirm) ? 'Confirmada' : 'No', trim((string)($c->reflectiontext ?? '')) !== '' ? 'Sí' : 'No', s($c->reviewcomment ?? '-'), $actions];
         }
         echo local_ga_dl_render_table(['Alumno', 'Email', 'Grupo', 'Actividad', 'Fecha', 'Horas', 'Estado', 'Normativa', 'Reflexión', 'Comentario', 'Acciones'], $rows);
     }
@@ -702,7 +712,7 @@ if ($viewmode !== '') {
         echo html_writer::div(html_writer::link(local_ga_dl_action_url('hours_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-3']), 'mb-2');
         $rows = [];
         foreach ($hoursrows as $r) {
-            $rows[] = [s(fullname($r)), s($r->email ?? ''), s(local_ga_dl_student_group((int)$r->id)), (int)($r->completedworkshops ?? 0), format_float((float)($r->totaltypeahours ?? 0), 2, true) . ' h', (int)($r->validatedtypebcount ?? 0), format_float((float)($r->totaltypebhours ?? 0), 2, true) . ' h', format_float((float)($r->totalhours ?? 0), 2, true) . ' h', format_float(max(0, 54 - (float)($r->totalhours ?? 0)), 2, true) . ' h'];
+            $rows[] = [s(local_ga_dl_name($r)), s($r->email ?? ''), s(local_ga_dl_student_group((int)$r->id)), (int)($r->completedworkshops ?? 0), format_float((float)($r->totaltypeahours ?? 0), 2, true) . ' h', (int)($r->validatedtypebcount ?? 0), format_float((float)($r->totaltypebhours ?? 0), 2, true) . ' h', format_float((float)($r->totalhours ?? 0), 2, true) . ' h', format_float(max(0, 54 - (float)($r->totalhours ?? 0)), 2, true) . ' h'];
         }
         echo local_ga_dl_render_table(['Alumno', 'Email', 'Grupo', 'Talleres A', 'Horas A', 'Tipo B reconocidos', 'Horas B', 'Total reconocido', 'Pendiente hasta 54'], $rows);
     }

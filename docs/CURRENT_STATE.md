@@ -637,3 +637,13 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 - Decisión de Julio: en la media de «Nota Talleres A» (60 % de la nota final) solo cuentan los talleres A superados: «Presente» todos los días del taller (o certificado ya emitido) y nota ≥ 5/10. Si asiste y suspende, o aprueba sin asistir, ese taller no cuenta. La nota institucional importada se mantiene como una nota más.
 - `grade_manager::get_typea_average_map()` filtra las notas por `local_ga_edition_enrolments.attended` (activo) o certificado + nota ≥ 5. Textos del portafolio y del ítem del cuaderno actualizados.
 - Validado (Moodle 5.0.11 local, `nota_a_test.php`): 8 (2 días, ambos) + 7 → 7,5; 8 con falta día 2 y 9 sin asistir → sin nota A; 8 con día 2 sin pasar → no cuenta; 4 con ambos días → no cuenta. Regresión hee_e2e y cert ALL OK.
+
+## 2026-10-07 · local 1.5.162-alpha · Repaso de todas las tarjetas del panel
+- Recorrido automático con depuración DEVELOPER activada (Playwright): todas las tarjetas del panel y sus subpáginas (~714 páginas y 23 descargas por curso, en el curso de la demo y en el de talleres de dos días), más alumno (portafolio, certificados, Tipo B, traspasos) y profesor (mis talleres).
+- **Corregido**:
+  - Tarjeta 8: texto con las columnas actuales del listado personalizado.
+  - Tarjeta 6 (`grades_report.php`): la columna Grupo leía `$row->userid` (inexistente) y salía siempre vacía + aviso PHP → `$row->id`.
+  - Tarjeta 6 «Descargar PDF» (`grades_export.php`): sin `$PAGE->set_context()`; con depuración, el aviso previo rompía el PDF (TCPDF «Some data has already been output»). Contexto fijado. Igual en `certificate_download.php`, `portfolio_package_download.php`, `portfolio_pdf_all.php`, `portfolio_pdf_download.php`, `typeb_download.php`, `export.php`.
+  - Tarjeta 3 (`manager_downloads.php`): `fullname()` sobre filas con solo nombre/apellidos imprimía avisos dentro de los CSV → `local_ga_dl_name()`. **Fallo de datos**: la clave única de los listados de talleres A/B (`w.id-e.id-u.id`) quedaba vacía cuando `e.id` era NULL y Moodle descartaba filas «duplicadas» → `COALESCE(e.id,0)`.
+- Verificado: todas las descargas CSV/ZIP limpias (sin avisos), ZIP certificados A 31 MB en 2 s, expedientes completos 61 MB; hee_e2e ALL OK; nota_a_test ALL OK.
+- `myhours.php` es una página antigua sin enlaces (deniega a alumnos por capacidad); no se toca.

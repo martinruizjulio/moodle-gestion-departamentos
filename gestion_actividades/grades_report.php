@@ -282,7 +282,7 @@ if (!$rows) {
             s($row->lastname),
             s($row->firstname),
             s($row->email),
-            s(local_gestion_actividades_student_group((int)$row->userid)),
+            s(local_gestion_actividades_student_group((int)$row->id)),
             local_ga_grades_value($row->typeagrade),
             local_ga_grades_value($row->portfoliograde),
             local_ga_grades_value($row->autoevaluationgrade),

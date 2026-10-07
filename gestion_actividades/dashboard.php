@@ -193,7 +193,7 @@ echo local_ga_dash_card(
 );
 echo local_ga_dash_card(
     '8. Listado personalizado de talleres',
-    'Seleccionar uno, varios o todos los talleres y obtener edición, alumno, horas, actividad, resultado y asistencia.',
+    'Seleccionar uno, varios o todos los talleres (también pasados) y obtener apellidos, nombre, correo, taller, Edición, horas, calificación, asistencia y resultado. Descargable en CSV.',
     new moodle_url('/local/gestion_actividades/workshop_report.php'),
     'Crear listado de talleres',
     'btn btn-primary'

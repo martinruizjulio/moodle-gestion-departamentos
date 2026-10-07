@@ -6,6 +6,8 @@ use local_gestion_actividades\local\manager;
 
 require_login();
 $context = context_system::instance();
+$PAGE->set_context($context);
+$PAGE->set_url(new moodle_url('/local/gestion_actividades/grades_export.php'));
 if (!manager::can_manage_globally((int)$USER->id)) {
     throw new required_capability_exception($context, 'local/gestion_actividades:manage', 'nopermissions', '');
 }
