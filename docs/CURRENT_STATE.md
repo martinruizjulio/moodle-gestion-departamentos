@@ -723,3 +723,15 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
   - Suites hee_e2e, cert, typeb_cat: todas OK.
   - dos_dias: 1 fallo, debido a horas acumuladas del usuario de prueba en ejecuciones previas; no está relacionado con este cambio.
   - No validado en producción.
+
+## 2026-10-09 — local 1.5.176-alpha (2026100591): «Buscar alumno (historial completo)»
+- Nueva página `student_search.php`, de solo lectura y solo para el gestor. Botón en el panel, bloque «Alumnos y horas», en primer lugar.
+- Búsqueda por nombre, apellidos, correo, DNI/ID o usuario (varias palabras, máximo 100 resultados). Si hay un único resultado, abre su ficha directamente.
+- La ficha muestra:
+  - Datos del alumno, grupo y cursos con actividad.
+  - Horas A/B, total y pendiente hasta 54 (cálculo canónico).
+  - Enlaces a portafolio, PDF, ZIP y perfil.
+  - Tablas de todos los talleres en que se inscribió (incluidas las bajas): curso académico, Edición, tipo, fecha, horas, inscripción, asistencia, calificación o actividad, resultado y certificado.
+  - Tablas de Tipo B externo, traspasos y reconocimiento institucional.
+- Diferencia con lo existente: el buscador de «Validar Tipo B externo» solo muestra certificados A y solicitudes B. Esta ficha reúne todo el historial.
+- Validación local con Playwright (búsqueda múltiple, resultado único, sin resultados; ficha de dd1 con 12 talleres): sin errores.

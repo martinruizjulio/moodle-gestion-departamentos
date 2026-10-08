@@ -240,6 +240,7 @@ echo $block('🗓️ Talleres', 'Crear y gestionar las Ediciones de talleres.', 
     $btn(new moodle_url('/local/gestion_actividades/archive.php'), 'i/folder', 'Ediciones anteriores', 'btn btn-outline-secondary'),
 ]);
 echo $block('🎓 Alumnos y horas', 'Validar y reconocer horas del alumnado.', [
+    $btn(new moodle_url('/local/gestion_actividades/student_search.php'), 'a/search', 'Buscar alumno (historial completo)'),
     $btn(new moodle_url('/local/gestion_actividades/index.php'), 'i/users', 'Alumnos y ranking'),
     $btn(new moodle_url('/local/gestion_actividades/institutional_import.php'), 'i/import', 'Importar reconocimiento institucional'),
     $btn(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), 't/edit', 'Catálogo de talleres B'),
