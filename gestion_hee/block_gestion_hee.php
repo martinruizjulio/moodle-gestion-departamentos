@@ -107,7 +107,7 @@ class block_gestion_hee extends block_base {
         $html .= html_writer::start_div('mt-2');
         $transfereligible = $typeahours > 32.0 && $typebhours < 22.0;
         $html .= html_writer::link(
-            new moodle_url('/local/gestion_actividades/transfer_typeb.php'),
+            new moodle_url('/local/gestion_actividades/transfer_typeb.php', $this->course_params()),
             get_string('transfertypeb', 'block_gestion_hee'),
             [
                 'class' => 'btn btn-sm ' . ($transfereligible ? 'btn-warning' : 'btn-outline-secondary') . ' d-block w-100 mb-1',
@@ -117,7 +117,7 @@ class block_gestion_hee extends block_base {
             ]
         );
         $html .= html_writer::link(
-            new moodle_url('/local/gestion_actividades/typeb_upload.php'),
+            new moodle_url('/local/gestion_actividades/typeb_upload.php', $this->course_params()),
             'Solicitar validación Tipo B',
             [
                 'class' => 'btn btn-sm btn-outline-secondary d-block w-100 mb-1',
@@ -125,7 +125,7 @@ class block_gestion_hee extends block_base {
             ]
         );
         $html .= html_writer::link(
-            new moodle_url('/local/gestion_actividades/portfolio.php'),
+            new moodle_url('/local/gestion_actividades/portfolio.php', $this->course_params()),
             get_string('myportfolio', 'block_gestion_hee'),
             ['class' => 'btn btn-sm btn-outline-secondary d-block w-100']
         );
@@ -255,7 +255,7 @@ class block_gestion_hee extends block_base {
             $html .= html_writer::link(
                 // Carry the current course so «Volver al curso» returns here.
                 new moodle_url('/local/gestion_actividades/dashboard.php',
-                    ($this->page->course && (int)$this->page->course->id !== (int)SITEID) ? ['courseid' => (int)$this->page->course->id] : []),
+                    $this->course_params()),
                 'Panel de Gestión HEE',
                 ['class' => 'btn btn-sm btn-primary d-block w-100 mb-1']
             );
@@ -301,6 +301,12 @@ class block_gestion_hee extends block_base {
         );
         $html .= html_writer::end_div();
         return $html;
+    }
+
+    /** ['courseid' => N] on a course page, so «Volver al curso» returns here. */
+    private function course_params(): array {
+        $course = $this->page->course ?? null;
+        return ($course && (int)$course->id !== (int)SITEID) ? ['courseid' => (int)$course->id] : [];
     }
 
     private function render_metric(string $label, float $value, string $badgeclass = 'bg-secondary'): string {

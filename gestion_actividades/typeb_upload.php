@@ -97,6 +97,7 @@ if ($data = $uploadform->get_data()) {
 
 echo $OUTPUT->header();
 echo html_writer::div(
+    \local_gestion_actividades\local\manager::back_to_course_button('btn btn-outline-secondary me-2 mb-3') .
     html_writer::link(
         new moodle_url('/local/gestion_actividades/portfolio.php', $courseid > 0 ? ['courseid' => $courseid] : []),
         $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al portafolio',

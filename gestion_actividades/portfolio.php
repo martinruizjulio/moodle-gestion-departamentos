@@ -20,20 +20,8 @@ function local_ga_btn_icon(string $pix, string $label): string {
 }
 
 function local_ga_student_return_course_button(): string {
-    global $DB;
-    $courseid = optional_param('courseid', 0, PARAM_INT);
-    if ($courseid > 1 && $DB->record_exists('course', ['id' => $courseid])) {
-        return html_writer::link(
-            new moodle_url('/course/view.php', ['id' => $courseid]),
-            local_ga_btn_icon('t/left', 'Volver al curso'),
-            ['class' => 'btn btn-outline-secondary']
-        );
-    }
-    return html_writer::link(
-        'javascript:history.back();',
-        local_ga_btn_icon('t/left', 'Volver al curso'),
-        ['class' => 'btn btn-outline-secondary']
-    );
+    // Always the course (never «browser back», which could land on another HEE page).
+    return \local_gestion_actividades\local\manager::back_to_course_button();
 }
 
 function local_ga_portfolio_badge(string $status): string {

@@ -12,6 +12,54 @@ class manager {
      * Reflection text as plain text: online-text submissions are stored as
      * HTML by the editor («<p>…</p>»), which must not show up as raw tags.
      */
+    /**
+     * Course to return to from the student pages (portfolio, Tipo B, traspasos):
+     * ?courseid → the course page the user came from → the last course
+     * remembered in this session → the latest course with Ediciones where the
+     * user is enrolled. 0 when none can be found.
+     */
+    public static function return_courseid(): int {
+        global $DB, $SESSION, $USER;
+        $valid = static function(int $id) use ($DB): bool {
+            return $id > 0 && $id !== (int)SITEID && $DB->record_exists('course', ['id' => $id]);
+        };
+        $courseid = optional_param('courseid', 0, PARAM_INT);
+        if (!$valid($courseid)) {
+            $courseid = 0;
+            $referer = get_local_referer(false);
+            if ($referer && preg_match('~/course/view\.php\?(?:[^#]*&)?id=(\d+)~', $referer, $m) && $valid((int)$m[1])) {
+                $courseid = (int)$m[1];
+            }
+        }
+        if ($courseid > 0) {
+            $SESSION->local_ga_student_courseid = $courseid;
+            return $courseid;
+        }
+        if (!empty($SESSION->local_ga_student_courseid) && $valid((int)$SESSION->local_ga_student_courseid)) {
+            return (int)$SESSION->local_ga_student_courseid;
+        }
+        // The course of the user that holds Ediciones de talleres (latest first).
+        $ids = $DB->get_fieldset_sql("SELECT courseid FROM {local_ga_workshop_series} GROUP BY courseid ORDER BY MAX(id) DESC");
+        foreach ($ids as $id) {
+            if ($valid((int)$id) && is_enrolled(\context_course::instance((int)$id), (int)$USER->id)) {
+                $SESSION->local_ga_student_courseid = (int)$id;
+                return (int)$id;
+            }
+        }
+        return 0;
+    }
+
+    /** «Volver al curso» button (or «Volver a Mis cursos» if no course is known). */
+    public static function back_to_course_button(string $class = 'btn btn-outline-secondary'): string {
+        global $OUTPUT;
+        $courseid = self::return_courseid();
+        $icon = $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' ';
+        if ($courseid > 0) {
+            return \html_writer::link(new \moodle_url('/course/view.php', ['id' => $courseid]), $icon . 'Volver al curso', ['class' => $class]);
+        }
+        return \html_writer::link(new \moodle_url('/my/courses.php'), $icon . 'Volver a Mis cursos', ['class' => $class]);
+    }
+
     public static function reflection_plain(?string $text): string {
         $text = preg_replace('~<\s*(br|/p|/div|/li)\b[^>]*>~i', "\n", (string)$text);
         $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
