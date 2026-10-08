@@ -878,6 +878,35 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026100575, 'local', 'gestion_actividades');
     }
 
+    if ($oldversion < 2026100579) {
+        // External Type B catalogue: the admin lists the talleres (name +
+        // hours) and students pick one when uploading the certificate.
+        // Non-destructive: new table + one column defaulting to 0.
+        $table = new xmldb_table('local_ga_typeb_catalog');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+            $table->add_field('hours', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('active', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
+            $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('active', XMLDB_INDEX_NOTUNIQUE, ['active']);
+            $dbman->create_table($table);
+        }
+        $certs = new xmldb_table('local_ga_typeb_certs');
+        $field = new xmldb_field('catalogid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timemodified');
+        if ($dbman->table_exists($certs) && !$dbman->field_exists($certs, $field)) {
+            $dbman->add_field($certs, $field);
+        }
+        $index = new xmldb_index('usercatalog', XMLDB_INDEX_NOTUNIQUE, ['userid', 'catalogid']);
+        if ($dbman->table_exists($certs) && !$dbman->index_exists($certs, $index)) {
+            $dbman->add_index($certs, $index);
+        }
+        upgrade_plugin_savepoint(true, 2026100579, 'local', 'gestion_actividades');
+    }
+
     return true;
 }
 

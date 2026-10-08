@@ -377,6 +377,7 @@
         <FIELD NAME="timereviewed" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="catalogid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="External Type B taller from local_ga_typeb_catalog (0 = legacy free-text request)"/>
       </FIELDS>
       <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
@@ -384,6 +385,23 @@
         <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
         <INDEX NAME="userstatus" UNIQUE="false" FIELDS="userid,status"/>
         <INDEX NAME="activitydate" UNIQUE="false" FIELDS="activitydate"/>
+        <INDEX NAME="usercatalog" UNIQUE="false" FIELDS="userid,catalogid"/>
+      </INDEXES>
+    </TABLE>
+
+    <TABLE NAME="local_ga_typeb_catalog" COMMENT="Catalogue of external Type B talleres students can request validation for">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="hours" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="active" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="0 = retired: not offered, existing requests kept"/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES>
+        <INDEX NAME="active" UNIQUE="false" FIELDS="active"/>
       </INDEXES>
     </TABLE>
 

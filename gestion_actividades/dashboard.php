@@ -193,13 +193,15 @@ echo local_ga_dash_card(
     'Abrir notas de alumnos',
     'btn btn-primary'
 );
-echo local_ga_dash_card(
-    '7. Validación externa Tipo B',
-    'Revisar certificados externos. Tras la validación, el alumno completa la reflexión; solo entonces las horas computan como Tipo B.',
-    new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']),
-    'Revisar solicitudes Tipo B',
-    'btn btn-warning'
-);
+// Card 7 has two actions: review requests and the catalogue of talleres.
+echo html_writer::start_div('col-md-4 col-xl-4 mb-3')
+    . html_writer::start_div('card h-100 shadow-sm')
+    . html_writer::start_div('card-body d-flex flex-column')
+    . html_writer::tag('h3', '7. Validación externa Tipo B', ['class' => 'h5 card-title'])
+    . html_writer::tag('p', 'El alumno elige un taller del catálogo y sube su certificado. Tras la validación completa la reflexión; entonces las horas del catálogo computan como Tipo B.', ['class' => 'card-text text-muted flex-grow-1'])
+    . html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']), local_ga_btn_icon('t/go', 'Revisar solicitudes Tipo B'), ['class' => 'btn btn-warning mb-2'])
+    . html_writer::link(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), local_ga_btn_icon('t/edit', 'Catálogo de talleres B'), ['class' => 'btn btn-outline-secondary'])
+    . html_writer::end_div() . html_writer::end_div() . html_writer::end_div();
 echo local_ga_dash_card(
     '8. Listado personalizado de talleres',
     'Seleccionar uno, varios o todos los talleres (también pasados) y obtener apellidos, nombre, correo, taller, Edición, horas, calificación, asistencia y resultado. Descargable en CSV.',

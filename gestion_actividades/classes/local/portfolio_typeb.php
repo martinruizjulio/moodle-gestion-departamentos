@@ -55,6 +55,68 @@ class portfolio_typeb {
         return (int)$id;
     }
 
+    /**
+     * New request for a taller of the catalogue: name and hours come from the
+     * catalogue. One request per student and taller (unless rejected).
+     */
+    public static function create_from_catalog(int $userid, int $catalogid, int $activitydate, string $filename, string $tmpfilepath): int {
+        global $DB;
+        $item = typeb_catalog::get($catalogid);
+        if (!$item || empty($item->active)) {
+            throw new \invalid_parameter_exception('Elige un taller Tipo B del catálogo.');
+        }
+        if (typeb_catalog::user_has_request($userid, $catalogid)) {
+            throw new \invalid_parameter_exception('Ya has presentado una solicitud para este taller. Puedes editarla en «Mis solicitudes de validación».');
+        }
+        $id = self::create_upload($userid, (string)$item->name, $activitydate, (float)$item->hours, '', $filename, $tmpfilepath);
+        $DB->set_field('local_ga_typeb_certs', 'catalogid', $catalogid, ['id' => $id]);
+        return $id;
+    }
+
+    /** Whether the student can still edit the request (not validated yet). */
+    public static function is_editable(\stdClass $record): bool {
+        return in_array((string)($record->status ?? ''), ['pending', 'rejected'], true);
+    }
+
+    /**
+     * The student corrects a request that is pending or was rejected: taller,
+     * date and (optionally) the certificate. It goes back to «pending».
+     */
+    public static function update_request(int $id, int $userid, int $catalogid, int $activitydate, string $filename = '', string $tmpfilepath = ''): void {
+        global $DB;
+        $record = self::get($id);
+        if ((int)$record->userid !== $userid || !self::is_editable($record)) {
+            throw new \invalid_parameter_exception('Esta solicitud ya no se puede editar.');
+        }
+        $item = typeb_catalog::get($catalogid);
+        if (!$item || (empty($item->active) && (int)$record->catalogid !== $catalogid)) {
+            throw new \invalid_parameter_exception('Elige un taller Tipo B del catálogo.');
+        }
+        if (typeb_catalog::user_has_request($userid, $catalogid, $id)) {
+            throw new \invalid_parameter_exception('Ya has presentado otra solicitud para este taller.');
+        }
+        $record->catalogid = $catalogid;
+        $record->activityname = (string)$item->name;
+        $record->hours = (float)$item->hours;
+        $record->activitydate = $activitydate;
+        $record->status = 'pending';
+        $record->timemodified = time();
+        if ($filename !== '' && $tmpfilepath !== '' && is_readable($tmpfilepath)) {
+            $fs = get_file_storage();
+            $context = \context_system::instance();
+            $fs->delete_area_files($context->id, 'local_gestion_actividades', 'typeb_certificate', $id);
+            $fs->create_file_from_pathname([
+                'contextid' => $context->id, 'component' => 'local_gestion_actividades', 'filearea' => 'typeb_certificate',
+                'itemid' => $id, 'filepath' => '/', 'filename' => clean_filename($filename),
+                'mimetype' => function_exists('mimeinfo') ? mimeinfo('type', clean_filename($filename)) : 'application/octet-stream',
+                'userid' => $userid, 'author' => fullname(\core_user::get_user($userid)),
+            ], $tmpfilepath);
+            $record->filename = clean_filename($filename);
+        }
+        $DB->update_record('local_ga_typeb_certs', $record);
+        self::after_change($userid);
+    }
+
     public static function get(int $id): \stdClass {
         global $DB;
         self::ensure_table();
@@ -138,6 +200,11 @@ class portfolio_typeb {
             return false;
         }
         $record = self::get($id);
+        // Catalogue talleres: the validated hours are the catalogue's.
+        if ($status === 'validated' && !empty($record->catalogid) && ($item = typeb_catalog::get((int)$record->catalogid))) {
+            $record->activityname = (string)$item->name;
+            $record->hours = (float)$item->hours;
+        }
         if ($status === 'validated' && trim((string)($record->reflectiontext ?? '')) === '') {
             $status = self::STATUS_VALIDATED_PENDING_REFLECTION;
         }

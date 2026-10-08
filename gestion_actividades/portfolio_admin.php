@@ -53,7 +53,7 @@ function local_ga_admin_typea_hours_from_certificates(array $certificates): floa
 echo $OUTPUT->header();
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo $OUTPUT->heading('Portafolio de certificados - gestor');
-echo html_writer::tag('p', 'En los reconocimientos externos Tipo B hay dos pasos: el gestor valida el certificado aportado y, después, el alumno entrega una breve reflexión. Las horas solo computan cuando ambos pasos están completados.', ['class' => 'alert alert-info']);
+echo html_writer::tag('p', 'En los reconocimientos externos Tipo B el alumno elige un taller del catálogo y sube su certificado. Hay dos pasos: el gestor valida el certificado y, después, el alumno entrega una breve reflexión. Las horas (las del catálogo) solo computan cuando ambos pasos están completados.', ['class' => 'alert alert-info']);
 
 $pendingcount = 0;
 try {
@@ -67,6 +67,8 @@ if ($pendingcount > 0) {
 
 echo html_writer::start_div('mb-3');
 echo html_writer::link(new moodle_url('/local/gestion_actividades/manager_downloads.php'), local_ga_btn_icon('t/download', 'Listados y descargas'), ['class' => 'btn btn-primary']);
+echo ' ';
+echo html_writer::link(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), local_ga_btn_icon('t/edit', 'Catálogo de talleres B'), ['class' => 'btn btn-warning']);
 echo ' ';
 echo html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_cover_template.php'), local_ga_btn_icon('t/edit', 'Editar portada PDF'), ['class' => 'btn btn-secondary']);
 echo ' ';
@@ -148,7 +150,7 @@ if ($selecteduser) {
 
 if (!empty($typebcerts)) {
     $table = new html_table();
-    $table->head = ['Alumno', 'Actividad', 'Fecha', 'Horas', 'Descripción', 'Estado', 'Reflexión', 'Comentario gestor', 'Certificado', 'Acción'];
+    $table->head = ['Alumno', 'Taller', 'Fecha', 'Horas', 'Descripción', 'Estado', 'Reflexión', 'Comentario gestor', 'Certificado', 'Acción'];
     foreach ($typebcerts as $c) {
         $pdfactions = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_view.php', ['id' => $c->id]), local_ga_btn_icon('t/preview', 'Ver'), ['class' => 'btn btn-primary btn-sm', 'target' => '_blank']) . ' ' .
                       html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id' => $c->id]), local_ga_btn_icon('t/download', 'Descargar'), ['class' => 'btn btn-secondary btn-sm']);
