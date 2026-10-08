@@ -702,3 +702,6 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 - Revisadas todas las páginas con tablas ordenables/filtrables: todas usan `local_gestion_actividades_enable_interactive_tables()`, que muestra «Consejo: pulsa el nombre de una columna (⇅)…» y la marca ⇅ en cabeceras.
 - Añadido a las dos páginas que no lo tenían: `workshop_report.php` (Listado personalizado) y `typeb_catalog.php` (Catálogo Tipo B).
 - Validación local (Moodle 5.0.11, Playwright): 23 páginas del panel, cada tabla ordenable con aviso y ⇅, sin errores. No validado en producción.
+
+## 2026-10-09 — local 1.5.174-alpha (2026100589): orden en «Notas e informes»
+- Panel: botones invertidos a petición de Julio → «Listados y descargas», «Listado personalizado de talleres», «Notas de la asignatura». Validado en local.

@@ -243,9 +243,9 @@ echo $block('🎓 Alumnos y horas', 'Validar y reconocer horas del alumnado.', [
     $btn(new moodle_url('/local/gestion_actividades/index.php'), 'i/users', 'Alumnos y ranking'),
 ]);
 echo $block('📊 Notas e informes', 'Consultar notas y descargar listados.', [
-    $btn(new moodle_url('/local/gestion_actividades/grades_report.php', $cparams), 'i/grades', 'Notas de la asignatura', 'btn btn-primary'),
-    $btn(new moodle_url('/local/gestion_actividades/workshop_report.php'), 'i/report', 'Listado personalizado de talleres'),
     $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php'), 't/download', 'Listados y descargas'),
+    $btn(new moodle_url('/local/gestion_actividades/workshop_report.php'), 'i/report', 'Listado personalizado de talleres'),
+    $btn(new moodle_url('/local/gestion_actividades/grades_report.php', $cparams), 'i/grades', 'Notas de la asignatura', 'btn btn-primary'),
 ]);
 echo $block('⚙️ Configuración', 'Recomendable solo para administradores: permisos y herramientas de mantenimiento.', [
     html_writer::tag('details',
