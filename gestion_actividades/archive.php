@@ -73,7 +73,7 @@ if (optional_param('archive_due', 0, PARAM_BOOL) && confirm_sesskey()) {
 echo $OUTPUT->header();
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
 echo $OUTPUT->heading(get_string('workshoparchive', 'local_gestion_actividades'));
-echo html_writer::tag('p', 'Las Ediciones de talleres finalizadas expresamente se muestran agrupadas de la más reciente a la más antigua. Los talleres del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
+echo html_writer::tag('p', 'Las Ediciones de talleres finalizadas aparecen plegadas, de la más reciente a la más antigua (y, en la misma fecha, Tipo A antes que Tipo B). Los talleres del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
 
 $serieslist = workshop_series::list_for_course(0);
 $alllinkedworkshops = [];
@@ -81,24 +81,53 @@ foreach ($serieslist as $allseries) {
     foreach (workshop_series::items((int)$allseries->id) as $allitem) { $alllinkedworkshops[(int)$allitem->workshopid] = true; }
 }
 
-$archivedseriescount = 0;
+// Finished Ediciones, folded: most recent first and, for the same date,
+// Tipo A before Tipo B. Each one opens with a click.
+$archived = [];
 foreach ($serieslist as $series) {
-    $isarchived = ($series->status ?? '') === 'finished';
-    if (!$isarchived) { continue; }
+    if (($series->status ?? '') !== 'finished') { continue; }
     $items = workshop_series::items((int)$series->id);
     if (!$items) { continue; }
+    $types = [];
+    foreach ($items as $it) {
+        $types[manager::normalize_workshop_type((string)($it->workshoptype ?? 'typea')) === 'typeb' ? 'B' : 'A'] = true;
+    }
+    ksort($types);
+    $archived[] = (object)['series' => $series, 'items' => $items, 'types' => array_keys($types)];
+}
+usort($archived, static function($a, $b) {
+    $d = (int)$b->series->datefrom <=> (int)$a->series->datefrom;
+    if ($d !== 0) { return $d; }
+    $rank = static fn($t) => $t === ['A'] ? 0 : ($t === ['B'] ? 1 : 2);
+    $r = $rank($a->types) <=> $rank($b->types);
+    return $r !== 0 ? $r : ((int)$b->series->id <=> (int)$a->series->id);
+});
+if ($archived) {
+    echo html_writer::tag('p', 'Pulsa sobre una Edición para ver sus talleres.', ['class' => 'text-muted']);
+}
+
+$archivedseriescount = 0;
+foreach ($archived as $entry) {
+    $series = $entry->series;
+    $items = $entry->items;
     $archivedseriescount++;
     $course = $DB->get_record('course', ['id' => (int)$series->courseid], 'id,fullname', IGNORE_MISSING);
-    echo html_writer::start_div('card shadow-sm mb-4');
-    echo html_writer::start_div('card-header bg-light');
-    echo html_writer::start_div('d-flex flex-wrap justify-content-between align-items-start');
+    $typebadges = '';
+    foreach ($entry->types as $t) {
+        $typebadges .= local_ga_archive_type_badge($t === 'B' ? 'typeb' : 'typea') . ' ';
+    }
+    echo html_writer::start_tag('details', ['class' => 'card shadow-sm mb-3']);
+    echo html_writer::start_tag('summary', ['class' => 'card-header bg-light', 'style' => 'cursor:pointer;list-style-position:inside']);
+    echo html_writer::start_div('d-inline-flex flex-wrap justify-content-between align-items-start', ['style' => 'width:calc(100% - 1.5em);vertical-align:top']);
     echo html_writer::start_div('me-3');
-    echo html_writer::tag('h3', s($series->title), ['class' => 'h5 mb-1']);
-    echo html_writer::tag('div', ($course ? format_string($course->fullname) : 'Curso #' . (int)$series->courseid) . ' · ' . userdate((int)$series->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$series->dateto, '%d/%m/%Y') . ' · Finalizada / oculta', ['class' => 'text-muted']);
+    echo html_writer::tag('span', s($series->title), ['class' => 'h5 mb-1 me-2']) . $typebadges;
+    echo html_writer::tag('div', userdate((int)$series->datefrom, '%d/%m/%Y') . ' – ' . userdate((int)$series->dateto, '%d/%m/%Y')
+        . ' · ' . count($items) . ' taller(es) · ' . ($course ? format_string($course->fullname) : 'Curso #' . (int)$series->courseid)
+        . ' · Finalizada / oculta', ['class' => 'text-muted']);
     echo html_writer::end_div();
     echo html_writer::div(html_writer::link(local_ga_archive_course_series_url($series), 'Abrir en el curso', ['class' => 'btn btn-sm btn-outline-secondary']), 'mb-1');
     echo html_writer::end_div();
-    echo html_writer::end_div();
+    echo html_writer::end_tag('summary');
     echo html_writer::start_div('card-body p-0');
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm mb-0';
@@ -129,7 +158,7 @@ foreach ($serieslist as $series) {
     }
     echo html_writer::table($table);
     echo html_writer::end_div();
-    echo html_writer::end_div();
+    echo html_writer::end_tag('details');
 }
 
 $legacyarchived = [];
