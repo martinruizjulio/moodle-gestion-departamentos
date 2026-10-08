@@ -247,7 +247,7 @@ echo $block('📊 Notas e informes', 'Consultar notas y descargar listados.', [
     $btn(new moodle_url('/local/gestion_actividades/workshop_report.php'), 'i/report', 'Listado personalizado de talleres'),
     $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php'), 't/download', 'Listados y descargas'),
 ]);
-echo $block('⚙️ Configuración', 'Se usa poco: permisos y herramientas de mantenimiento.', [
+echo $block('⚙️ Configuración', 'Recomendable solo para administradores: permisos y herramientas de mantenimiento.', [
     html_writer::tag('details',
         html_writer::tag('summary', 'Mostrar opciones', ['class' => 'btn btn-outline-secondary w-100 text-start'])
         . html_writer::div(

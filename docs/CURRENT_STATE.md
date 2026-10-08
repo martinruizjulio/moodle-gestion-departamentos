@@ -685,3 +685,6 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 
 ## 2026-10-09 · local 1.5.168-alpha · Tablas: aviso de ordenar y filtrar
 - `local_gestion_actividades_enable_interactive_tables()` (todas las tablas interactivas: notas, listados, talleres…): línea «Consejo: pulsa el nombre de una columna (⇅) para ordenar…; escribe en «Filtrar este listado…»…» bajo el buscador, y cada encabezado ordenable muestra ⇅ (▲/▼ en la columna activa; el resto vuelve a ⇅). Validado en navegador, sin errores JS.
+
+## 2026-10-09 · local 1.5.169-alpha
+- Panel, bloque Configuración: texto «Recomendable solo para administradores: permisos y herramientas de mantenimiento.» (antes «Se usa poco…»).
