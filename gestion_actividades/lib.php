@@ -351,6 +351,11 @@ function local_gestion_actividades_enable_interactive_tables(string $selector = 
         addChecklistFilter('Grupos', uniqueColumnValues(groupcolumn), selectedgroups, 'groups');
         addChecklistFilter('Cursos académicos', uniqueColumnValues(yearcolumn), selectedyears, 'years');
         toolbar.appendChild(counter);
+        // Make the hidden features visible to whoever uses the list.
+        var hint = document.createElement('div');
+        hint.className = 'local-ga-table-hint w-100 text-muted small';
+        hint.textContent = 'Consejo: pulsa el nombre de una columna (⇅) para ordenar la tabla por esa columna; vuelve a pulsarlo para invertir el orden. Escribe en «Filtrar este listado…» para ver solo las filas que contengan ese texto.';
+        toolbar.appendChild(hint);
         table.parentNode.insertBefore(toolbar, table);
 
         rows.forEach(function(row, index) {
@@ -390,6 +395,14 @@ function local_gestion_actividades_enable_interactive_tables(string $selector = 
             header.setAttribute('role', 'button');
             header.setAttribute('aria-sort', 'none');
             header.title = 'Ordenar por esta columna';
+            // Visible cue that the header can be clicked to sort.
+            if (!header.querySelector('.local-ga-sort-indicator')) {
+                var cue = document.createElement('span');
+                cue.className = 'local-ga-sort-indicator ms-1 text-muted';
+                cue.setAttribute('aria-hidden', 'true');
+                cue.textContent = '⇅';
+                header.appendChild(cue);
+            }
 
             function sortColumn() {
                 var ascending = header.getAttribute('data-local-ga-sort') !== 'asc';
@@ -400,15 +413,20 @@ function local_gestion_actividades_enable_interactive_tables(string $selector = 
                     }
                     var oldindicator = other.querySelector('.local-ga-sort-indicator');
                     if (oldindicator) {
-                        oldindicator.remove();
+                        // Other sortable columns keep the neutral cue.
+                        oldindicator.className = 'local-ga-sort-indicator ms-1 text-muted';
+                        oldindicator.textContent = '⇅';
                     }
                 });
                 header.setAttribute('data-local-ga-sort', ascending ? 'asc' : 'desc');
                 header.setAttribute('aria-sort', ascending ? 'ascending' : 'descending');
-                var indicator = document.createElement('span');
+                var indicator = header.querySelector('.local-ga-sort-indicator');
+                if (!indicator) {
+                    indicator = document.createElement('span');
+                    header.appendChild(indicator);
+                }
                 indicator.className = 'local-ga-sort-indicator ms-1';
                 indicator.textContent = ascending ? '▲' : '▼';
-                header.appendChild(indicator);
 
                 rows.sort(function(a, b) {
                     var avalue = a.cells[columnindex] ? a.cells[columnindex].textContent.trim() : '';

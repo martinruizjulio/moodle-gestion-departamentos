@@ -682,3 +682,6 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 - Panel «Ver traspasos A→B» enlazaba `manager_downloads.php?view=view_transfers` (parámetro inexistente) y mostraba la portada de «Listados y descargas» → `?action=view_transfers` (abre el listado «Traspasos Tipo A a Tipo B»).
 - `typeb_review.php`: tras Validar/Rechazar redirigía siempre a «Listados y descargas» con el mensaje «Taller B antiguo confirmado». Ahora vuelve a la página de origen (lista de solicitudes con su filtro; o el listado de «Listados y descargas» si se validó desde allí) con mensajes claros.
 - Validado en navegador.
+
+## 2026-10-09 · local 1.5.168-alpha · Tablas: aviso de ordenar y filtrar
+- `local_gestion_actividades_enable_interactive_tables()` (todas las tablas interactivas: notas, listados, talleres…): línea «Consejo: pulsa el nombre de una columna (⇅) para ordenar…; escribe en «Filtrar este listado…»…» bajo el buscador, y cada encabezado ordenable muestra ⇅ (▲/▼ en la columna activa; el resto vuelve a ⇅). Validado en navegador, sin errores JS.
