@@ -341,11 +341,6 @@ foreach ($serieslist as $series) {
                 local_ga_btn_icon('i/users', 'Alumnos / asistencia'),
                 ['class' => 'btn btn-secondary btn-sm me-1 mb-1']
             );
-            $actions .= html_writer::link(
-                new moodle_url('/local/gestion_actividades/edition_sync.php', ['id' => (int)$edition->id]),
-                local_ga_btn_icon('t/reload', 'Sincronizar'),
-                ['class' => 'btn btn-outline-secondary btn-sm mb-1']
-            );
         }
         $table->data[] = [
             'TALLER ' . sprintf('%02d', (int)$item->sortorder),

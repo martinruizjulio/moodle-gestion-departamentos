@@ -688,3 +688,6 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 
 ## 2026-10-09 · local 1.5.169-alpha
 - Panel, bloque Configuración: texto «Recomendable solo para administradores: permisos y herramientas de mantenimiento.» (antes «Se usa poco…»).
+
+## 2026-10-09 · local 1.5.170-alpha · Quitado «Sincronizar» (decisión de Julio)
+- Botón «Sincronizar» (edition_sync.php: borraba las inscripciones del taller y las recreaba desde el grupo Moodle; herencia de cuando el grupo era la fuente) retirado de la tabla del panel y de editions.php. La página sigue existiendo sin acceso directo. Los inscritos se gestionan en «Alumnos / asistencia».
