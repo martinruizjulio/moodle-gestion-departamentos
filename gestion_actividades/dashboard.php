@@ -239,7 +239,7 @@ echo $block('🎓 Alumnos y horas', 'Validar y reconocer horas del alumnado.', [
         'Validar Tipo B externo' . ($pendingtypeb > 0 ? ' (' . $pendingtypeb . ')' : ''), $pendingtypeb > 0 ? 'btn btn-warning' : 'btn btn-outline-primary'),
     $btn(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), 't/edit', 'Catálogo de talleres B'),
     $btn(new moodle_url('/local/gestion_actividades/institutional_import.php'), 'i/import', 'Importar reconocimiento institucional'),
-    $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php', ['view' => 'view_transfers']), 'i/switch', 'Ver traspasos A→B'),
+    $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php', ['action' => 'view_transfers']), 'i/switch', 'Ver traspasos A→B'),
     $btn(new moodle_url('/local/gestion_actividades/index.php'), 'i/users', 'Alumnos y ranking'),
 ]);
 echo $block('📊 Notas e informes', 'Consultar notas y descargar listados.', [

@@ -677,3 +677,8 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 
 ## 2026-10-09 · block 1.0.33-alpha · Sin subtítulos duplicados
 - El bloque mostraba «Gestión HEE» (título) y debajo «Gestor HEE» / «Profesor HEE» / «Profesorado». Eliminados esos subtítulos; queda solo el título del bloque. Validado con administrador, Profesor HEE, profesor sin talleres y alumno.
+
+## 2026-10-09 · local 1.5.167-alpha · Traspasos y retorno tras validar
+- Panel «Ver traspasos A→B» enlazaba `manager_downloads.php?view=view_transfers` (parámetro inexistente) y mostraba la portada de «Listados y descargas» → `?action=view_transfers` (abre el listado «Traspasos Tipo A a Tipo B»).
+- `typeb_review.php`: tras Validar/Rechazar redirigía siempre a «Listados y descargas» con el mensaje «Taller B antiguo confirmado». Ahora vuelve a la página de origen (lista de solicitudes con su filtro; o el listado de «Listados y descargas» si se validó desde allí) con mensajes claros.
+- Validado en navegador.

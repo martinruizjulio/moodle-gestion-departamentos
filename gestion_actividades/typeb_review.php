@@ -17,4 +17,19 @@ require_sesskey();
 $status = $action === 'validate' ? 'validated' : ($action === 'reject' ? 'rejected' : 'pending');
 portfolio_typeb::set_status($id, $status, $comment, (int)$USER->id);
 
-redirect(new moodle_url('/local/gestion_actividades/manager_downloads.php', ['action' => 'view_typeb_workshops']), $status === 'validated' ? 'Taller B antiguo confirmado.' : 'Taller B antiguo actualizado.', null, \core\output\notification::NOTIFY_SUCCESS);
+// Back to the page the manager validated from (the requests list keeps its
+// filter); the old Tipo B listing in «Listados y descargas» also works.
+$referer = get_local_referer(false);
+if ($referer && strpos($referer, '/local/gestion_actividades/portfolio_admin.php') !== false) {
+    $returnurl = new moodle_url($referer);
+} else if ($referer && strpos($referer, '/local/gestion_actividades/manager_downloads.php') !== false) {
+    $returnurl = new moodle_url('/local/gestion_actividades/manager_downloads.php', ['action' => 'view_typeb_workshops']);
+} else {
+    $returnurl = new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']);
+}
+$messages = [
+    'validated' => 'Solicitud validada. El alumno ya puede escribir su reflexión; al entregarla, las horas se suman a su ficha.',
+    'rejected' => 'Solicitud rechazada. El alumno puede corregirla con «Editar» y volver a enviarla.',
+    'pending' => 'Solicitud devuelta a pendiente.',
+];
+redirect($returnurl, $messages[$status], null, \core\output\notification::NOTIFY_SUCCESS);
