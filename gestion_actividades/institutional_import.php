@@ -132,7 +132,7 @@ try {
 }
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_inst_btn_icon('t/left', 'Volver al panel'), ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_inst_btn_icon('t/left', 'Volver al panel'), ['class' => 'btn local-ga-back-panel mb-3']), 'mb-2');
 echo html_writer::tag('h1', 'Importar reconocimiento institucional');
 echo html_writer::tag('p', 'Importa un Excel institucional con horas Tipo A y Tipo B ya reconocidas. El cruce con Moodle se realiza por email. Las horas Tipo B cuentan desde la importación; el alumno debe añadir su comentario obligatorio en el portafolio. No se modifican alumnos no encontrados.', ['class' => 'lead']);
 

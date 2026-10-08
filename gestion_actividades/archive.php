@@ -3,6 +3,7 @@ require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\workshop_series;
+use local_gestion_actividades\local\academic_year;
 
 require_login();
 $context = context_system::instance();
@@ -71,10 +72,12 @@ if (optional_param('archive_due', 0, PARAM_BOOL) && confirm_sesskey()) {
 }
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn local-ga-back-panel mb-3']), 'mb-2');
 echo $OUTPUT->heading(get_string('workshoparchive', 'local_gestion_actividades'));
-echo html_writer::tag('p', 'Las Ediciones de talleres finalizadas aparecen plegadas, de la más reciente a la más antigua (y, en la misma fecha, Tipo A antes que Tipo B). Los talleres del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
+echo html_writer::tag('p', 'Las Ediciones de talleres finalizadas aparecen plegadas y agrupadas por curso académico, de la más reciente a la más antigua (y, en la misma fecha, Tipo A antes que Tipo B). Los talleres del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
 
+$ay = academic_year::selected(true);
+echo academic_year::selector(new moodle_url('/local/gestion_actividades/archive.php'), $ay, 'Las Ediciones se agrupan por curso académico.');
 $serieslist = workshop_series::list_for_course(0);
 $alllinkedworkshops = [];
 foreach ($serieslist as $allseries) {
@@ -93,9 +96,13 @@ foreach ($serieslist as $series) {
         $types[manager::normalize_workshop_type((string)($it->workshoptype ?? 'typea')) === 'typeb' ? 'B' : 'A'] = true;
     }
     ksort($types);
-    $archived[] = (object)['series' => $series, 'items' => $items, 'types' => array_keys($types)];
+    $year = academic_year::for_series($series);
+    if (!academic_year::matches($ay, $year)) { continue; }
+    $archived[] = (object)['series' => $series, 'items' => $items, 'types' => array_keys($types), 'year' => $year];
 }
 usort($archived, static function($a, $b) {
+    $y = strcmp($b->year, $a->year);
+    if ($y !== 0) { return $y; }
     $d = (int)$b->series->datefrom <=> (int)$a->series->datefrom;
     if ($d !== 0) { return $d; }
     $rank = static fn($t) => $t === ['A'] ? 0 : ($t === ['B'] ? 1 : 2);
@@ -107,7 +114,12 @@ if ($archived) {
 }
 
 $archivedseriescount = 0;
+$lastyear = null;
 foreach ($archived as $entry) {
+    if ($entry->year !== $lastyear) {
+        echo html_writer::tag('h3', 'Curso académico ' . s($entry->year), ['class' => 'h4 mt-4 mb-2']);
+        $lastyear = $entry->year;
+    }
     $series = $entry->series;
     $items = $entry->items;
     $archivedseriescount++;
@@ -165,20 +177,20 @@ $legacyarchived = [];
 foreach (manager::get_workshop_overview_rows() as $row) {
     $workshopid = (int)($row->workshopid ?? 0);
     if (!empty($alllinkedworkshops[$workshopid])) { continue; }
-    if (($row->computedstatus ?? '') === 'archived') { $legacyarchived[] = $row; }
+    if (($row->computedstatus ?? '') === 'archived' && academic_year::matches($ay, academic_year::for_time((int)($row->sessiondate ?? 0)))) { $legacyarchived[] = $row; }
 }
 if ($legacyarchived) {
     echo html_writer::tag('h3', 'Talleres anteriores sin Edición de talleres', ['class' => 'h4 mt-4']);
     echo html_writer::tag('p', 'Registros archivados del modelo anterior. Se mantienen disponibles para consulta y modificación de notas sin mezclarlos con las nuevas Ediciones de talleres.', ['class' => 'text-muted']);
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm';
-    $table->head = ['Tipo', 'Código', 'Taller', 'Código de edición', 'Fecha', 'Plazas', 'Inscritos', 'Profesor/es', 'Grupo', 'Acciones'];
+    $table->head = ['Curso académico', 'Tipo', 'Código', 'Taller', 'Código de edición', 'Fecha', 'Plazas', 'Inscritos', 'Profesor/es', 'Grupo', 'Acciones'];
     foreach ($legacyarchived as $row) {
         $actions = html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$row->id]), 'Alumnos / asistencia', ['class' => 'btn btn-secondary btn-sm me-1 mb-1']);
         if (manager::normalize_workshop_type((string)($row->workshoptype ?? 'typea')) === 'typea') {
             $actions .= html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => (int)$row->workshopid, 'editionid' => (int)$row->id]), 'Modificar notas', ['class' => 'btn btn-primary btn-sm mb-1']);
         }
-        $table->data[] = [local_ga_archive_type_badge($row->workshoptype ?? 'typea'), s($row->workshopcode ?? ''), format_string($row->workshopname ?? ''), s($row->editioncode ?? ''), !empty($row->sessiondate) ? manager::format_date_compact((int)$row->sessiondate) : '-', (int)($row->places ?? 0), (int)($row->enrolledcount ?? 0), $row->teachers ?: '-', $row->groupname ?: '-', $actions];
+        $table->data[] = [academic_year::for_time((int)($row->sessiondate ?? 0)), local_ga_archive_type_badge($row->workshoptype ?? 'typea'), s($row->workshopcode ?? ''), format_string($row->workshopname ?? ''), s($row->editioncode ?? ''), !empty($row->sessiondate) ? manager::format_date_compact((int)$row->sessiondate) : '-', (int)($row->places ?? 0), (int)($row->enrolledcount ?? 0), $row->teachers ?: '-', $row->groupname ?: '-', $actions];
     }
     echo html_writer::table($table);
 }

@@ -9,3 +9,26 @@
 .local-ga-actions .btn {
     margin: 0 .25rem .35rem 0;
 }
+/* Back buttons: «Volver al panel» light grey, «Volver al curso» light orange. */
+.btn.local-ga-back-panel {
+    background: #eceff2;
+    border: 1px solid #c9cfd6;
+    color: #343a40;
+}
+.btn.local-ga-back-panel:hover,
+.btn.local-ga-back-panel:focus {
+    background: #dde2e7;
+    border-color: #b6bec7;
+    color: #212529;
+}
+.btn.local-ga-back-course {
+    background: #ffecd6;
+    border: 1px solid #f3bf86;
+    color: #7a3e00;
+}
+.btn.local-ga-back-course:hover,
+.btn.local-ga-back-course:focus {
+    background: #ffdcb3;
+    border-color: #e9a65c;
+    color: #5c2e00;
+}

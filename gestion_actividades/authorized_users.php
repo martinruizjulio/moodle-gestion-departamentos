@@ -117,9 +117,9 @@ echo $OUTPUT->header();
 $course = $courseid > 0 ? $DB->get_record('course', ['id' => $courseid], 'id,fullname,shortname', IGNORE_MISSING) : null;
 echo html_writer::start_div('mb-3');
 if ($course) {
-    echo html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al curso', ['class' => 'btn btn-outline-secondary me-2']);
+    echo html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al curso', ['class' => 'btn local-ga-back-course me-2']);
 }
-echo html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php', $courseid > 0 ? ['courseid' => $courseid] : []), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-secondary']);
+echo html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php', $courseid > 0 ? ['courseid' => $courseid] : []), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn local-ga-back-panel']);
 echo html_writer::end_div();
 
 echo $OUTPUT->heading(get_string('authorizedusers', 'local_gestion_actividades'));

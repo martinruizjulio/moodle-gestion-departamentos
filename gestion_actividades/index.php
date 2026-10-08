@@ -15,7 +15,7 @@ $PAGE->set_title(get_string('studentssection', 'local_gestion_actividades'));
 $PAGE->set_heading(get_string('title', 'local_gestion_actividades'));
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn local-ga-back-panel mb-3']), 'mb-2');
 
 echo $OUTPUT->heading(get_string('studentssection', 'local_gestion_actividades'));
 echo html_writer::tag('p', get_string('studentspanelcleanintro', 'local_gestion_actividades'), ['class' => 'alert alert-info']);

@@ -252,7 +252,7 @@ if (data_submitted() && confirm_sesskey()) {
 
 echo $OUTPUT->header();
 echo html_writer::div(
-    html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary me-2 mb-3']) .
+    html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn local-ga-back-panel me-2 mb-3']) .
     html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php', $seriesid > 0 ? ['id' => $seriesid] : []), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver a ediciones', ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );

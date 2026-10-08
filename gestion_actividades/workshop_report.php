@@ -3,6 +3,7 @@ require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\typeb_reflection_activity;
+use local_gestion_actividades\local\academic_year;
 
 require_login();
 $context = context_system::instance();
@@ -17,6 +18,7 @@ $PAGE->set_heading('Gestión HEE');
 
 $selected = optional_param_array('editions', [], PARAM_INT);
 $export = optional_param('export', 0, PARAM_BOOL);
+$ay = academic_year::selected();
 $selected = array_values(array_unique(array_filter(array_map('intval', $selected), static fn($id) => $id > 0)));
 
 function local_ga_wr_send_csv(array $rows): void {
@@ -26,7 +28,7 @@ function local_ga_wr_send_csv(array $rows): void {
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     echo "\xEF\xBB\xBF";
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['Apellidos', 'Nombre', 'Correo', 'Taller', 'Edición', 'Horas', 'Calificación', 'Asistencia', 'Resultado'], ';');
+    fputcsv($out, ['Curso académico', 'Apellidos', 'Nombre', 'Correo', 'Taller', 'Edición', 'Horas', 'Calificación', 'Asistencia', 'Resultado'], ';');
     foreach ($rows as $row) {
         fputcsv($out, $row, ';');
     }
@@ -111,6 +113,7 @@ $editions = $DB->get_records_sql(
     "SELECT e.id,
             e.name AS editionname,
             e.sessiondate,
+            e.seriesid,
             w.name AS workshopname,
             w.code AS workshopcode,
             w.hours,
@@ -121,6 +124,8 @@ $editions = $DB->get_records_sql(
   LEFT JOIN {course} c ON c.id = w.courseid
    ORDER BY c.fullname ASC, w.name ASC, e.sessiondate DESC, e.id DESC"
 );
+$editions = array_filter($editions, static fn($e) => academic_year::matches($ay,
+    academic_year::for_row((int)($e->seriesid ?? 0), (int)($e->sessiondate ?? 0))));
 
 $reportrows = [];
 if ($selected) {
@@ -129,6 +134,7 @@ if ($selected) {
                    e.id AS editionid,
                    e.name AS editionname,
                    e.seriesid,
+                   e.sessiondate,
                    w.id AS workshopid,
                    w.name AS workshopname,
                    w.code AS workshopcode,
@@ -160,6 +166,7 @@ if ($selected) {
             ? 'Sin registrar'
             : (!empty($r->attended) ? 'Presente' : 'Ausente');
         $reportrows[] = [
+            academic_year::for_row((int)($r->seriesid ?? 0), (int)($r->sessiondate ?? 0)),
             (string)$r->lastname,
             (string)$r->firstname,
             (string)$r->email,
@@ -183,7 +190,7 @@ echo html_writer::div(
     html_writer::link(
         new moodle_url('/local/gestion_actividades/dashboard.php'),
         $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel',
-        ['class' => 'btn btn-outline-secondary mb-3']
+        ['class' => 'btn local-ga-back-panel mb-3']
     )
 );
 
@@ -194,8 +201,9 @@ echo html_writer::tag(
     ['class' => 'alert alert-info']
 );
 
+echo academic_year::selector(new moodle_url('/local/gestion_actividades/workshop_report.php'), $ay, 'Muestra los talleres de ese curso para seleccionarlos.');
 if (!$editions) {
-    echo $OUTPUT->notification('No hay ediciones de talleres disponibles.', 'info');
+    echo $OUTPUT->notification('No hay talleres en el curso académico seleccionado.', 'info');
     echo $OUTPUT->footer();
     exit;
 }
@@ -236,6 +244,7 @@ foreach ($editions as $edition) {
     echo html_writer::end_div();
 }
 
+echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => academic_year::PARAM, 'value' => academic_year::param_value($ay)]);
 echo html_writer::tag('button', 'Generar listado', ['type' => 'submit', 'class' => 'btn btn-primary mt-3']);
 echo html_writer::end_div();
 echo html_writer::end_tag('form');
@@ -244,7 +253,7 @@ $PAGE->requires->js_init_code("document.getElementById('ga-select-all').addEvent
 
 if ($selected) {
     echo html_writer::tag('h3', 'Resultado', ['class' => 'h4']);
-    $exportparams = ['export' => 1, 'sesskey' => sesskey()];
+    $exportparams = ['export' => 1, 'sesskey' => sesskey()] + academic_year::url_params($ay);
     foreach ($selected as $id) {
         $exportparams['editions'][] = $id;
     }
@@ -261,7 +270,7 @@ if ($selected) {
     } else {
         $table = new html_table();
         $table->attributes['class'] = 'generaltable table-sm';
-        $table->head = ['Apellidos', 'Nombre', 'Correo', 'Taller', 'Edición', 'Horas', 'Calificación', 'Asistencia', 'Resultado'];
+        $table->head = ['Curso académico', 'Apellidos', 'Nombre', 'Correo', 'Taller', 'Edición', 'Horas', 'Calificación', 'Asistencia', 'Resultado'];
         foreach ($reportrows as $row) {
             $table->data[] = array_map('s', $row);
         }

@@ -3,6 +3,7 @@ require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\portfolio_typeb;
+use local_gestion_actividades\local\academic_year;
 
 require_login();
 $context = context_system::instance();
@@ -13,6 +14,8 @@ if (!manager::can_manage_globally((int)$USER->id)) {
 $q = optional_param('q', '', PARAM_TEXT);
 $userid = optional_param('userid', 0, PARAM_INT);
 $status = optional_param('status', '', PARAM_ALPHANUMEXT);
+// Tipo B requests: all academic years by default so nothing pending is hidden.
+$ay = academic_year::selected(true);
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['q' => $q, 'userid' => $userid, 'status' => $status]));
@@ -51,7 +54,7 @@ function local_ga_admin_typea_hours_from_certificates(array $certificates): floa
 }
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn local-ga-back-panel mb-3']), 'mb-2');
 echo $OUTPUT->heading('Portafolio de certificados - gestor');
 echo html_writer::tag('p', 'En los reconocimientos externos Tipo B el alumno elige un taller del catálogo y sube su certificado. Hay dos pasos: el gestor valida el certificado y, después, el alumno entrega una breve reflexión. Las horas (las del catálogo) solo computan cuando ambos pasos están completados.', ['class' => 'alert alert-info']);
 
@@ -85,6 +88,7 @@ echo html_writer::select([
     'validated' => 'Validados y completados',
     'rejected' => 'Rechazados',
 ], 'status', $status, false, ['class' => 'custom-select']);
+echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => academic_year::PARAM, 'value' => academic_year::param_value($ay)]);
 echo html_writer::empty_tag('input', ['type' => 'submit', 'value' => 'Buscar', 'class' => 'btn btn-primary']);
 echo html_writer::end_div();
 echo html_writer::end_tag('form');
@@ -148,9 +152,12 @@ if ($selecteduser) {
     $typebcerts = portfolio_typeb::list_all(0, $status);
 }
 
+echo academic_year::selector(new moodle_url('/local/gestion_actividades/portfolio_admin.php', array_filter(['q' => $q, 'userid' => $userid, 'status' => $status])), $ay,
+    'Curso en que el alumno presentó la solicitud.');
+$typebcerts = array_filter((array)$typebcerts, static fn($c) => academic_year::matches($ay, academic_year::for_time((int)($c->timecreated ?? 0))));
 if (!empty($typebcerts)) {
     $table = new html_table();
-    $table->head = ['Alumno', 'Taller', 'Fecha', 'Horas', 'Descripción', 'Estado', 'Reflexión', 'Comentario gestor', 'Certificado', 'Acción'];
+    $table->head = ['Curso académico', 'Alumno', 'Taller', 'Fecha', 'Horas', 'Descripción', 'Estado', 'Reflexión', 'Comentario gestor', 'Certificado', 'Acción'];
     foreach ($typebcerts as $c) {
         $pdfactions = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_view.php', ['id' => $c->id]), local_ga_btn_icon('t/preview', 'Ver'), ['class' => 'btn btn-primary btn-sm', 'target' => '_blank']) . ' ' .
                       html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id' => $c->id]), local_ga_btn_icon('t/download', 'Descargar'), ['class' => 'btn btn-secondary btn-sm']);
@@ -169,6 +176,7 @@ if (!empty($typebcerts)) {
         }
         $reflection = trim((string)($c->reflectiontext ?? ''));
         $table->data[] = [
+            academic_year::for_time((int)($c->timecreated ?? 0)),
             isset($c->firstname) ? fullname($c) . '<br><small>' . s($c->email) . '</small>' : '-',
             s($c->activityname),
             !empty($c->activitydate) ? userdate((int)$c->activitydate, get_string('strftimedatefullshort', 'langconfig')) : '-',

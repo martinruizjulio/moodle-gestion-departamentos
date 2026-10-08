@@ -86,7 +86,7 @@ echo html_writer::div(
     html_writer::link(
         new moodle_url('/local/gestion_actividades/dashboard.php', $courseid > 0 ? ['courseid' => $courseid] : []),
         local_ga_grades_icon('t/left', 'Volver al panel'),
-        ['class' => 'btn btn-outline-secondary mb-3']
+        ['class' => 'btn local-ga-back-panel mb-3']
     ),
     'mb-2'
 );

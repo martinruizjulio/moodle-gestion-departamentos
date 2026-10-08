@@ -5,6 +5,7 @@ use local_gestion_actividades\local\course_layout;
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\workshop_series;
 use local_gestion_actividades\local\date_helper;
+use local_gestion_actividades\local\academic_year;
 
 require_login();
 $context = context_system::instance();
@@ -33,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'datefrom' => $datefrom,
                 'dateto' => $dateto,
                 'status' => optional_param('status', 'active', PARAM_ALPHA),
+                'academicyear' => optional_param('academicyear', '', PARAM_RAW_TRIMMED),
             ]);
             course_layout::synchronise_course($savedcourseid);
             $message = 'Edición de talleres guardada y jerarquía del curso actualizada.';
@@ -77,7 +79,7 @@ $PAGE->set_heading('Gestión HEE');
 
 echo $OUTPUT->header();
 echo html_writer::div(
-    html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), '← Volver al panel', ['class' => 'btn btn-outline-secondary me-2 mb-3']) .
+    html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), '← Volver al panel', ['class' => 'btn local-ga-back-panel me-2 mb-3']) .
     html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'Talleres', ['class' => 'btn btn-outline-secondary me-2 mb-3']) .
     html_writer::link(new moodle_url('/local/gestion_actividades/test_cleanup.php'), 'Limpieza de pruebas', ['class' => 'btn btn-danger mb-3']),
     'mb-2'
@@ -113,6 +115,17 @@ echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'dat
 echo html_writer::label('Fin de la edición', 'dateto_text');
 echo html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'dateto_text', 'id' => 'dateto_text', 'class' => 'form-control mb-3', 'required' => 'required', 'value' => str_replace(' ', 'T', $datetovalue)]);
 
+$cur = academic_year::current();
+$curstart = (int)explode('/', $cur)[0];
+$yearoptions = ['' => 'Automático según la fecha de inicio'];
+foreach (academic_year::options([($curstart + 1) . '/' . ($curstart + 2), ($curstart - 1) . '/' . $curstart]) as $y) {
+    $yearoptions[$y] = $y . ($y === $cur ? ' (actual)' : '');
+}
+$recordyear = $record ? academic_year::for_series($record) : '';
+echo html_writer::label('Curso académico', 'academicyear');
+echo html_writer::select($yearoptions, 'academicyear', $recordyear, false, ['class' => 'form-select', 'id' => 'academicyear']);
+echo html_writer::div('Se usa para filtrar y ordenar los listados. Por defecto, el curso de la fecha de inicio (cambia el 1 de septiembre).', 'form-text text-muted mb-3');
+
 echo html_writer::label('Estado', 'status');
 echo html_writer::select(['active' => 'Activa', 'finished' => 'Finalizada / oculta'], 'status', $record->status ?? 'active', false, ['class' => 'form-select mb-3']);
 echo html_writer::tag('button', $record ? 'Guardar edición' : 'Crear edición', ['type' => 'submit', 'class' => 'btn btn-primary']);
@@ -128,7 +141,7 @@ if ($series) {
     echo html_writer::tag('h3', 'Ediciones existentes', ['class' => 'h4']);
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm';
-    $table->head = ['Curso', 'Edición', 'Tipo', 'Fechas', 'Talleres', 'Estado', 'Acciones'];
+    $table->head = ['Curso académico', 'Curso', 'Edición', 'Tipo', 'Fechas', 'Talleres', 'Estado', 'Acciones'];
     foreach ($series as $s) {
         $course = $DB->get_record('course', ['id' => $s->courseid], 'id,fullname', IGNORE_MISSING);
         $count = count(workshop_series::items((int)$s->id));
@@ -175,6 +188,7 @@ if ($series) {
         $actions .= html_writer::end_tag('form');
 
         $table->data[] = [
+            academic_year::for_series($s),
             $course ? format_string($course->fullname) : (int)$s->courseid,
             s($s->title),
             $typelabel,
@@ -186,5 +200,5 @@ if ($series) {
     }
     echo html_writer::table($table);
 }
-
+if (function_exists('local_gestion_actividades_enable_interactive_tables')) { local_gestion_actividades_enable_interactive_tables(); }
 echo $OUTPUT->footer();

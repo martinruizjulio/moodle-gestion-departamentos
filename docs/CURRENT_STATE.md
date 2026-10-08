@@ -705,3 +705,21 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 
 ## 2026-10-09 — local 1.5.174-alpha (2026100589): orden en «Notas e informes»
 - Panel: botones invertidos a petición de Julio → «Listados y descargas», «Listado personalizado de talleres», «Notas de la asignatura». Validado en local.
+
+## 2026-10-09 — local 1.5.175-alpha (2026100590): curso académico en listados + colores de botones + orden «Alumnos y horas»
+- **Curso académico** (formato `2026/2027`, cambia solo el 1 de septiembre): nueva clase `classes/local/academic_year.php`.
+  - `local_ga_workshop_series.academicyear` (upgrade 2026100590, no destructivo: añade la columna y la rellena desde la fecha de inicio de cada Edición). Editable en «Editar edición» (opción «Automático según la fecha de inicio»).
+  - Resto de registros: curso de su fecha (Tipo B externo y traspasos: fecha de solicitud; reconocimiento institucional: fecha de importación; certificados: Edición o fecha de emisión).
+  - Selector «Curso académico» (parámetro `cursoac`, `all` = todos) en: Listados y descargas (portada + 7 listados + CSV/ZIP, con sufijo del curso en el nombre del CSV), Listado personalizado, Horas por alumno, Validar Tipo B (por defecto todos, para no ocultar pendientes), Talleres A/B (por defecto todos) y Ediciones anteriores (agrupadas por curso).
+  - Columna «Curso académico» en los listados; en horas y portafolios, «Cursos con actividad». **Las horas siguen siendo acumuladas de toda la carrera**: el filtro solo selecciona alumnos con actividad en ese curso. No cambia ningún cálculo.
+  - Panel: aviso «Curso académico actual: 2026/2027».
+  - «Notas de la asignatura» no se filtra: ya va por curso Moodle.
+- Corregido: el CSV de portafolios usaba `$hourssummarybyuser` antes de calcularlo (horas a 0 en el CSV).
+- Botones «Volver al panel» / «Volver a listados» en gris tenue (`.local-ga-back-panel`) y «Volver al curso» en naranja tenue (`.local-ga-back-course`), en styles.css.
+- Panel, bloque «Alumnos y horas»: orden Alumnos y ranking, Importar reconocimiento, Catálogo B, Validar Tipo B, Ver traspasos.
+- Validación local (Moodle 5.0.11 + Playwright):
+  - Edición puesta en 2025/2026 desde el formulario; los listados filtran correctamente (por ejemplo, certificados A: 131 / 2 / 133).
+  - El CSV sale filtrado y con la columna; sin errores PHP ni JS.
+  - Suites hee_e2e, cert, typeb_cat: todas OK.
+  - dos_dias: 1 fallo, debido a horas acumuladas del usuario de prueba en ejecuciones previas; no está relacionado con este cambio.
+  - No validado en producción.

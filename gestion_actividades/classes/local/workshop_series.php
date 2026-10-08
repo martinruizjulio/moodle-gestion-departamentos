@@ -35,6 +35,13 @@ class workshop_series {
             'status' => !empty($data->status) && in_array($data->status, ['active', 'finished'], true) ? $data->status : 'active',
             'timemodified' => $now,
         ];
+        // Curso académico: the chosen one, or «automatic» (from the start
+        // date) when the form sends an empty value. Callers that do not send
+        // it keep the stored year (or derive it on creation).
+        if (property_exists($data, 'academicyear')) {
+            $academicyear = academic_year::normalise((string)$data->academicyear);
+            $record->academicyear = $academicyear !== '' ? $academicyear : academic_year::for_time($record->datefrom);
+        }
         if ($record->title === '') {
             throw new \RuntimeException('La edición de talleres necesita un título.');
         }
@@ -53,12 +60,21 @@ class workshop_series {
                 self::assert_no_overlapping_series($id, (int)$existingitem->workshopid, $record->datefrom, $record->dateto);
             }
             $record->id = $id;
+            if (!self::has_academicyear()) {
+                unset($record->academicyear);
+            }
             $DB->update_record(self::TABLE, $record);
         } else {
             $record->sectionid = 0;
             $record->calendarcmid = 0;
             $record->calendarsectionid = 0;
             $record->timecreated = $now;
+            if (empty($record->academicyear) && self::has_academicyear()) {
+                $record->academicyear = academic_year::for_time($record->datefrom);
+            }
+            if (!self::has_academicyear()) {
+                unset($record->academicyear);
+            }
             $id = (int)$DB->insert_record(self::TABLE, $record);
         }
         self::ensure_course_structure($id);
@@ -68,6 +84,16 @@ class workshop_series {
             self::apply_status_side_effects($id, $record->status === 'finished');
         }
         return $id;
+    }
+
+    /** Whether the Curso académico column is installed. */
+    public static function has_academicyear(): bool {
+        global $DB;
+        static $has = null;
+        if ($has === null) {
+            $has = array_key_exists('academicyear', $DB->get_columns(self::TABLE));
+        }
+        return $has;
     }
 
     public static function get(int $id): \stdClass {

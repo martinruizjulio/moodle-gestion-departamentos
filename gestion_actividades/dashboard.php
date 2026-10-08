@@ -3,6 +3,7 @@ require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
 use local_gestion_actividades\local\workshop_series;
+use local_gestion_actividades\local\academic_year;
 
 require_login();
 $context = context_system::instance();
@@ -146,9 +147,13 @@ $returnurl = $returncourse
     ? (new moodle_url('/course/view.php', ['id' => $returncourse->id]))->out(false)
     : 'javascript:history.back();';
 echo html_writer::div(
-    html_writer::link($returnurl, local_ga_btn_icon('t/left', 'Volver al curso'), ['class' => 'btn btn-outline-secondary mb-3']),
+    html_writer::link($returnurl, local_ga_btn_icon('t/left', 'Volver al curso'), ['class' => 'btn local-ga-back-course mb-3']),
     'mb-2'
 );
+echo html_writer::div(
+    html_writer::span('Curso académico actual: ' . html_writer::tag('strong', s(academic_year::current())), 'me-2')
+    . html_writer::span('Cambia automáticamente el 1 de septiembre. Cada Edición de talleres guarda su curso (se puede cambiar en «Editar edición») y los listados filtran por curso.', 'text-muted small'),
+    'mb-3 p-2 border rounded bg-light');
 
 // ---------------------------------------------------------------------------
 // Portada simplificada: «Pendiente» + 4 bloques por tarea (mismas opciones).
@@ -235,12 +240,12 @@ echo $block('🗓️ Talleres', 'Crear y gestionar las Ediciones de talleres.', 
     $btn(new moodle_url('/local/gestion_actividades/archive.php'), 'i/folder', 'Ediciones anteriores', 'btn btn-outline-secondary'),
 ]);
 echo $block('🎓 Alumnos y horas', 'Validar y reconocer horas del alumnado.', [
+    $btn(new moodle_url('/local/gestion_actividades/index.php'), 'i/users', 'Alumnos y ranking'),
+    $btn(new moodle_url('/local/gestion_actividades/institutional_import.php'), 'i/import', 'Importar reconocimiento institucional'),
+    $btn(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), 't/edit', 'Catálogo de talleres B'),
     $btn(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']), 'i/checked',
         'Validar Tipo B externo' . ($pendingtypeb > 0 ? ' (' . $pendingtypeb . ')' : ''), $pendingtypeb > 0 ? 'btn btn-warning' : 'btn btn-outline-primary'),
-    $btn(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), 't/edit', 'Catálogo de talleres B'),
-    $btn(new moodle_url('/local/gestion_actividades/institutional_import.php'), 'i/import', 'Importar reconocimiento institucional'),
     $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php', ['action' => 'view_transfers']), 'i/switch', 'Ver traspasos A→B'),
-    $btn(new moodle_url('/local/gestion_actividades/index.php'), 'i/users', 'Alumnos y ranking'),
 ]);
 echo $block('📊 Notas e informes', 'Consultar notas y descargar listados.', [
     $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php'), 't/download', 'Listados y descargas'),

@@ -133,7 +133,7 @@ if (!$istypeb && $edition && optional_param('action', '', PARAM_ALPHANUMEXT) ===
 }
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), local_ga_btn_icon('t/left', 'Volver al curso'), ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), local_ga_btn_icon('t/left', 'Volver al curso'), ['class' => 'btn local-ga-back-course mb-3']), 'mb-2');
 echo $OUTPUT->heading(get_string('teacherworkshopview', 'local_gestion_actividades') . ': ' . format_string($workshop->code . ' - ' . $workshop->name));
 
 if ($editions) {

@@ -23,7 +23,7 @@ if (!$records) {
 }
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al panel', ['class' => 'btn local-ga-back-panel mb-3']), 'mb-2');
 
 echo $OUTPUT->heading(get_string('gradehistory', 'local_gestion_actividades') . ': ' . format_string($activity->name));
 echo html_writer::div(get_string('gradehistoryinfo', 'local_gestion_actividades'), 'alert alert-info');

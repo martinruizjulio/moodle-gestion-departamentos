@@ -52,6 +52,7 @@ class manager {
     /** «Volver al curso» button (or «Volver a Mis cursos» if no course is known). */
     public static function back_to_course_button(string $class = 'btn btn-outline-secondary'): string {
         global $OUTPUT;
+        $class = str_replace('btn-outline-secondary', 'local-ga-back-course', $class);
         $courseid = self::return_courseid();
         $icon = $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' ';
         if ($courseid > 0) {

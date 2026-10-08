@@ -907,6 +907,28 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026100579, 'local', 'gestion_actividades');
     }
 
+    if ($oldversion < 2026100590) {
+        // Curso académico per Edición de talleres (non-destructive: new
+        // column, filled from each Edición's start date, 1 September rule).
+        $series = new xmldb_table('local_ga_workshop_series');
+        $field = new xmldb_field('academicyear', XMLDB_TYPE_CHAR, '9', null, XMLDB_NOTNULL, null, '', 'timemodified');
+        if ($dbman->table_exists($series) && !$dbman->field_exists($series, $field)) {
+            $dbman->add_field($series, $field);
+        }
+        if ($dbman->table_exists($series)) {
+            $rs = $DB->get_recordset('local_ga_workshop_series', null, '', 'id, datefrom, timecreated, academicyear');
+            foreach ($rs as $row) {
+                if (!\local_gestion_actividades\local\academic_year::is_valid((string)$row->academicyear)) {
+                    $DB->set_field('local_ga_workshop_series', 'academicyear',
+                        \local_gestion_actividades\local\academic_year::for_time((int)$row->datefrom ?: (int)$row->timecreated),
+                        ['id' => $row->id]);
+                }
+            }
+            $rs->close();
+        }
+        upgrade_plugin_savepoint(true, 2026100590, 'local', 'gestion_actividades');
+    }
+
     return true;
 }
 
