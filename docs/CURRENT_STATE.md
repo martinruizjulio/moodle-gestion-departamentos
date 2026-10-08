@@ -666,3 +666,11 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 - **Fallo (Julio)**: en «Mi portafolio HEE», sin `courseid`, «Volver al curso» hacía `history.back()` y devolvía a la página anterior (p. ej. «Solicitar validación Tipo B») en vez de al curso. Los botones del bloque no pasaban el curso.
 - **Corrección**: `manager::return_courseid()` + `manager::back_to_course_button()` (orden: ?courseid → página de curso de procedencia → curso recordado en sesión → último curso con Ediciones en el que está matriculado → «Volver a Mis cursos»). Usado en portfolio.php, typeb_upload.php (añadido «Volver al curso» junto a «Volver al portafolio») y transfer_typeb.php. El bloque pasa `courseid` a portafolio, Tipo B y traspasos. Revisados el resto de «Volver al curso» (dashboard, teacher_view, workshop_view, authorized_users): ya usaban el curso correcto.
 - Validado (navegador, alumno): bloque → portafolio → Tipo B → «Volver al portafolio» → «Volver al curso» aterriza en el curso; Tipo B y Traspasos → curso; sesión nueva entrando directo al portafolio → curso del alumno.
+
+## 2026-10-09 · local 1.5.166-alpha · Panel simplificado
+- Petición de Julio: panel menos laberíntico para varios gestores, conservando todas las opciones.
+- `dashboard.php`: las 8 tarjetas numeradas + 3 de talleres + plantillas se sustituyen por:
+  - Franja «Pendiente» (solo si hay algo): solicitudes Tipo B externo por validar; talleres ya celebrados con alumnado y alguna sesión de asistencia sin pasar (enlaces a «Alumnos / asistencia», máx. 5); Ediciones con fecha de fin pasada sin finalizar.
+  - 4 bloques por tarea: 🗓️ Talleres (Tipo A, Tipo B, Crear Edición desde Excel, Plantilla A/B, Ediciones anteriores) · 🎓 Alumnos y horas (Validar Tipo B externo con contador, Catálogo de talleres B, Importar reconocimiento institucional, Ver traspasos A→B, Alumnos y ranking) · 📊 Notas e informes (Notas de la asignatura, Listado personalizado, Listados y descargas) · ⚙️ Configuración plegada (Usuarios autorizados y Profesores HEE, Portada del portafolio PDF, Limpieza de pruebas).
+  - Sin numeración; la «Vista general de talleres» no cambia. Ninguna página interna cambia.
+- Validado (navegador): la franja detecta los tres casos con datos preparados; los 17 botones abren sin errores (plantillas descargan XLSX).

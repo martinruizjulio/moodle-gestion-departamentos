@@ -150,109 +150,112 @@ echo html_writer::div(
     'mb-2'
 );
 
-echo html_writer::tag('h3', 'Gestión y alumnos', ['class' => 'h4 mt-3 mb-3']);
-echo html_writer::start_div('row');
-echo local_ga_dash_card(
-    '1. Usuarios autorizados',
-    'Gestionar Gestores HEE globales y asignar Profesores HEE únicamente a las ediciones concretas que deben gestionar.',
-    new moodle_url('/local/gestion_actividades/authorized_users.php', $courseid > 0 ? ['courseid' => $courseid] : []),
-    'Gestionar usuarios autorizados',
-    'btn btn-secondary'
-);
-echo local_ga_dash_card(
-    '2. Alumnos y notas de expediente',
-    'Cotejar cuentas institucionales existentes, gestionar listados de alumnos y mantener las notas de expediente y convocatorias históricas.',
-    new moodle_url('/local/gestion_actividades/index.php'),
-    'Abrir alumnos y ranking'
-);
-echo local_ga_dash_card(
-    '3. Listados y descargas',
-    'Consultar y descargar talleres Tipo A/B, asistencia, resultados, certificados, horas, portafolios y expedientes completos.',
-    new moodle_url('/local/gestion_actividades/manager_downloads.php'),
-    'Abrir listados y descargas',
-    'btn btn-primary'
-);
-echo local_ga_dash_card(
-    '4. Reconocimiento institucional',
-    'Importar desde Excel horas Tipo A y Tipo B reconocidas previamente por el Decanato. Tipo B exige después la reflexión del alumno.',
-    new moodle_url('/local/gestion_actividades/institutional_import.php'),
-    'Importar reconocimiento',
-    'btn btn-info'
-);
-echo local_ga_dash_card(
-    '5. Traspasos A→B',
-    'Consultar los traspasos de horas Tipo A a Tipo B realizados por el alumnado; el total reconocido no cambia.',
-    new moodle_url('/local/gestion_actividades/manager_downloads.php', ['view' => 'view_transfers']),
-    'Ver traspasos',
-    'btn btn-secondary'
-);
-echo local_ga_dash_card(
-    '6. Notas Asignatura HEE',
-    'Consultar Nota Talleres A, Portafolio, Autoevaluación y Nota Final. También permite crear o vincular la autoevaluación que se desbloquea a las 54 horas.',
-    new moodle_url('/local/gestion_actividades/grades_report.php', $courseid > 0 ? ['courseid' => $courseid] : []),
-    'Abrir notas de alumnos',
-    'btn btn-primary'
-);
-// Card 7 has two actions: review requests and the catalogue of talleres.
-echo html_writer::start_div('col-md-4 col-xl-4 mb-3')
-    . html_writer::start_div('card h-100 shadow-sm')
-    . html_writer::start_div('card-body d-flex flex-column')
-    . html_writer::tag('h3', '7. Validación externa Tipo B', ['class' => 'h5 card-title'])
-    . html_writer::tag('p', 'El alumno elige un taller del catálogo y sube su certificado. Tras la validación completa la reflexión; entonces las horas del catálogo computan como Tipo B.', ['class' => 'card-text text-muted flex-grow-1'])
-    . html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']), local_ga_btn_icon('t/go', 'Revisar solicitudes Tipo B'), ['class' => 'btn btn-warning mb-2'])
-    . html_writer::link(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), local_ga_btn_icon('t/edit', 'Catálogo de talleres B'), ['class' => 'btn btn-outline-secondary'])
-    . html_writer::end_div() . html_writer::end_div() . html_writer::end_div();
-echo local_ga_dash_card(
-    '8. Listado personalizado de talleres',
-    'Seleccionar uno, varios o todos los talleres (también pasados) y obtener apellidos, nombre, correo, taller, Edición, horas, calificación, asistencia y resultado. Descargable en CSV.',
-    new moodle_url('/local/gestion_actividades/workshop_report.php'),
-    'Crear listado de talleres',
-    'btn btn-primary'
-);
-echo html_writer::end_div();
+// ---------------------------------------------------------------------------
+// Portada simplificada: «Pendiente» + 4 bloques por tarea (mismas opciones).
+// ---------------------------------------------------------------------------
+$cparams = $courseid > 0 ? ['courseid' => $courseid] : [];
+$now = time();
 
-echo html_writer::tag('h3', 'Talleres', ['class' => 'h4 mt-4 mb-3']);
-echo html_writer::start_div('row');
-echo local_ga_dash_card(
-    'Talleres Tipo A',
-    'Gestionar ediciones con su calendario y subsecciones. La actividad predeterminada de los talleres Tipo A nuevos es un cuestionario Moodle; se mantienen compatibles las ediciones históricas.',
-    new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']),
-    'Gestionar talleres Tipo A'
-);
-echo local_ga_dash_card(
-    'Talleres Tipo B',
-    'Gestionar ediciones con calendario y subsecciones, inscripción, asistencia y Tarea Moodle de reflexión como actividad canónica.',
-    new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typeb']),
-    'Gestionar talleres Tipo B',
-    'btn btn-primary'
-);
-echo local_ga_dash_card(
-    'Ediciones anteriores',
-    'Consultar las ediciones finalizadas u ocultas que se conservan como histórico por debajo de las ediciones activas del curso.',
-    new moodle_url('/local/gestion_actividades/archive.php'),
-    'Abrir ediciones anteriores',
-    'btn btn-secondary'
-);
-echo html_writer::end_div();
+// Pending: Tipo B requests to validate.
+$pendingtypeb = 0;
+try {
+    $pendingtypeb = \local_gestion_actividades\local\portfolio_typeb::count_pending();
+} catch (Throwable $e) {
+    $pendingtypeb = 0;
+}
+// Pending: talleres already held (with students) whose attendance list has a
+// session not taken yet; and Ediciones whose end date passed but not finished.
+$untaken = [];
+$overdue = [];
+foreach (workshop_series::list_for_course($courseid) as $ps) {
+    if ((string)($ps->status ?? '') === 'finished') {
+        continue;
+    }
+    if (!empty($ps->dateto) && (int)$ps->dateto < $now) {
+        $overdue[] = $ps;
+    }
+    foreach (workshop_series::items((int)$ps->id) as $pitem) {
+        $ped = $DB->get_record('local_ga_workshop_editions', ['seriesid' => (int)$ps->id, 'workshopid' => (int)$pitem->workshopid],
+            'id, attendancecmid, groupid, sessiondate', IGNORE_MULTIPLE);
+        if (!$ped || empty($ped->attendancecmid) || workshop_series::last_end($pitem) >= $now
+                || manager::get_edition_enrolment_count((int)$ped->id) <= 0) {
+            continue;
+        }
+        $attid = (int)$DB->get_field('course_modules', 'instance', ['id' => (int)$ped->attendancecmid]);
+        if ($attid && $DB->record_exists_select('attendance_sessions',
+                'attendanceid = :a AND lasttaken = 0 AND sessdate + duration < :now AND (groupid = :g OR groupid = 0)',
+                ['a' => $attid, 'now' => $now, 'g' => (int)$ped->groupid])) {
+            $untaken[] = (object)['id' => (int)$ped->id, 'name' => $pitem->name];
+        }
+    }
+}
+$alerts = [];
+if ($pendingtypeb > 0) {
+    $alerts[] = html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']),
+        '<strong>' . $pendingtypeb . '</strong> solicitud(es) Tipo B externo por validar') . ' › Revisar';
+}
+if ($untaken) {
+    $links = [];
+    foreach (array_slice($untaken, 0, 5) as $u) {
+        $links[] = html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $u->id]), s($u->name));
+    }
+    $alerts[] = '<strong>' . count($untaken) . '</strong> taller(es) ya celebrado(s) sin pasar lista: ' . implode(' · ', $links)
+        . (count($untaken) > 5 ? ' …' : '');
+}
+if ($overdue) {
+    $alerts[] = html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php'),
+        '<strong>' . count($overdue) . '</strong> Edición(es) con la fecha de fin pasada y sin finalizar') . ' › Finalizar';
+}
+if ($alerts) {
+    echo html_writer::div(html_writer::tag('strong', 'Pendiente') . html_writer::alist($alerts, ['class' => 'mb-0 mt-1']),
+        'alert alert-warning');
+}
 
-// Templates to create Ediciones from Excel, always at hand.
 $tplurl = fn(string $t) => new moodle_url('/local/gestion_actividades/workshop_bulk_import.php',
     ['action' => 'template', 'templatetype' => $t, 'sesskey' => sesskey()]);
+$btn = fn(moodle_url $url, string $pix, string $label, string $class = 'btn btn-outline-primary')
+    => html_writer::link($url, local_ga_btn_icon($pix, $label), ['class' => $class . ' text-start']);
+$block = function(string $title, string $hint, array $buttons): string {
+    return html_writer::div(html_writer::div(html_writer::div(
+        html_writer::tag('h3', $title, ['class' => 'h5 card-title mb-1'])
+        . html_writer::tag('p', $hint, ['class' => 'text-muted small mb-3'])
+        . html_writer::div(implode('', $buttons), 'd-grid gap-2'),
+        'card-body'), 'card h-100 shadow-sm'), 'col-md-6 col-xl-3 mb-3');
+};
+
 echo html_writer::start_div('row');
-echo html_writer::start_div('col-12 mb-3');
-echo html_writer::start_div('card shadow-sm');
-echo html_writer::start_div('card-body d-flex flex-wrap align-items-center gap-2');
-echo html_writer::div(html_writer::tag('h3', 'Plantillas de talleres', ['class' => 'h5 card-title mb-1'])
-    . html_writer::tag('p', 'Excel para crear una Edición completa. Una plantilla por tipo; admite talleres de uno o dos días.',
-        ['class' => 'card-text text-muted mb-0']), 'me-auto');
-echo html_writer::link($tplurl('typea'), local_ga_btn_icon('t/download', 'Plantilla_Talleres_A'), ['class' => 'btn btn-primary']);
-echo html_writer::link($tplurl('typeb'), local_ga_btn_icon('t/download', 'Plantilla_Talleres_B'),
-    ['class' => 'btn', 'style' => 'background:#7a3e9d;border-color:#7a3e9d;color:#fff']);
-echo html_writer::link(new moodle_url('/local/gestion_actividades/workshop_bulk_import.php', $courseid > 0 ? ['courseid' => $courseid] : []),
-    local_ga_btn_icon('i/import', 'Crear Edición desde Excel'), ['class' => 'btn btn-outline-secondary']);
-echo html_writer::end_div();
-echo html_writer::end_div();
-echo html_writer::end_div();
+echo $block('🗓️ Talleres', 'Crear y gestionar las Ediciones de talleres.', [
+    $btn(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'i/calendar', 'Talleres Tipo A', 'btn btn-primary'),
+    $btn(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typeb']), 'i/calendar', 'Talleres Tipo B', 'btn btn-primary'),
+    $btn(new moodle_url('/local/gestion_actividades/workshop_bulk_import.php', $cparams), 'i/import', 'Crear Edición desde Excel'),
+    html_writer::div(
+        html_writer::link($tplurl('typea'), local_ga_btn_icon('t/download', 'Plantilla A'), ['class' => 'btn btn-sm btn-outline-secondary flex-fill'])
+        . html_writer::link($tplurl('typeb'), local_ga_btn_icon('t/download', 'Plantilla B'), ['class' => 'btn btn-sm btn-outline-secondary flex-fill']),
+        'd-flex gap-2'),
+    $btn(new moodle_url('/local/gestion_actividades/archive.php'), 'i/folder', 'Ediciones anteriores', 'btn btn-outline-secondary'),
+]);
+echo $block('🎓 Alumnos y horas', 'Validar y reconocer horas del alumnado.', [
+    $btn(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']), 'i/checked',
+        'Validar Tipo B externo' . ($pendingtypeb > 0 ? ' (' . $pendingtypeb . ')' : ''), $pendingtypeb > 0 ? 'btn btn-warning' : 'btn btn-outline-primary'),
+    $btn(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), 't/edit', 'Catálogo de talleres B'),
+    $btn(new moodle_url('/local/gestion_actividades/institutional_import.php'), 'i/import', 'Importar reconocimiento institucional'),
+    $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php', ['view' => 'view_transfers']), 'i/switch', 'Ver traspasos A→B'),
+    $btn(new moodle_url('/local/gestion_actividades/index.php'), 'i/users', 'Alumnos y ranking'),
+]);
+echo $block('📊 Notas e informes', 'Consultar notas y descargar listados.', [
+    $btn(new moodle_url('/local/gestion_actividades/grades_report.php', $cparams), 'i/grades', 'Notas de la asignatura', 'btn btn-primary'),
+    $btn(new moodle_url('/local/gestion_actividades/workshop_report.php'), 'i/report', 'Listado personalizado de talleres'),
+    $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php'), 't/download', 'Listados y descargas'),
+]);
+echo $block('⚙️ Configuración', 'Se usa poco: permisos y herramientas de mantenimiento.', [
+    html_writer::tag('details',
+        html_writer::tag('summary', 'Mostrar opciones', ['class' => 'btn btn-outline-secondary w-100 text-start'])
+        . html_writer::div(
+            $btn(new moodle_url('/local/gestion_actividades/authorized_users.php', $cparams), 'i/permissions', 'Usuarios autorizados y Profesores HEE', 'btn btn-outline-secondary')
+            . $btn(new moodle_url('/local/gestion_actividades/portfolio_cover_template.php'), 't/edit', 'Portada del portafolio PDF', 'btn btn-outline-secondary')
+            . $btn(new moodle_url('/local/gestion_actividades/test_cleanup.php'), 't/delete', 'Limpieza de pruebas', 'btn btn-outline-danger'),
+            'd-grid gap-2 mt-2')),
+]);
 echo html_writer::end_div();
 
 echo html_writer::tag('h3', 'Vista general de talleres ofertados actualmente', ['class' => 'h4 mt-4']);
