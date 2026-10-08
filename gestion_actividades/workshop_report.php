@@ -269,4 +269,8 @@ if ($selected) {
     }
 }
 
+if (!function_exists('local_gestion_actividades_enable_interactive_tables')) {
+    require_once($CFG->dirroot . '/local/gestion_actividades/lib.php');
+}
+local_gestion_actividades_enable_interactive_tables();
 echo $OUTPUT->footer();

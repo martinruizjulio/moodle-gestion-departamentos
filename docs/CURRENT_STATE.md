@@ -697,3 +697,8 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 
 ## 2026-10-09 · local 1.5.172-alpha · Archivo de talleres plegado
 - `archive.php`: cada Edición finalizada es un desplegable cerrado con su nombre, distintivo Tipo A/B, fechas, nº de talleres y curso («Abrir en el curso» en la cabecera). Orden: fecha de inicio más reciente primero y, en la misma fecha, Tipo A antes que Tipo B. Validado en navegador (15 Ediciones, todas plegadas; al pulsar muestra sus talleres).
+
+## 2026-10-09 — local 1.5.173-alpha (2026100588): aviso de ordenación en todas las tablas
+- Revisadas todas las páginas con tablas ordenables/filtrables: todas usan `local_gestion_actividades_enable_interactive_tables()`, que muestra «Consejo: pulsa el nombre de una columna (⇅)…» y la marca ⇅ en cabeceras.
+- Añadido a las dos páginas que no lo tenían: `workshop_report.php` (Listado personalizado) y `typeb_catalog.php` (Catálogo Tipo B).
+- Validación local (Moodle 5.0.11, Playwright): 23 páginas del panel, cada tabla ordenable con aviso y ⇅, sin errores. No validado en producción.
