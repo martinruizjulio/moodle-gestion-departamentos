@@ -121,6 +121,15 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
 }
 
 $returncourseid = $courseid;
+// Without ?courseid, prefer the course page the user just came from.
+if ($returncourseid <= 0) {
+    $referer = get_local_referer(false);
+    if ($referer && preg_match('~/course/view\.php\?(?:[^#]*&)?id=(\d+)~', $referer, $m)
+            && $DB->record_exists('course', ['id' => (int)$m[1]]) && (int)$m[1] !== (int)SITEID) {
+        $returncourseid = (int)$m[1];
+        $SESSION->local_ga_return_courseid = $returncourseid;
+    }
+}
 if ($returncourseid <= 0 && !empty($SESSION->local_ga_return_courseid)) {
     $candidatecourseid = (int)$SESSION->local_ga_return_courseid;
     if ($DB->record_exists('course', ['id' => $candidatecourseid])) {

@@ -647,3 +647,8 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
   - Tarjeta 3 (`manager_downloads.php`): `fullname()` sobre filas con solo nombre/apellidos imprimía avisos dentro de los CSV → `local_ga_dl_name()`. **Fallo de datos**: la clave única de los listados de talleres A/B (`w.id-e.id-u.id`) quedaba vacía cuando `e.id` era NULL y Moodle descartaba filas «duplicadas» → `COALESCE(e.id,0)`.
 - Verificado: todas las descargas CSV/ZIP limpias (sin avisos), ZIP certificados A 31 MB en 2 s, expedientes completos 61 MB; hee_e2e ALL OK; nota_a_test ALL OK.
 - `myhours.php` es una página antigua sin enlaces (deniega a alumnos por capacidad); no se toca.
+
+## 2026-10-09 · local 1.5.163-alpha · block 1.0.30-alpha · «Volver al curso» desde la barra lateral
+- **Fallo (Julio)**: el botón «Panel de Gestión HEE» del bloque lateral abría `dashboard.php` sin `courseid`; «Volver al curso» usaba el último curso recordado en sesión (p. ej. el de la simulación) en vez del curso desde el que se entró.
+- **Corrección**: el bloque pasa el `courseid` de la página actual; `dashboard.php`, si no recibe `courseid`, usa el curso de la página de procedencia (`get_local_referer`, /course/view.php?id=) antes que el recordado en sesión.
+- Validado (Moodle 5.0.11 local, navegador): con otro curso recordado, entrar desde la barra lateral del curso 40 → vuelve al 40; «Más › Gestión HEE» desde el 43 → 43; subpágina + «Volver al panel» → sigue en 43 y aterriza en el curso 43.

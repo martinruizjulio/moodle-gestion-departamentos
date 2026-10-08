@@ -253,7 +253,9 @@ class block_gestion_hee extends block_base {
         if ($ismanager) {
             $html .= html_writer::tag('h5', 'Gestor HEE', ['class' => 'mb-1']);
             $html .= html_writer::link(
-                new moodle_url('/local/gestion_actividades/dashboard.php'),
+                // Carry the current course so «Volver al curso» returns here.
+                new moodle_url('/local/gestion_actividades/dashboard.php',
+                    ($this->page->course && (int)$this->page->course->id !== (int)SITEID) ? ['courseid' => (int)$this->page->course->id] : []),
                 'Panel de Gestión HEE',
                 ['class' => 'btn btn-sm btn-primary d-block w-100 mb-1']
             );
