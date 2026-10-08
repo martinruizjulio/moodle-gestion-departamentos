@@ -215,12 +215,12 @@ $tplurl = fn(string $t) => new moodle_url('/local/gestion_actividades/workshop_b
     ['action' => 'template', 'templatetype' => $t, 'sesskey' => sesskey()]);
 $btn = fn(moodle_url $url, string $pix, string $label, string $class = 'btn btn-outline-primary')
     => html_writer::link($url, local_ga_btn_icon($pix, $label), ['class' => $class . ' text-start']);
-$block = function(string $title, string $hint, array $buttons): string {
+$block = function(string $title, string $hint, array $buttons, string $cardstyle = ''): string {
     return html_writer::div(html_writer::div(html_writer::div(
         html_writer::tag('h3', $title, ['class' => 'h5 card-title mb-1'])
-        . html_writer::tag('p', $hint, ['class' => 'text-muted small mb-3'])
+        . html_writer::tag('p', $hint, ['class' => 'small mb-3' . ($cardstyle === '' ? ' text-muted' : '')])
         . html_writer::div(implode('', $buttons), 'd-grid gap-2'),
-        'card-body'), 'card h-100 shadow-sm'), 'col-md-6 col-xl-3 mb-3');
+        'card-body'), 'card h-100 shadow-sm', $cardstyle !== '' ? ['style' => $cardstyle] : []), 'col-md-6 col-xl-3 mb-3');
 };
 
 echo html_writer::start_div('row');
@@ -249,13 +249,14 @@ echo $block('📊 Notas e informes', 'Consultar notas y descargar listados.', [
 ]);
 echo $block('⚙️ Configuración', 'Recomendable solo para administradores: permisos y herramientas de mantenimiento.', [
     html_writer::tag('details',
-        html_writer::tag('summary', 'Mostrar opciones', ['class' => 'btn btn-outline-secondary w-100 text-start'])
+        html_writer::tag('summary', 'Mostrar / ocultar opciones', ['class' => 'btn w-100 text-start',
+            'style' => 'background:#fff;border:1px solid #e4a1a1;color:#9b2c2c'])
         . html_writer::div(
             $btn(new moodle_url('/local/gestion_actividades/authorized_users.php', $cparams), 'i/permissions', 'Usuarios autorizados y Profesores HEE', 'btn btn-outline-secondary')
             . $btn(new moodle_url('/local/gestion_actividades/portfolio_cover_template.php'), 't/edit', 'Portada del portafolio PDF', 'btn btn-outline-secondary')
             . $btn(new moodle_url('/local/gestion_actividades/test_cleanup.php'), 't/delete', 'Limpieza de pruebas', 'btn btn-outline-danger'),
             'd-grid gap-2 mt-2')),
-]);
+], 'background:#fdecec;border-color:#f1b5b5;color:#7a1f1f');  // pastel red: delicate tools
 echo html_writer::end_div();
 
 echo html_writer::tag('h3', 'Vista general de talleres ofertados actualmente', ['class' => 'h4 mt-4']);
