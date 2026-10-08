@@ -251,7 +251,6 @@ class block_gestion_hee extends block_base {
     private function render_staff_view(bool $ismanager, ?array $teachersummary): string {
         $html = html_writer::start_div('block-gestion-hee-staff');
         if ($ismanager) {
-            $html .= html_writer::tag('h5', 'Gestor HEE', ['class' => 'mb-1']);
             $html .= html_writer::link(
                 // Carry the current course so «Volver al curso» returns here.
                 new moodle_url('/local/gestion_actividades/dashboard.php',
@@ -263,7 +262,6 @@ class block_gestion_hee extends block_base {
         if ($teachersummary) {
             $html .= $this->render_teacher_tools($teachersummary);
         } else if (!$ismanager) {
-            $html .= html_writer::tag('h5', 'Profesorado', ['class' => 'mb-1']);
             $html .= html_writer::tag('p', 'Todavía no tienes talleres HEE asignados. Cuando se te asigne uno aparecerá aquí.',
                 ['class' => 'text-muted small mb-2']);
         }
@@ -286,8 +284,7 @@ class block_gestion_hee extends block_base {
         $active = (int)($summary['activecount'] ?? 0);
         $finished = (int)($summary['finishedcount'] ?? 0);
 
-        $html = html_writer::start_div('block-gestion-hee-teacher-tools mt-3 pt-2 border-top');
-        $html .= html_writer::tag('h5', 'Profesor HEE', ['class' => 'mb-1']);
+        $html = html_writer::start_div('block-gestion-hee-teacher-tools mt-2');
         $html .= html_writer::tag('p', 'Gestiona únicamente los talleres HEE que tienes asignados.', ['class' => 'text-muted small mb-2']);
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'active']),

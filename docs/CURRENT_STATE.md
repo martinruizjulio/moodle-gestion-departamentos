@@ -674,3 +674,6 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
   - 4 bloques por tarea: 🗓️ Talleres (Tipo A, Tipo B, Crear Edición desde Excel, Plantilla A/B, Ediciones anteriores) · 🎓 Alumnos y horas (Validar Tipo B externo con contador, Catálogo de talleres B, Importar reconocimiento institucional, Ver traspasos A→B, Alumnos y ranking) · 📊 Notas e informes (Notas de la asignatura, Listado personalizado, Listados y descargas) · ⚙️ Configuración plegada (Usuarios autorizados y Profesores HEE, Portada del portafolio PDF, Limpieza de pruebas).
   - Sin numeración; la «Vista general de talleres» no cambia. Ninguna página interna cambia.
 - Validado (navegador): la franja detecta los tres casos con datos preparados; los 17 botones abren sin errores (plantillas descargan XLSX).
+
+## 2026-10-09 · block 1.0.33-alpha · Sin subtítulos duplicados
+- El bloque mostraba «Gestión HEE» (título) y debajo «Gestor HEE» / «Profesor HEE» / «Profesorado». Eliminados esos subtítulos; queda solo el título del bloque. Validado con administrador, Profesor HEE, profesor sin talleres y alumno.
