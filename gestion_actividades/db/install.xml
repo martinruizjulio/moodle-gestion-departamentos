@@ -522,16 +522,32 @@
         <FIELD NAME="sourcefile" TYPE="char" LENGTH="255" NOTNULL="true"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="grademax" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="10" COMMENT="Maximum quiz grade in the source file"/>
+        <FIELD NAME="importid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Last local_ga_typeb_pat_imports batch that wrote this row"/>
       </FIELDS>
       <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+        <INDEX NAME="importid" UNIQUE="false" FIELDS="importid"/>
         <INDEX NAME="studentkey" UNIQUE="false" FIELDS="studentkey"/>
         <INDEX NAME="workshopkey" UNIQUE="false" FIELDS="workshopkey"/>
         <INDEX NAME="academicyear" UNIQUE="false" FIELDS="academicyear"/>
         <INDEX NAME="studentworkshopyear" UNIQUE="true" FIELDS="studentkey,workshopkey,academicyear"/>
       </INDEXES>
     </TABLE>
-
+    <TABLE NAME="local_ga_typeb_pat_imports" COMMENT="Tipo B PAT import batches (can be annulled)">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="filename" TYPE="char" LENGTH="255" NOTNULL="false"/>
+        <FIELD NAME="academicyear" TYPE="char" LENGTH="9" NOTNULL="false"/>
+        <FIELD NAME="workshops" TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="created" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="updated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="passed" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+    </TABLE>
   </TABLES>
 </XMLDB>

@@ -962,6 +962,60 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026100592, 'local', 'gestion_actividades');
     }
 
+    if ($oldversion < 2026100595) {
+        // Tipo B PAT: quiz scale per row + import batches that can be annulled.
+        // Non-destructive: new fields/table; existing rows grouped into batches.
+        $pat = new xmldb_table('local_ga_typeb_pat');
+        if ($dbman->table_exists($pat)) {
+            $field = new xmldb_field('grademax', XMLDB_TYPE_NUMBER, '10, 2', null, XMLDB_NOTNULL, null, '10', 'timemodified');
+            if (!$dbman->field_exists($pat, $field)) {
+                $dbman->add_field($pat, $field);
+            }
+            $field = new xmldb_field('importid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'grademax');
+            if (!$dbman->field_exists($pat, $field)) {
+                $dbman->add_field($pat, $field);
+            }
+            $index = new xmldb_index('importid', XMLDB_INDEX_NOTUNIQUE, ['importid']);
+            if (!$dbman->index_exists($pat, $index)) {
+                $dbman->add_index($pat, $index);
+            }
+        }
+        $imports = new xmldb_table('local_ga_typeb_pat_imports');
+        if (!$dbman->table_exists($imports)) {
+            $imports->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $imports->add_field('filename', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+            $imports->add_field('academicyear', XMLDB_TYPE_CHAR, '9', null, null, null, null);
+            $imports->add_field('workshops', XMLDB_TYPE_TEXT, null, null, null, null, null);
+            $imports->add_field('created', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $imports->add_field('updated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $imports->add_field('passed', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $imports->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $imports->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $imports->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $dbman->create_table($imports);
+        }
+        // Rows imported with 1.5.177/1.5.178 had no batch: one batch per file + year.
+        if ($dbman->table_exists($pat)) {
+            $groups = $DB->get_records_sql("SELECT MIN(id) AS id, sourcefile, academicyear, COUNT(1) AS n,
+                                                   SUM(passed) AS passed, MIN(timecreated) AS t
+                                              FROM {local_ga_typeb_pat}
+                                             WHERE importid = 0
+                                          GROUP BY sourcefile, academicyear");
+            foreach ($groups as $g) {
+                $names = $DB->get_fieldset_select('local_ga_typeb_pat', 'DISTINCT workshopname',
+                    'importid = 0 AND sourcefile = ? AND academicyear = ?', [$g->sourcefile, $g->academicyear]);
+                $batchid = $DB->insert_record('local_ga_typeb_pat_imports', (object)[
+                    'filename' => (string)$g->sourcefile, 'academicyear' => (string)$g->academicyear,
+                    'workshops' => implode("\n", $names), 'created' => (int)$g->n, 'updated' => 0,
+                    'passed' => (int)$g->passed, 'usermodified' => 0, 'timecreated' => (int)$g->t,
+                ]);
+                $DB->set_field_select('local_ga_typeb_pat', 'importid', $batchid,
+                    'importid = 0 AND sourcefile = ? AND academicyear = ?', [$g->sourcefile, $g->academicyear]);
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026100595, 'local', 'gestion_actividades');
+    }
+
     return true;
 }
 

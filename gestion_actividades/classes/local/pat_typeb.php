@@ -12,6 +12,7 @@ defined('MOODLE_INTERNAL') || die();
  */
 class pat_typeb {
     public const TABLE = 'local_ga_typeb_pat';
+    public const IMPORTS = 'local_ga_typeb_pat_imports';
     private const TEMPDIR = 'local_gestion_actividades/pat_typeb';
 
     public static function save_uploaded_file(array $file): string {
@@ -47,7 +48,14 @@ class pat_typeb {
         return self::read_xlsx(self::path_from_token($token));
     }
 
-    public static function import(string $token, string $academicyear, array $hoursbycol, string $filename = ''): \stdClass {
+    /**
+     * Import a PAT export.
+     *
+     * @param array $hoursbycol column => hours to recognise
+     * @param array $maxbycol column => maximum quiz grade in the file (default 10).
+     *        Pass rule: attendance 100 and grade >= half of the maximum (5/10, 2.5/5…).
+     */
+    public static function import(string $token, string $academicyear, array $hoursbycol, string $filename = '', array $maxbycol = []): \stdClass {
         global $DB;
         $academicyear = academic_year::normalise($academicyear);
         if ($academicyear === '') {
@@ -61,12 +69,23 @@ class pat_typeb {
             if (!isset($hoursbycol[$col]) || (float)$hoursbycol[$col] <= 0) {
                 throw new \RuntimeException('Indica las horas de «' . $name . '».');
             }
+            $max = isset($maxbycol[$col]) ? (float)$maxbycol[$col] : 10.0;
+            if ($max <= 0) {
+                throw new \RuntimeException('Indica la nota máxima del cuestionario de «' . $name . '».');
+            }
+            $maxbycol[$col] = $max;
         }
 
         $now = time();
         $created = 0; $updated = 0; $linked = 0; $pending = 0; $passed = 0;
         $linkeduserids = [];
         $transaction = $DB->start_delegated_transaction();
+        global $USER;
+        $batchid = (int)$DB->insert_record(self::IMPORTS, (object)[
+            'filename' => clean_param($filename, PARAM_FILE), 'academicyear' => $academicyear,
+            'workshops' => implode("\n", $parsed['quizcols']), 'created' => 0, 'updated' => 0, 'passed' => 0,
+            'usermodified' => (int)($USER->id ?? 0), 'timecreated' => $now,
+        ]);
         foreach ($parsed['rows'] as $row) {
             $identity = self::identity_from_row($row, $parsed['headers']);
             if ($identity->studentkey === '') {
@@ -84,7 +103,8 @@ class pat_typeb {
             foreach ($parsed['quizcols'] as $col => $workshopname) {
                 $grade = self::numeric_value($row[$col] ?? null);
                 $hours = (float)$hoursbycol[$col];
-                $ispassed = $attendance !== null && $attendance >= 100.0 && $grade !== null && $grade >= 5.0;
+                $grademax = (float)$maxbycol[$col];
+                $ispassed = $attendance !== null && $attendance >= 100.0 && $grade !== null && $grade >= $grademax / 2.0;
                 if ($ispassed) { $passed++; }
                 $workshopkey = sha1(self::normalise_key($workshopname));
                 $existing = $DB->get_record(self::TABLE, [
@@ -109,6 +129,8 @@ class pat_typeb {
                     'passed' => $ispassed ? 1 : 0,
                     'sourcefile' => clean_param($filename, PARAM_FILE),
                     'timemodified' => $now,
+                    'grademax' => $grademax,
+                    'importid' => $batchid,
                 ];
                 if ($existing) {
                     $record->id = (int)$existing->id;
@@ -122,17 +144,91 @@ class pat_typeb {
                 }
             }
         }
+        $DB->update_record(self::IMPORTS, (object)['id' => $batchid, 'created' => $created, 'updated' => $updated, 'passed' => $passed]);
         $transaction->allow_commit();
         @unlink(self::path_from_token($token));
-        if ($linkeduserids && function_exists('block_gestion_hee_invalidate_users_cache')) {
-            block_gestion_hee_invalidate_users_cache(array_values($linkeduserids));
-        } else if ($linkeduserids && class_exists('\\block_gestion_hee\\local\\student_hours_cache')) {
-            \block_gestion_hee\local\student_hours_cache::invalidate_users(array_values($linkeduserids));
-        }
+        self::invalidate_hours_cache(array_values($linkeduserids));
         return (object)[
             'created' => $created, 'updated' => $updated, 'linked' => $linked,
-            'pending' => $pending, 'passed' => $passed,
+            'pending' => $pending, 'passed' => $passed, 'importid' => $batchid,
         ];
+    }
+
+    private static function invalidate_hours_cache(array $userids): void {
+        $userids = array_values(array_filter(array_map('intval', $userids)));
+        if (!$userids) {
+            return;
+        }
+        if (function_exists('block_gestion_hee_invalidate_users_cache')) {
+            block_gestion_hee_invalidate_users_cache($userids);
+        } else if (class_exists('\\block_gestion_hee\\local\\student_hours_cache')) {
+            \block_gestion_hee\local\student_hours_cache::invalidate_users($userids);
+        }
+    }
+
+    /** Import batches, newest first, with the number of rows each still owns. */
+    public static function list_imports(): array {
+        global $DB;
+        if (!$DB->get_manager()->table_exists(new \xmldb_table(self::IMPORTS))) {
+            return [];
+        }
+        $imports = $DB->get_records(self::IMPORTS, null, 'timecreated DESC, id DESC');
+        if ($imports) {
+            $counts = $DB->get_records_sql("SELECT importid, COUNT(1) AS n, SUM(passed) AS passed,
+                                                   COUNT(DISTINCT studentkey) AS students
+                                              FROM {" . self::TABLE . "} GROUP BY importid");
+            foreach ($imports as $import) {
+                $c = $counts[$import->id] ?? null;
+                $import->currentrows = $c ? (int)$c->n : 0;
+                $import->currentpassed = $c ? (int)$c->passed : 0;
+                $import->students = $c ? (int)$c->students : 0;
+            }
+        }
+        return $imports;
+    }
+
+    /**
+     * Annul an import: deletes the PAT rows whose last import is this one and
+     * the batch itself. Rows later re-imported by another batch are kept.
+     *
+     * @return int rows deleted
+     */
+    public static function annul_import(int $importid): int {
+        global $DB;
+        $import = $DB->get_record(self::IMPORTS, ['id' => $importid], '*', MUST_EXIST);
+        $userids = $DB->get_fieldset_select(self::TABLE, 'DISTINCT userid', 'importid = ? AND userid > 0', [$import->id]);
+        $n = $DB->count_records(self::TABLE, ['importid' => $import->id]);
+        $transaction = $DB->start_delegated_transaction();
+        $DB->delete_records(self::TABLE, ['importid' => $import->id]);
+        $DB->delete_records(self::IMPORTS, ['id' => $import->id]);
+        $transaction->allow_commit();
+        self::invalidate_hours_cache($userids);
+        return $n;
+    }
+
+    /** Highest numeric grade found in each quiz column (helps choose the scale). */
+    public static function max_grades(array $preview): array {
+        $out = [];
+        foreach ($preview['quizcols'] as $col => $name) {
+            $max = null;
+            foreach ($preview['rows'] as $row) {
+                $v = self::numeric_value($row[$col] ?? null);
+                if ($v !== null && ($max === null || $v > $max)) {
+                    $max = $v;
+                }
+            }
+            $out[$col] = $max;
+        }
+        return $out;
+    }
+
+    /** «4,00 / 5» */
+    public static function grade_text(\stdClass $row): string {
+        if ($row->grade === null || $row->grade === '') {
+            return '-';
+        }
+        $max = isset($row->grademax) && (float)$row->grademax > 0 ? (float)$row->grademax : 10.0;
+        return format_float((float)$row->grade, 2, true) . ' / ' . format_float($max, $max == (int)$max ? 0 : 2, true);
     }
 
     public static function reconcile_users(array $userids = []): int {

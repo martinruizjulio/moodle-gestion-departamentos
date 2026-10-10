@@ -790,3 +790,22 @@ Validación local:
 - `check_database_schema` sin diferencias.
 
 Pendiente de confirmar con datos reales: que la columna «Asistencia: … (Real)» del Excel de la plataforma sea un porcentaje 0–100. Si es una nota sobre otra escala, la regla «= 100» no aprobaría a nadie.
+
+## 2026-10-11 — local 1.5.180-alpha (2026100595) + block 1.0.35-alpha (2026100519): anular importaciones PAT y escala del cuestionario
+- **Anular importación PAT**:
+  - Nueva tabla `local_ga_typeb_pat_imports` (lotes) y campo `local_ga_typeb_pat.importid`.
+  - En «Importar talleres Tipo B PAT», la lista «Importaciones realizadas» muestra fecha, archivo, curso, talleres, alumnos y registros (aptos), con el botón «Anular importación» (con confirmación).
+  - Anular borra los registros PAT de ese lote y recalcula las horas, invalidando la caché del bloque. Si un alumno y taller se reimportó después en otro lote, se conserva el posterior.
+  - Upgrade 2026100595, no destructivo: las importaciones hechas con 1.5.177/178 se agrupan en un lote por archivo y curso, para poder anularlas también.
+- **Escala del cuestionario**:
+  - El Excel real de la plataforma (Tutorización 1C) tiene las notas sobre 5: máximo 5,0, y 45 de 56 alumnos sacan exactamente 5.
+  - Nuevo campo por taller «Nota máxima del cuestionario» (por defecto 10). Aviso si la nota más alta del archivo es ≤ 5. Se guarda en `grademax`.
+  - Regla: asistencia 100 y nota ≥ la mitad de la máxima (5/10, 2,5/5).
+  - Las notas se muestran «x / máx» en Buscar alumno, portafolio y PDF. Textos de ayuda ES/EN actualizados.
+- Formato del Excel real verificado: «Cuestionario:… (Real)» sin espacio tras los dos puntos; asistencia 0/50/75/100; Número de ID y Departamento (DNI) siempre presentes. El importador lo lee correctamente.
+- Validación local:
+  - Importación del Excel real desde la interfaz (curso 2025/2026, máximo 5, 2 h por taller): 112 registros, 90 aptos.
+  - Anulación desde la interfaz: 112 eliminados.
+  - Anulación de un lote con alumnos vinculados: sus horas Tipo B bajan de 5 a 0.
+  - pat_test, hee_e2e, cert y typeb_cat: ALL OK. Esquema sin diferencias.
+  - Los datos reales solo se usaron en el Moodle de prueba local, se anularon y la copia del Excel se borró.

@@ -335,7 +335,7 @@ if ($patrows) {
 echo html_writer::tag('h2', 'Talleres Tipo B PAT', ['class' => 'mt-4']);
 echo html_writer::tag(
     'p',
-    'Talleres PAT realizados en 1.º curso. Computan cuando consta asistencia completa y una nota de cuestionario igual o superior a 5.',
+    'Talleres PAT realizados en 1.º curso. Computan cuando consta asistencia completa y una nota de cuestionario de al menos la mitad de la máxima (equivale a 5 sobre 10).',
     ['class' => 'text-muted']
 );
 if ($patrows) {
@@ -346,7 +346,7 @@ if ($patrows) {
             s($p->academicyear),
             s($p->workshopname),
             $p->attendance === null ? '-' : format_float((float)$p->attendance, 2, true) . '%',
-            $p->grade === null ? '-' : format_float((float)$p->grade, 2, true) . ' / 10',
+            \local_gestion_actividades\local\pat_typeb::grade_text($p),
             format_float((float)$p->hours, 2, true) . ' h',
             !empty($p->passed) ? html_writer::span('Apto', 'badge bg-success') : html_writer::span('No apto', 'badge bg-danger'),
         ];

@@ -28,8 +28,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $preview = pat_typeb::preview($token);
         } else if ($action === 'confirm') {
             $hours = optional_param_array('hours', [], PARAM_FLOAT);
-            $result = pat_typeb::import($token, $academicyear, $hours, $filename);
+            $maxgrades = optional_param_array('grademax', [], PARAM_FLOAT);
+            $result = pat_typeb::import($token, $academicyear, $hours, $filename, $maxgrades);
             $token = '';
+        } else if ($action === 'annul') {
+            $importid = required_param('importid', PARAM_INT);
+            $deleted = pat_typeb::annul_import($importid);
+            redirect(new moodle_url('/local/gestion_actividades/pat_typeb_import.php'),
+                'Importación anulada: se han eliminado ' . $deleted . ' registro(s) PAT y las horas se han recalculado.',
+                null, \core\output\notification::NOTIFY_SUCCESS);
         }
     } catch (Throwable $e) {
         $error = $e->getMessage();
@@ -53,7 +60,7 @@ echo html_writer::div(
 echo $OUTPUT->heading('Importar talleres Tipo B PAT');
 echo html_writer::tag('p',
     'Importa directamente el Excel exportado por la plataforma de 1.º. Estos talleres PAT son distintos de los Tipo B internos: '
-    . 'computan horas cuando el alumno tiene asistencia completa y una nota de cuestionario igual o superior a 5. '
+    . 'computan horas cuando el alumno tiene asistencia completa (100) y una nota de cuestionario igual o superior a la mitad de la nota máxima (5 sobre 10, 2,5 sobre 5…). '
     . 'Si el alumno todavía no existe en este Moodle, sus datos quedan guardados y se vincularán cuando aparezca en cursos posteriores.',
     ['class' => 'alert alert-info']
 );
@@ -98,8 +105,8 @@ if ($token === '' && !$result) {
 if ($preview) {
     echo html_writer::tag('h3', 'Talleres detectados', ['class' => 'h4']);
     echo html_writer::tag('p',
-        'La asistencia del archivo se aplicará a todos los talleres detectados. Indica las horas que corresponde reconocer por cada taller. '
-        . 'La nota mínima es 5 y la asistencia debe figurar como 100.',
+        'La asistencia del archivo se aplicará a todos los talleres detectados. Indica las horas que corresponde reconocer por cada taller '
+        . 'y la nota máxima de su cuestionario. Es apto quien tiene asistencia 100 y al menos la mitad de la nota máxima.',
         ['class' => 'text-muted']
     );
     echo html_writer::start_tag('form', ['method' => 'post']);
@@ -111,10 +118,18 @@ if ($preview) {
 
     $table = new html_table();
     $table->attributes['class'] = 'generaltable table-sm';
-    $table->head = ['Taller PAT detectado', 'Horas a reconocer'];
+    $table->head = ['Taller PAT detectado', 'Nota más alta en el archivo', 'Nota máxima del cuestionario', 'Horas a reconocer'];
+    $highest = pat_typeb::max_grades($preview);
     foreach ($preview['quizcols'] as $col => $name) {
+        $top = $highest[$col] ?? null;
         $table->data[] = [
             s($name),
+            $top === null ? '-' : format_float($top, 2, true),
+            html_writer::empty_tag('input', [
+                'type' => 'number', 'name' => 'grademax[' . (int)$col . ']', 'min' => '0.5', 'step' => '0.5', 'value' => '10',
+                'class' => 'form-control form-control-sm', 'required' => 'required', 'style' => 'max-width:120px',
+            ]) . ($top !== null && $top <= 5.0 ? html_writer::div('La nota más alta es ' . format_float($top, 2, true)
+                . ': comprueba si el cuestionario es sobre 5.', 'small text-warning') : ''),
             html_writer::empty_tag('input', [
                 'type' => 'number', 'name' => 'hours[' . (int)$col . ']', 'min' => '0.25', 'step' => '0.25',
                 'class' => 'form-control form-control-sm', 'required' => 'required', 'style' => 'max-width:140px',
@@ -158,4 +173,37 @@ if ($preview) {
     echo html_writer::end_tag('form');
 }
 
+if (!$preview) {
+    $imports = pat_typeb::list_imports();
+    echo html_writer::tag('h3', 'Importaciones realizadas', ['class' => 'h4 mt-4']);
+    if (!$imports) {
+        echo $OUTPUT->notification('Todavía no hay importaciones PAT.', 'info');
+    } else {
+        echo html_writer::tag('p', '«Anular» elimina los registros PAT de esa importación y recalcula las horas de los alumnos. '
+            . 'Si un alumno y taller se volvieron a importar después, se conserva el dato de la importación posterior.', ['class' => 'text-muted']);
+        $table = new html_table();
+        $table->attributes['class'] = 'generaltable table-sm';
+        $table->head = ['Fecha', 'Archivo', 'Curso académico', 'Talleres', 'Alumnos', 'Registros (aptos)', 'Acción'];
+        foreach ($imports as $imp) {
+            $form = html_writer::start_tag('form', ['method' => 'post', 'class' => 'd-inline',
+                'onsubmit' => 'return confirm(' . json_encode('¿Anular esta importación PAT? Se eliminarán ' . (int)$imp->currentrows
+                    . ' registro(s) y las horas de los alumnos se recalcularán. No se puede deshacer (habría que volver a importar el Excel).') . ');']);
+            $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+            $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'annul']);
+            $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'importid', 'value' => (int)$imp->id]);
+            $form .= html_writer::tag('button', 'Anular importación', ['type' => 'submit', 'class' => 'btn btn-sm btn-outline-danger']);
+            $form .= html_writer::end_tag('form');
+            $table->data[] = [
+                userdate((int)$imp->timecreated, '%d/%m/%Y %H:%M'),
+                s($imp->filename ?: '-'),
+                s($imp->academicyear ?: '-'),
+                nl2br(s((string)$imp->workshops)),
+                (int)$imp->students,
+                (int)$imp->currentrows . ' (' . (int)$imp->currentpassed . ')',
+                $imp->currentrows > 0 ? $form : html_writer::span('Sin registros vigentes', 'text-muted small') . ' ' . $form,
+            ];
+        }
+        echo html_writer::table($table);
+    }
+}
 echo $OUTPUT->footer();

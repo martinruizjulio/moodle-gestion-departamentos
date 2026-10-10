@@ -214,7 +214,7 @@ class portfolio_pdf {
                 self::write_certificate_card($pdf, (string)$p->workshopname, [
                     'Curso académico' => (string)$p->academicyear,
                     'Asistencia' => $p->attendance === null ? '-' : format_float((float)$p->attendance, 2, true) . '%',
-                    'Nota cuestionario' => $p->grade === null ? '-' : format_float((float)$p->grade, 2, true) . ' / 10',
+                    'Nota cuestionario' => \local_gestion_actividades\local\pat_typeb::grade_text($p),
                     'Horas' => self::format_hours((float)$p->hours),
                     'Resultado' => !empty($p->passed) ? 'Apto' : 'No apto',
                 ]);

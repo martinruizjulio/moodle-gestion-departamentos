@@ -257,7 +257,7 @@ if ($user) {
         $table->head = ['Curso académico', 'Taller PAT', 'Asistencia', 'Nota cuestionario', 'Horas', 'Resultado'];
         foreach ($patrows as $p) {
             $attendance = $p->attendance === null ? '-' : format_float((float)$p->attendance, 2, true) . '%';
-            $grade = $p->grade === null ? '-' : format_float((float)$p->grade, 2, true) . ' / 10';
+            $grade = \local_gestion_actividades\local\pat_typeb::grade_text($p);
             $table->data[] = [
                 s($p->academicyear),
                 s($p->workshopname),
