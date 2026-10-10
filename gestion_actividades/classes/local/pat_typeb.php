@@ -141,7 +141,7 @@ class pat_typeb {
         $linked = 0;
         foreach ($users as $user) {
             $idnumber = self::normalise_key((string)$user->idnumber);
-            $email = core_text::strtolower(trim((string)$user->email));
+            $email = \\core_text::strtolower(trim((string)$user->email));
             $conditions = []; $p = [];
             if ($idnumber !== '') {
                 $conditions[] = '(studentid = :sid OR dni = :dni)';
@@ -198,7 +198,7 @@ class pat_typeb {
         };
         $studentid = $get(['Número de ID','Numero de ID']);
         $dni = $get(['Departamento']);
-        $email = core_text::strtolower($get(['Dirección de correo','Direccion de correo','Correo']));
+        $email = \\core_text::strtolower($get(['Dirección de correo','Direccion de correo','Correo']));
         $seed = $dni !== '' ? 'dni:' . self::normalise_key($dni)
             : ($studentid !== '' ? 'id:' . self::normalise_key($studentid) : ($email !== '' ? 'mail:' . $email : ''));
         return (object)[
@@ -220,7 +220,7 @@ class pat_typeb {
     }
 
     private static function normalise_key(string $value): string {
-        $value = core_text::strtolower(trim($value));
+        $value = \\core_text::strtolower(trim($value));
         $value = preg_replace('/\s+/u', ' ', $value);
         return $value ?? '';
     }
