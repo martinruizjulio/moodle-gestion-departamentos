@@ -27,11 +27,56 @@ echo $OUTPUT->heading('Portada editable del portafolio');
 echo html_writer::tag('p', 'Esta portada se usará en todos los PDF de portafolio y se imprimirá sobre la misma plantilla visual UCV usada para los certificados. Puedes editar el texto y usar las variables automáticas.', ['class' => 'alert alert-info']);
 echo html_writer::start_tag('form', ['method' => 'post']);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
-echo html_writer::tag('textarea', s(portfolio_pdf::get_cover_template()), ['name' => 'coverhtml', 'class' => 'form-control', 'rows' => 14]);
+echo html_writer::start_div('row g-3 align-items-stretch');
+echo html_writer::start_div('col-lg-6');
+echo html_writer::tag('h3', 'Código / contenido HTML', ['class' => 'h5']);
+echo html_writer::tag('textarea', s(portfolio_pdf::get_cover_template()), [
+    'name' => 'coverhtml', 'id' => 'local-ga-coverhtml', 'class' => 'form-control font-monospace', 'rows' => 18,
+    'style' => 'min-height:520px;resize:vertical;',
+]);
+echo html_writer::end_div();
+echo html_writer::start_div('col-lg-6');
+echo html_writer::tag('h3', 'Previsualización', ['class' => 'h5']);
+echo html_writer::tag('iframe', '', [
+    'id' => 'local-ga-cover-preview',
+    'title' => 'Previsualización de la portada',
+    'style' => 'width:100%;min-height:520px;border:1px solid #d8dee4;border-radius:.5rem;background:#fff;',
+    'sandbox' => '',
+]);
+echo html_writer::div('La vista previa usa datos ficticios y se actualiza al escribir. El PDF final sustituirá las variables por los datos reales del alumno.', 'form-text text-muted mt-2');
+echo html_writer::end_div();
+echo html_writer::end_div();
 echo html_writer::empty_tag('input', ['type' => 'submit', 'value' => 'Guardar portada', 'class' => 'btn btn-primary mt-3']);
 echo ' ';
 echo html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_admin.php'), 'Volver al portafolio gestor', ['class' => 'btn btn-secondary mt-3']);
 echo html_writer::end_tag('form');
+
+$PAGE->requires->js_init_code(<<<'JS'
+(function() {
+    var editor = document.getElementById('local-ga-coverhtml');
+    var preview = document.getElementById('local-ga-cover-preview');
+    if (!editor || !preview) { return; }
+    var values = {
+        '{alumno}': 'María García López',
+        '{curso}': '2026/2027',
+        '{horas_tipo_a}': '28',
+        '{horas_tipo_b}': '26',
+        '{horas_total}': '54',
+        '{fecha_emision}': '10/10/2026'
+    };
+    var render = function() {
+        var html = editor.value;
+        Object.keys(values).forEach(function(key) {
+            html = html.split(key).join(values[key]);
+        });
+        preview.srcdoc = '<!doctype html><html><head><meta charset="utf-8">'
+            + '<style>body{font-family:Arial,sans-serif;padding:28px;line-height:1.45;color:#222}img{max-width:100%}</style>'
+            + '</head><body>' + html + '</body></html>';
+    };
+    editor.addEventListener('input', render);
+    render();
+})();
+JS);
 echo html_writer::tag('h3', 'Variables disponibles', ['class' => 'mt-4']);
 echo html_writer::tag('pre', "{alumno}\n{curso}\n{horas_tipo_a}\n{horas_tipo_b}\n{horas_total}\n{fecha_emision}");
 echo $OUTPUT->footer();
