@@ -230,21 +230,22 @@ $block = function(string $title, string $hint, array $buttons, string $cardstyle
 
 echo html_writer::start_div('row');
 echo $block('🗓️ Talleres', 'Crear y gestionar las Ediciones de talleres.', [
-    $btn(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea']), 'i/calendar', 'Talleres Tipo A', 'btn btn-primary'),
-    $btn(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typeb']), 'i/calendar', 'Talleres Tipo B', 'btn btn-primary'),
+    $btn(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typea'] + $cparams), 'i/calendar', 'Talleres Tipo A', 'btn btn-primary'),
+    $btn(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => 'typeb'] + $cparams), 'i/calendar', 'Talleres Tipo B', 'btn btn-primary'),
     $btn(new moodle_url('/local/gestion_actividades/workshop_bulk_import.php', $cparams), 'i/import', 'Crear Edición desde Excel'),
     html_writer::div(
         html_writer::link($tplurl('typea'), local_ga_btn_icon('t/download', 'Plantilla A'), ['class' => 'btn btn-sm btn-outline-secondary flex-fill'])
         . html_writer::link($tplurl('typeb'), local_ga_btn_icon('t/download', 'Plantilla B'), ['class' => 'btn btn-sm btn-outline-secondary flex-fill']),
         'd-flex gap-2'),
-    $btn(new moodle_url('/local/gestion_actividades/archive.php'), 'i/folder', 'Ediciones anteriores', 'btn btn-outline-secondary'),
+    $btn(new moodle_url('/local/gestion_actividades/archive.php', $cparams), 'i/folder', 'Ediciones anteriores', 'btn btn-outline-secondary'),
 ]);
 echo $block('🎓 Alumnos y horas', 'Validar y reconocer horas del alumnado.', [
     $btn(new moodle_url('/local/gestion_actividades/student_search.php'), 'a/search', 'Buscar alumno (historial completo)'),
     $btn(new moodle_url('/local/gestion_actividades/index.php'), 'i/users', 'Alumnos y ranking'),
     $btn(new moodle_url('/local/gestion_actividades/institutional_import.php'), 'i/import', 'Importar reconocimiento institucional'),
+    $btn(new moodle_url('/local/gestion_actividades/pat_typeb_import.php'), 'i/import', 'Importar talleres Tipo B PAT'),
     $btn(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), 't/edit', 'Catálogo de talleres B'),
-    $btn(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']), 'i/checked',
+    $btn(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending'] + $cparams), 'i/checked',
         'Validar Tipo B externo' . ($pendingtypeb > 0 ? ' (' . $pendingtypeb . ')' : ''), $pendingtypeb > 0 ? 'btn btn-warning' : 'btn btn-outline-primary'),
     $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php', ['action' => 'view_transfers']), 'i/switch', 'Ver traspasos A→B'),
 ]);
