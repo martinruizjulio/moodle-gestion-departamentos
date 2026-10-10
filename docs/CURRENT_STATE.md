@@ -735,3 +735,14 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
   - Tablas de Tipo B externo, traspasos y reconocimiento institucional.
 - Diferencia con lo existente: el buscador de «Validar Tipo B externo» solo muestra certificados A y solicitudes B. Esta ficha reúne todo el historial.
 - Validación local con Playwright (búsqueda múltiple, resultado único, sin resultados; ficha de dd1 con 12 talleres): sin errores.
+
+## 2026-10-11 — local 1.5.177-alpha (2026100592): contexto seguro + edición de alumno + Tipo B PAT
+- **Contexto seguro**: Talleres A/B, Archivo y Portafolio gestor abren por defecto en el curso académico actual; Edición de talleres e importación Excel preseleccionan el curso Moodle desde el que se abrió Gestión HEE mediante `$SESSION->local_ga_return_courseid`. Se puede cambiar manualmente.
+- **Portada PDF**: editor HTML a la izquierda y previsualización en vivo a la derecha, con datos ficticios para las variables `{alumno}`, `{curso}`, `{horas_tipo_a}`, `{horas_tipo_b}`, `{horas_total}` y `{fecha_emision}`.
+- **Buscar alumno**: sigue siendo de consulta por defecto y añade botones de edición que abren los controles canónicos de asistencia y actividad/calificación de la edición, evitando edición accidental inline.
+- **Tipo B PAT**: nuevo botón **Importar talleres Tipo B PAT** en el panel. Acepta directamente el XLSX nativo exportado por la plataforma (Nombre, Apellido(s), Número de ID, Departamento/DNI, correo, columnas `Cuestionario:… (Real)` y una columna `Asistencia:… (Real)`).
+- El importador detecta automáticamente todos los cuestionarios PAT, aplica la asistencia común a esos talleres y solicita al gestor las horas a reconocer por cada taller porque el XLSX exportado no contiene horas.
+- Regla PAT: **asistencia = 100 + nota de cuestionario >= 5**. Solo entonces las horas se incorporan como Tipo B al cálculo canónico.
+- Los alumnos pueden importarse aunque todavía no exista su cuenta Moodle. Se conserva identidad (Número ID, DNI/Departamento, correo, nombre y apellidos) y se vincula por identificador institucional/DNI o correo cuando la cuenta aparezca posteriormente. La reconciliación se ejecuta al calcular/consultar horas del usuario.
+- Nueva tabla no destructiva `local_ga_typeb_pat`; upgrade `2026100592`. Reimportar el mismo alumno+taller+curso actualiza el registro en lugar de duplicarlo.
+- Los registros PAT aparecen en **Buscar alumno**, en el portafolio del alumno y en el PDF del portafolio; sus horas se integran en `hours_calculator` y por tanto en bloque, totales, notas y desbloqueo de las 54 h.
