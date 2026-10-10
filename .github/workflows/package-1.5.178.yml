@@ -1,4 +1,4 @@
-name: Validate and package 1.5.178
+name: Validate and package 1.5.178 rerun
 
 on:
   push:
@@ -22,7 +22,6 @@ jobs:
           python - <<'PY'
           import xml.etree.ElementTree as ET
           ET.parse('gestion_actividades/db/install.xml')
-          ET.parse('gestion_hee/db/install.xml')
           print('XML OK')
           PY
       - name: Package plugins
