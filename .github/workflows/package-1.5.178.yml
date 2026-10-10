@@ -1,0 +1,41 @@
+name: Validate and package 1.5.178
+
+on:
+  push:
+    paths:
+      - '.github/workflows/package-1.5.178.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PHP local
+        run: find gestion_actividades -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Validate PHP block
+        run: find gestion_hee -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Validate XML
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          ET.parse('gestion_actividades/db/install.xml')
+          ET.parse('gestion_hee/db/install.xml')
+          print('XML OK')
+          PY
+      - name: Package plugins
+        run: |
+          zip -qr local_gestion_actividades_1.5.178-alpha.zip gestion_actividades
+          zip -qr block_gestion_hee_1.0.34-alpha.zip gestion_hee
+      - name: Upload local
+        uses: actions/upload-artifact@v4
+        with:
+          name: local_gestion_actividades_1.5.178-alpha
+          path: local_gestion_actividades_1.5.178-alpha.zip
+      - name: Upload block
+        uses: actions/upload-artifact@v4
+        with:
+          name: block_gestion_hee_1.0.34-alpha
+          path: block_gestion_hee_1.0.34-alpha.zip
