@@ -502,5 +502,36 @@
       <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES><INDEX NAME="courseid" UNIQUE="true" FIELDS="courseid"/></INDEXES>
     </TABLE>
+    <TABLE NAME="local_ga_typeb_pat" COMMENT="Historical Type B PAT workshop results imported before students may exist in this Moodle">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="studentkey" TYPE="char" LENGTH="64" NOTNULL="true"/>
+        <FIELD NAME="studentid" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="dni" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="firstname" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="lastname" TYPE="char" LENGTH="150" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="email" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="workshopkey" TYPE="char" LENGTH="64" NOTNULL="true"/>
+        <FIELD NAME="workshopname" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="academicyear" TYPE="char" LENGTH="9" NOTNULL="true"/>
+        <FIELD NAME="attendance" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="false"/>
+        <FIELD NAME="grade" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="false"/>
+        <FIELD NAME="hours" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="passed" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="sourcefile" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
+      <INDEXES>
+        <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+        <INDEX NAME="studentkey" UNIQUE="false" FIELDS="studentkey"/>
+        <INDEX NAME="workshopkey" UNIQUE="false" FIELDS="workshopkey"/>
+        <INDEX NAME="academicyear" UNIQUE="false" FIELDS="academicyear"/>
+        <INDEX NAME="studentworkshopyear" UNIQUE="true" FIELDS="studentkey,workshopkey,academicyear"/>
+      </INDEXES>
+    </TABLE>
+
   </TABLES>
 </XMLDB>
