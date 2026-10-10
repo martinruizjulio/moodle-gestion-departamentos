@@ -17,6 +17,12 @@ workshop_series::ensure_schema();
 $action = optional_param('action', '', PARAM_ALPHA);
 $id = optional_param('id', 0, PARAM_INT);
 $courseid = optional_param('courseid', 0, PARAM_INT);
+if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
+    $SESSION->local_ga_return_courseid = $courseid;
+} else if ($courseid <= 0 && !empty($SESSION->local_ga_return_courseid)
+        && $DB->record_exists('course', ['id' => (int)$SESSION->local_ga_return_courseid])) {
+    $courseid = (int)$SESSION->local_ga_return_courseid;
+}
 $message = '';
 $error = '';
 
