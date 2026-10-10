@@ -141,6 +141,7 @@ class portfolio_pdf {
         $typeacerts = self::get_typea_certificates($userid);
         $typebworkshopcerts = manager::list_user_typeb_workshop_certificates($userid);
         $typebcerts = self::get_typeb_certificates($userid);
+        $patrows = class_exists('local_gestion_actividades\\local\\pat_typeb') ? pat_typeb::for_user($userid) : [];
         $typeahours = self::get_typea_hours($userid);
         $institutional = class_exists('local_gestion_actividades\\local\\institutional_hours') ? institutional_hours::list_for_user($userid) : [];
         $typebhours = (float)hours_calculator::for_user($userid)->typebhours;
@@ -205,6 +206,21 @@ class portfolio_pdf {
             }
         } else {
             $pdf->writeHTML('<p>No constan certificados de Talleres Tipo B internos.</p>', true, false, true, false, '');
+        }
+
+        $pdf->writeHTML('<h2 style="color:#2b4b1e;">Talleres Tipo B PAT</h2>', true, false, true, false, '');
+        if ($patrows) {
+            foreach ($patrows as $p) {
+                self::write_certificate_card($pdf, (string)$p->workshopname, [
+                    'Curso académico' => (string)$p->academicyear,
+                    'Asistencia' => $p->attendance === null ? '-' : format_float((float)$p->attendance, 2, true) . '%',
+                    'Nota cuestionario' => $p->grade === null ? '-' : format_float((float)$p->grade, 2, true) . ' / 10',
+                    'Horas' => self::format_hours((float)$p->hours),
+                    'Resultado' => !empty($p->passed) ? 'Apto' : 'No apto',
+                ]);
+            }
+        } else {
+            $pdf->writeHTML('<p>No constan Talleres Tipo B PAT vinculados.</p>', true, false, true, false, '');
         }
 
         $pdf->writeHTML('<h2 style="color:#2b4b1e;">Formaciones externas reconocidas como Tipo B</h2>', true, false, true, false, '');
