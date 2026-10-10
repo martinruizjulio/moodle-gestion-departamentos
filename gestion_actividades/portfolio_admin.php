@@ -14,8 +14,8 @@ if (!manager::can_manage_globally((int)$USER->id)) {
 $q = optional_param('q', '', PARAM_TEXT);
 $userid = optional_param('userid', 0, PARAM_INT);
 $status = optional_param('status', '', PARAM_ALPHANUMEXT);
-// Tipo B requests: all academic years by default so nothing pending is hidden.
-$ay = academic_year::selected(true);
+// Default to the current academic year; managers can still choose «Todos los cursos».
+$ay = academic_year::selected();
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['q' => $q, 'userid' => $userid, 'status' => $status]));
