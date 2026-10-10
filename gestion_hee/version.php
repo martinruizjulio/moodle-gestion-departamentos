@@ -2,7 +2,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_gestion_hee';
-$plugin->version = 2026100517;
+$plugin->version = 2026100518;
 $plugin->requires = 2022041900;
-$plugin->release = '1.0.33-alpha';
+$plugin->release = '1.0.34-alpha';
 $plugin->maturity = MATURITY_ALPHA;
