@@ -16,6 +16,12 @@ workshop_series::ensure_schema();
 
 $action = optional_param('action', '', PARAM_ALPHA);
 $courseid = optional_param('courseid', 0, PARAM_INT);
+if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
+    $SESSION->local_ga_return_courseid = $courseid;
+} else if ($courseid <= 0 && !empty($SESSION->local_ga_return_courseid)
+        && $DB->record_exists('course', ['id' => (int)$SESSION->local_ga_return_courseid])) {
+    $courseid = (int)$SESSION->local_ga_return_courseid;
+}
 $token = optional_param('token', '', PARAM_ALPHANUM);
 $quiztemplatecmid = optional_param('quiztemplatecmid', 0, PARAM_INT);
 $notestemplatecmid = optional_param('notestemplatecmid', 0, PARAM_INT);
