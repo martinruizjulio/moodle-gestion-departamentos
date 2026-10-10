@@ -746,3 +746,5 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 - Los alumnos pueden importarse aunque todavía no exista su cuenta Moodle. Se conserva identidad (Número ID, DNI/Departamento, correo, nombre y apellidos) y se vincula por identificador institucional/DNI o correo cuando la cuenta aparezca posteriormente. La reconciliación se ejecuta al calcular/consultar horas del usuario.
 - Nueva tabla no destructiva `local_ga_typeb_pat`; upgrade `2026100592`. Reimportar el mismo alumno+taller+curso actualiza el registro en lugar de duplicarlo.
 - Los registros PAT aparecen en **Buscar alumno**, en el portafolio del alumno y en el PDF del portafolio; sus horas se integran en `hours_calculator` y por tanto en bloque, totales, notas y desbloqueo de las 54 h.
+
+- Validación final: `php -l` correcto en todos los PHP de `gestion_actividades` y `gestion_hee`; `install.xml` parseado correctamente. ZIPs generados desde el mismo HEAD. El bloque no requiere cambios funcionales y se mantiene en **1.0.33-alpha (2026100517)**.
