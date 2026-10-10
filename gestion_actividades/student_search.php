@@ -242,7 +242,31 @@ if ($user) {
         echo $OUTPUT->notification('No consta inscrito en ningún taller.', 'info');
     }
 
-    // 2. Tipo B externo.
+    // 2. Tipo B PAT histórico.
+    echo html_writer::tag('h3', 'Tipo B PAT (1.º curso)', ['class' => 'h5 mt-4']);
+    $patrows = \local_gestion_actividades\local\pat_typeb::for_user((int)$user->id);
+    if ($patrows) {
+        $table = new html_table();
+        $table->attributes['class'] = 'generaltable table-sm';
+        $table->head = ['Curso académico', 'Taller PAT', 'Asistencia', 'Nota cuestionario', 'Horas', 'Resultado'];
+        foreach ($patrows as $p) {
+            $attendance = $p->attendance === null ? '-' : format_float((float)$p->attendance, 2, true) . '%';
+            $grade = $p->grade === null ? '-' : format_float((float)$p->grade, 2, true) . ' / 10';
+            $table->data[] = [
+                s($p->academicyear),
+                s($p->workshopname),
+                $attendance,
+                $grade,
+                format_float((float)$p->hours, 2, true) . ' h',
+                !empty($p->passed) ? local_ga_ss_badge('Apto', 'bg-success') : local_ga_ss_badge('No apto', 'bg-danger'),
+            ];
+        }
+        echo html_writer::table($table);
+    } else {
+        echo $OUTPUT->notification('No tiene talleres Tipo B PAT vinculados.', 'info');
+    }
+
+    // 3. Tipo B externo.
     echo html_writer::tag('h3', 'Tipo B externo (solicitudes)', ['class' => 'h5 mt-4']);
     $typeb = portfolio_typeb::list_for_user((int)$user->id);
     if ($typeb) {
@@ -269,7 +293,7 @@ if ($user) {
         echo $OUTPUT->notification('No ha presentado solicitudes de Tipo B externo.', 'info');
     }
 
-    // 3. Traspasos A→B.
+    // 4. Traspasos A→B.
     echo html_writer::tag('h3', 'Traspasos Tipo A → Tipo B', ['class' => 'h5 mt-4']);
     $transfers = array_filter(manager::list_all_typeb_transfers(), static fn($t) => (int)$t->userid === (int)$user->id);
     if ($transfers) {
@@ -286,7 +310,7 @@ if ($user) {
         echo $OUTPUT->notification('No ha hecho traspasos.', 'info');
     }
 
-    // 4. Reconocimiento institucional.
+    // 5. Reconocimiento institucional.
     echo html_writer::tag('h3', 'Reconocimiento institucional (horas previas importadas)', ['class' => 'h5 mt-4']);
     $inst = $DB->get_manager()->table_exists(new xmldb_table('local_ga_institutional_hours'))
         ? $DB->get_records('local_ga_institutional_hours', ['userid' => $user->id]) : [];
