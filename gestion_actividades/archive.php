@@ -76,7 +76,7 @@ echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividad
 echo $OUTPUT->heading(get_string('workshoparchive', 'local_gestion_actividades'));
 echo html_writer::tag('p', 'Las Ediciones de talleres finalizadas aparecen plegadas y agrupadas por curso académico, de la más reciente a la más antigua (y, en la misma fecha, Tipo A antes que Tipo B). Los talleres del modelo anterior que no pertenecen a una edición se mantienen en un bloque independiente.', ['class' => 'alert alert-info']);
 
-$ay = academic_year::selected(true);
+$ay = academic_year::selected();
 echo academic_year::selector(new moodle_url('/local/gestion_actividades/archive.php'), $ay, 'Las Ediciones se agrupan por curso académico.');
 $serieslist = workshop_series::list_for_course(0);
 $alllinkedworkshops = [];
