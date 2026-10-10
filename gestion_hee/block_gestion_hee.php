@@ -137,7 +137,7 @@ class block_gestion_hee extends block_base {
 
     private function render_student_help(): string {
         $body = html_writer::tag('p', get_string('studenthelpintro', 'block_gestion_hee'), ['class' => 'lead fs-6']);
-        foreach (['join', 'a', 'b', 'bexternal', 'certs', 'transfer', 'selfassessment'] as $key) {
+        foreach (['join', 'a', 'b', 'pat', 'bexternal', 'certs', 'transfer', 'selfassessment'] as $key) {
             $body .= $this->render_help_section('studenthelp' . $key . '_title', 'studenthelp' . $key . '_text');
         }
         $body .= html_writer::div(get_string('studenthelpfooter', 'block_gestion_hee'), 'alert alert-info mb-0');
@@ -287,12 +287,12 @@ class block_gestion_hee extends block_base {
         $html = html_writer::start_div('block-gestion-hee-teacher-tools mt-2');
         $html .= html_writer::tag('p', 'Gestiona únicamente los talleres HEE que tienes asignados.', ['class' => 'text-muted small mb-2']);
         $html .= html_writer::link(
-            new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'active']),
+            new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'active'] + $this->course_params()),
             'Talleres vigentes (' . $active . ')',
             ['class' => 'btn btn-sm btn-primary d-block w-100 mb-1']
         );
         $html .= html_writer::link(
-            new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'finished']),
+            new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'finished'] + $this->course_params()),
             'Mis talleres finalizados (' . $finished . ')',
             ['class' => 'btn btn-sm btn-outline-secondary d-block w-100']
         );
