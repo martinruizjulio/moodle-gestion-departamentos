@@ -329,6 +329,31 @@ if ($typebworkshopcerts) {
     echo $OUTPUT->notification('Todavía no tienes certificados de talleres Tipo B internos.', 'info');
 }
 
+$patrows = \local_gestion_actividades\local\pat_typeb::for_user((int)$USER->id);
+echo html_writer::tag('h2', 'Talleres Tipo B PAT', ['class' => 'mt-4']);
+echo html_writer::tag(
+    'p',
+    'Talleres PAT realizados en 1.º curso. Computan cuando consta asistencia completa y una nota de cuestionario igual o superior a 5.',
+    ['class' => 'text-muted']
+);
+if ($patrows) {
+    $table = new html_table();
+    $table->head = ['Curso académico', 'Taller', 'Asistencia', 'Nota cuestionario', 'Horas', 'Resultado'];
+    foreach ($patrows as $p) {
+        $table->data[] = [
+            s($p->academicyear),
+            s($p->workshopname),
+            $p->attendance === null ? '-' : format_float((float)$p->attendance, 2, true) . '%',
+            $p->grade === null ? '-' : format_float((float)$p->grade, 2, true) . ' / 10',
+            format_float((float)$p->hours, 2, true) . ' h',
+            !empty($p->passed) ? html_writer::span('Apto', 'badge bg-success') : html_writer::span('No apto', 'badge bg-danger'),
+        ];
+    }
+    echo html_writer::table($table);
+} else {
+    echo $OUTPUT->notification('No constan talleres Tipo B PAT vinculados a tu usuario.', 'info');
+}
+
 echo html_writer::tag('h2', 'Formación externa Tipo B', ['class' => 'mt-4']);
 echo html_writer::tag(
     'p',
