@@ -7,6 +7,8 @@ use local_gestion_actividades\local\typeb_certificate_policy;
 
 $id = required_param('id', PARAM_INT);
 $editionid = optional_param('editionid', 0, PARAM_INT);
+$focususerid = optional_param('focususerid', 0, PARAM_INT);
+$returnq = optional_param('returnq', '', PARAM_TEXT);
 $workshop = manager::get_workshop($id);
 $course = $DB->get_record('course', ['id' => $workshop->courseid], '*', MUST_EXIST);
 require_login($course);
@@ -63,7 +65,12 @@ if ($editionid > 0) {
 
 $PAGE->set_context($coursecontext);
 $PAGE->set_course($course);
-$PAGE->set_url(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid]));
+$PAGE->set_url(new moodle_url('/local/gestion_actividades/teacher_view.php', array_filter([
+    'id' => $id,
+    'editionid' => $editionid,
+    'focususerid' => $focususerid,
+    'returnq' => $returnq,
+], static fn($v) => $v !== '' && $v !== 0)));
 $PAGE->set_title(get_string('teacherworkshopview', 'local_gestion_actividades'));
 $PAGE->set_heading(format_string($course->fullname));
 
@@ -107,7 +114,9 @@ if ($istypeb && $edition && in_array($latereflectionaction, ['allow_reflection',
         : 0;
     $ok = typeb_certificate_policy::set_late_reflection_permission((int)$edition->id, $targetuserid, $until);
     redirect(
-        new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid]),
+        new moodle_url('/local/gestion_actividades/teacher_view.php', array_filter([
+            'id' => $id, 'editionid' => $editionid, 'focususerid' => $focususerid, 'returnq' => $returnq,
+        ], static fn($v) => $v !== '' && $v !== 0)),
         !$ok ? 'No se pudo actualizar el permiso de reflexión.'
             : ($until > 0 ? 'El alumno puede entregar la reflexión hasta el ' . userdate($until, get_string('strftimedatetimeshort', 'langconfig')) . '.'
                 : 'Permiso de reflexión retirado.'),
@@ -129,11 +138,25 @@ if (!$istypeb && $edition && optional_param('action', '', PARAM_ALPHANUMEXT) ===
     if ($saved > 0) {
         \local_gestion_actividades\local\grade_manager::sync_course_safely((int)$course->id);
     }
-    redirect(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid]), 'Notas de tarea guardadas: ' . $saved, null, \core\output\notification::NOTIFY_SUCCESS);
+    redirect(new moodle_url('/local/gestion_actividades/teacher_view.php', array_filter([
+        'id' => $id, 'editionid' => $editionid, 'focususerid' => $focususerid, 'returnq' => $returnq,
+    ], static fn($v) => $v !== '' && $v !== 0)), 'Notas de tarea guardadas: ' . $saved, null, \core\output\notification::NOTIFY_SUCCESS);
 }
 
 echo $OUTPUT->header();
-echo html_writer::div(html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]), local_ga_btn_icon('t/left', 'Volver al curso'), ['class' => 'btn local-ga-back-course mb-3']), 'mb-2');
+$toplinks = html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]),
+    local_ga_btn_icon('t/left', 'Volver al curso'), ['class' => 'btn local-ga-back-course me-2 mb-3']);
+if ($focususerid > 0) {
+    $focususer = $DB->get_record('user', ['id' => $focususerid, 'deleted' => 0], 'id,firstname,lastname', IGNORE_MISSING);
+    if ($focususer) {
+        $toplinks .= html_writer::link(
+            new moodle_url('/local/gestion_actividades/student_search.php', ['userid' => $focususerid, 'q' => $returnq]),
+            local_ga_btn_icon('t/left', 'Volver al historial de ' . fullname($focususer)),
+            ['class' => 'btn btn-primary mb-3']
+        );
+    }
+}
+echo html_writer::div($toplinks, 'mb-2');
 echo $OUTPUT->heading(get_string('teacherworkshopview', 'local_gestion_actividades') . ': ' . format_string($workshop->code . ' - ' . $workshop->name));
 
 if ($editions) {
@@ -142,6 +165,10 @@ if ($editions) {
     echo html_writer::tag('h3', 'Edición que se está gestionando', ['class' => 'h5']);
     echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'd-flex flex-wrap align-items-center gap-2']);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $id]);
+    if ($focususerid > 0) {
+        echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'focususerid', 'value' => $focususerid]);
+        echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'returnq', 'value' => $returnq]);
+    }
     echo html_writer::label('Edición', 'editionid', false, ['class' => 'me-2']);
     echo html_writer::start_tag('select', ['name' => 'editionid', 'id' => 'editionid', 'class' => 'form-select me-2 mb-2']);
     foreach ($editions as $availableedition) {
@@ -218,8 +245,12 @@ echo html_writer::start_div('card-body');
 echo html_writer::tag('h3', $istypeb ? 'Asistencia y reflexión' : 'Asistencia y entrega de tarea');
 if ($edition) {
     echo html_writer::start_div('mb-3');
-    echo html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $edition->id, 'mode' => 'manual']), local_ga_btn_icon('t/add', 'Matriculación manual'), ['class' => 'btn btn-primary me-2 mb-2']);
-    echo html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => $edition->id]), local_ga_btn_icon('i/users', 'Alumnos / asistencia'), ['class' => 'btn btn-secondary mb-2']);
+    echo html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', array_filter([
+        'id' => $edition->id, 'mode' => 'manual', 'focususerid' => $focususerid, 'returnq' => $returnq,
+    ], static fn($v) => $v !== '' && $v !== 0)), local_ga_btn_icon('t/add', 'Matriculación manual'), ['class' => 'btn btn-primary me-2 mb-2']);
+    echo html_writer::link(new moodle_url('/local/gestion_actividades/edition_students.php', array_filter([
+        'id' => $edition->id, 'focususerid' => $focususerid, 'returnq' => $returnq,
+    ], static fn($v) => $v !== '' && $v !== 0)), local_ga_btn_icon('i/users', 'Alumnos / asistencia'), ['class' => 'btn btn-secondary mb-2']);
     echo html_writer::end_div();
     if (!empty($edition->attendancecmid)) {
         $attcm = local_ga_valid_activity_cm((int)$edition->attendancecmid, (int)$course->id, ['attendance']);
@@ -229,6 +260,14 @@ if ($edition) {
     }
 
     $enrolledusers = manager::list_edition_enrolled_users_ultrasafe((int)$edition->id);
+    if ($enrolledusers && $focususerid > 0) {
+        $enrolledusers = array_values(array_filter($enrolledusers, static fn($eu) => (int)($eu->userid ?? 0) === $focususerid));
+        if (!$enrolledusers) {
+            echo $OUTPUT->notification('El alumno seleccionado no consta actualmente en esta edición.', 'warning');
+        } else {
+            echo html_writer::tag('p', 'Vista filtrada al alumno seleccionado desde «Buscar alumno».', ['class' => 'alert alert-info py-2']);
+        }
+    }
     if ($enrolledusers) {
         $atable = new html_table();
         if ($istypeb) {
