@@ -149,6 +149,31 @@ echo html_writer::tag(
 $ay = academic_year::selected();
 echo academic_year::selector(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $type]), $ay);
 $serieslist = workshop_series::list_for_course(0);
+// Ediciones of this type in other academic years (e.g. next year's, prepared
+// in advance) are hidden by the filter: say so, so nothing seems lost.
+$otheryears = [];
+if ($ay !== '') {
+    foreach ($serieslist as $otherseries) {
+        $year = academic_year::for_series($otherseries);
+        if ($year === $ay) {
+            continue;
+        }
+        foreach (workshop_series::items((int)$otherseries->id) as $it) {
+            if (((string)($it->workshoptype ?? 'typea') === 'typeb' ? 'typeb' : 'typea') === $type) {
+                $otheryears[$year] = ($otheryears[$year] ?? 0) + 1;
+                break;
+            }
+        }
+    }
+}
+if ($otheryears) {
+    krsort($otheryears);
+    $parts = [];
+    foreach ($otheryears as $year => $n) {
+        $parts[] = html_writer::link(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $type, academic_year::PARAM => $year]), s($year)) . ' (' . $n . ')';
+    }
+    echo $OUTPUT->notification('Hay Ediciones de este tipo en otros cursos académicos: ' . implode(', ', $parts) . '.', 'info');
+}
 $linkedworkshops = [];
 $shownseries = 0;
 
@@ -163,7 +188,10 @@ foreach ($serieslist as $series) {
             $linkedworkshops[(int)$item->workshopid] = true;
         }
     }
-    if (!$items || !academic_year::matches($ay, academic_year::for_series($series))) {
+    if (!$items) {
+        continue;
+    }
+    if (!academic_year::matches($ay, academic_year::for_series($series))) {
         continue;
     }
     $shownseries++;

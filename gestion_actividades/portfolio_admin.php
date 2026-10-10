@@ -15,7 +15,10 @@ $q = optional_param('q', '', PARAM_TEXT);
 $userid = optional_param('userid', 0, PARAM_INT);
 $status = optional_param('status', '', PARAM_ALPHANUMEXT);
 // Default to the current academic year; managers can still choose «Todos los cursos».
-$ay = academic_year::selected();
+// Exception: «Pendientes de validar» shows every year, so a request sent in
+// August is not hidden after the 1 September change (the panel counter
+// counts all pending requests).
+$ay = academic_year::selected($status === 'pending');
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['q' => $q, 'userid' => $userid, 'status' => $status]));
@@ -154,7 +157,12 @@ if ($selecteduser) {
 
 echo academic_year::selector(new moodle_url('/local/gestion_actividades/portfolio_admin.php', array_filter(['q' => $q, 'userid' => $userid, 'status' => $status])), $ay,
     'Curso en que el alumno presentó la solicitud.');
-$typebcerts = array_filter((array)$typebcerts, static fn($c) => academic_year::matches($ay, academic_year::for_time((int)($c->timecreated ?? 0))));
+$alltypebcerts = (array)$typebcerts;
+$typebcerts = array_filter($alltypebcerts, static fn($c) => academic_year::matches($ay, academic_year::for_time((int)($c->timecreated ?? 0))));
+$hiddenpending = count(array_filter(array_diff_key($alltypebcerts, $typebcerts), static fn($c) => (string)$c->status === 'pending'));
+if ($hiddenpending > 0) {
+    echo $OUTPUT->notification('Hay ' . $hiddenpending . ' solicitud(es) pendiente(s) de otros cursos académicos. Elige «Todos los cursos» para verlas.', 'warning');
+}
 if (!empty($typebcerts)) {
     $table = new html_table();
     $table->head = ['Curso académico', 'Alumno', 'Taller', 'Fecha', 'Horas', 'Descripción', 'Estado', 'Reflexión', 'Comentario gestor', 'Certificado', 'Acción'];

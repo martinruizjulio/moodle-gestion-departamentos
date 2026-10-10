@@ -156,7 +156,6 @@ class academic_year {
             'local_ga_institutional_hours' => 'timemodified',
             'local_ga_certificates' => 'timeissued',
             'local_ga_workshop_editions' => 'sessiondate',
-            'local_ga_typeb_pat' => 'timemodified',
         ];
         $dbman = $DB->get_manager();
         foreach ($sources as $table => $field) {
@@ -175,6 +174,13 @@ class academic_year {
             $to = (int)explode('/', self::for_time((int)$range->maxv))[0];
             for ($y = $from; $y <= $to && $y - $from < 30; $y++) {
                 $years[] = $y . '/' . ($y + 1);
+            }
+        }
+        if ($dbman->table_exists(new \xmldb_table('local_ga_typeb_pat'))) {
+            foreach ($DB->get_fieldset_sql("SELECT DISTINCT academicyear FROM {local_ga_typeb_pat}") as $year) {
+                if (self::is_valid((string)$year)) {
+                    $years[] = (string)$year;
+                }
             }
         }
         return $years;
@@ -250,13 +256,23 @@ class academic_year {
             $rs->close();
         }
         foreach (['local_ga_typeb_certs' => 'timecreated', 'local_ga_typeb_transfers' => 'timecreated',
-                'local_ga_institutional_hours' => 'timemodified', 'local_ga_typeb_pat' => 'timemodified'] as $table => $field) {
+                'local_ga_institutional_hours' => 'timemodified'] as $table => $field) {
             if (!$exists($table)) {
                 continue;
             }
             $rs = $DB->get_recordset_select($table, 'userid > 0', null, '', "id, userid, $field AS t");
             foreach ($rs as $r) {
                 $add((int)$r->userid, self::for_time((int)$r->t));
+            }
+            $rs->close();
+        }
+        // Tipo B PAT stores the academic year chosen at import time.
+        if ($exists('local_ga_typeb_pat')) {
+            $rs = $DB->get_recordset_select('local_ga_typeb_pat', 'userid > 0', null, '', 'id, userid, academicyear');
+            foreach ($rs as $r) {
+                if (self::is_valid((string)$r->academicyear)) {
+                    $add((int)$r->userid, (string)$r->academicyear);
+                }
             }
             $rs->close();
         }

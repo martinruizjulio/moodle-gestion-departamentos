@@ -330,6 +330,8 @@ if ($typebworkshopcerts) {
 }
 
 $patrows = \local_gestion_actividades\local\pat_typeb::for_user((int)$USER->id);
+// Only students with PAT records see this section.
+if ($patrows) {
 echo html_writer::tag('h2', 'Talleres Tipo B PAT', ['class' => 'mt-4']);
 echo html_writer::tag(
     'p',
@@ -350,8 +352,7 @@ if ($patrows) {
         ];
     }
     echo html_writer::table($table);
-} else {
-    echo $OUTPUT->notification('No constan talleres Tipo B PAT vinculados a tu usuario.', 'info');
+}
 }
 
 echo html_writer::tag('h2', 'Formación externa Tipo B', ['class' => 'mt-4']);

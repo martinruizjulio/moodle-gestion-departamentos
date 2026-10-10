@@ -151,20 +151,21 @@ class pat_typeb {
         }
         $linked = 0;
         foreach ($users as $user) {
-            $idnumber = self::normalise_key((string)$user->idnumber);
-            $email = \core_text::strtolower(trim((string)$user->email));
+            $idnumber = trim((string)$user->idnumber);
+            $email = trim((string)$user->email);
             $conditions = []; $p = [];
             if ($idnumber !== '') {
-                $conditions[] = '(studentid = :sid OR dni = :dni)';
-                $p['sid'] = (string)$user->idnumber;
-                $p['dni'] = (string)$user->idnumber;
+                $conditions[] = '(' . $DB->sql_equal('TRIM(studentid)', ':sid', false, false)
+                    . ' OR ' . $DB->sql_equal('TRIM(dni)', ':dni', false, false) . ')';
+                $p['sid'] = $idnumber;
+                $p['dni'] = $idnumber;
             }
             if ($email !== '') {
-                $conditions[] = 'email = :email';
-                $p['email'] = (string)$user->email;
+                $conditions[] = $DB->sql_equal('email', ':email', false, false);
+                $p['email'] = $email;
             }
             if (!$conditions) { continue; }
-            $records = $DB->get_records_select(self::TABLE, 'userid = 0 AND (' . implode(' OR ', $conditions) . ')', $p);
+            $records = $DB->get_records_select(self::TABLE, 'userid = 0 AND (' . implode(' OR ', $conditions) . ')', $p, '', 'id');
             foreach ($records as $record) {
                 $DB->set_field(self::TABLE, 'userid', (int)$user->id, ['id' => (int)$record->id]);
                 $linked++;
@@ -184,17 +185,28 @@ class pat_typeb {
 
     private static function resolve_user(\stdClass $identity): int {
         global $DB;
+        // Institutional ID / DNI first, then e-mail. Case- and space-insensitive
+        // (Moodle accounts may store «Dd4@UCV.es» or « 1234A»).
         foreach ([$identity->studentid, $identity->dni] as $idnumber) {
+            $idnumber = trim($idnumber);
             if ($idnumber !== '') {
-                $user = $DB->get_record('user', ['idnumber' => $idnumber, 'deleted' => 0], 'id', IGNORE_MULTIPLE);
-                if ($user) { return (int)$user->id; }
+                $userid = self::find_user_by('idnumber', $idnumber);
+                if ($userid) { return $userid; }
             }
         }
         if ($identity->email !== '') {
-            $user = $DB->get_record('user', ['email' => $identity->email, 'deleted' => 0], 'id', IGNORE_MULTIPLE);
-            if ($user) { return (int)$user->id; }
+            $userid = self::find_user_by('email', $identity->email);
+            if ($userid) { return $userid; }
         }
         return 0;
+    }
+
+    /** Single non-deleted user whose field matches the value ignoring case/spaces; 0 if none or ambiguous. */
+    private static function find_user_by(string $field, string $value): int {
+        global $DB;
+        $select = 'deleted = 0 AND ' . $DB->sql_equal('TRIM(' . $field . ')', ':v', false, false);
+        $ids = array_keys($DB->get_records_select('user', $select, ['v' => trim($value)], 'id', 'id', 0, 2));
+        return count($ids) === 1 ? (int)$ids[0] : 0;
     }
 
     private static function identity_from_row(array $row, array $headers): \stdClass {

@@ -759,3 +759,34 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 - **Panel lateral de profesor**: conserva el acceso a vigentes/finalizados y ahora mantiene el contexto del curso; las instrucciones reflejan el modelo actual.
 - **Correcciones en talleres activos/finalizados**: la finalización oculta el taller al alumnado pero no convierte la ficha docente en solo lectura. Se mantienen las correcciones académicas según el tipo; tras cambios que afecten elegibilidad debe revisarse/regenerarse el certificado cuando corresponda.
 - Validación final: `php -l` correcto en todos los PHP de ambos plugins y `gestion_actividades/db/install.xml` parseado correctamente. ZIPs generados desde el mismo HEAD funcional.
+
+## 2026-10-11 — local 1.5.179-alpha (2026100594): auditoría de 1.5.177/1.5.178 (Claude)
+Auditados los cambios de 1.5.177/1.5.178 desplegándolos en Moodle 5.0.11 local; antes solo se habían validado con `php -l`.
+
+Correcciones:
+- **Importador PAT, campo de horas**: `min=0.01 step=0.25` hacía que el navegador rechazara 1,5, 2 o 3 h (solo admitía 0,26, 0,51…). No se podía confirmar ninguna importación con horas habituales. Ahora `min=0.25 step=0.25`.
+- **Vinculación PAT por correo**:
+  - Era sensible a mayúsculas: un usuario Moodle con «Dd4@ucv.test» no se vinculaba con «dd4@ucv.test» del Excel, y sus horas no contaban.
+  - Ahora la comparación ignora mayúsculas y espacios, tanto en la importación como en la vinculación posterior (correo, Número de ID o DNI).
+  - Si hay varias cuentas candidatas, no se vincula a ninguna, en lugar de tomar una al azar.
+- **Curso académico de PAT**: se calculaba con la fecha de importación (`timemodified`) en lugar del curso elegido al importar. Ahora usa `local_ga_typeb_pat.academicyear`.
+- **Validar Tipo B «Pendientes»**:
+  - Con el filtro por defecto en el curso actual, en septiembre se ocultaban solicitudes pendientes de agosto, aunque el contador del panel las contaba.
+  - Con `status=pending`, la lista muestra ahora todos los cursos por defecto.
+  - Además, aviso si quedan pendientes ocultos por el filtro.
+- **Talleres A/B**: aviso con enlace cuando hay Ediciones de ese tipo en otros cursos académicos ocultas por el filtro (por ejemplo, las del curso siguiente preparadas en julio).
+- **Portafolio del alumno y PDF**: la sección PAT solo aparece si el alumno tiene registros PAT. Antes mostraba «No constan…» a todos.
+- **install.xml**: quitados `DEFAULT=""` en campos CHAR NOT NULL. Provocaban avisos de XMLDB en la comprobación de esquema. Sin cambios de datos.
+
+Validación local:
+- `pat_test.php` (13 comprobaciones: importación, vinculación por ID, correo y mayúsculas, regla asistencia 100 + nota ≥ 5, horas, reimportación sin duplicados, alumno creado después) ALL OK.
+- Playwright:
+  - Importación PAT desde la interfaz.
+  - Buscar alumno con PAT y botones Editar filtrados con «Volver al historial».
+  - 12 páginas tocadas sin errores; vista previa de portada; PDF generado.
+  - Portafolio del alumno.
+  - Bloque de profesor con `courseid`.
+- hee_e2e, typeb_cat y cert: ALL OK.
+- `check_database_schema` sin diferencias.
+
+Pendiente de confirmar con datos reales: que la columna «Asistencia: … (Real)» del Excel de la plataforma sea un porcentaje 0–100. Si es una nota sobre otra escala, la regla «= 100» no aprobaría a nadie.

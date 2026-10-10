@@ -116,7 +116,7 @@ if ($preview) {
         $table->data[] = [
             s($name),
             html_writer::empty_tag('input', [
-                'type' => 'number', 'name' => 'hours[' . (int)$col . ']', 'min' => '0.01', 'step' => '0.25',
+                'type' => 'number', 'name' => 'hours[' . (int)$col . ']', 'min' => '0.25', 'step' => '0.25',
                 'class' => 'form-control form-control-sm', 'required' => 'required', 'style' => 'max-width:140px',
             ]),
         ];

@@ -208,8 +208,8 @@ class portfolio_pdf {
             $pdf->writeHTML('<p>No constan certificados de Talleres Tipo B internos.</p>', true, false, true, false, '');
         }
 
-        $pdf->writeHTML('<h2 style="color:#2b4b1e;">Talleres Tipo B PAT</h2>', true, false, true, false, '');
         if ($patrows) {
+            $pdf->writeHTML('<h2 style="color:#2b4b1e;">Talleres Tipo B PAT</h2>', true, false, true, false, '');
             foreach ($patrows as $p) {
                 self::write_certificate_card($pdf, (string)$p->workshopname, [
                     'Curso académico' => (string)$p->academicyear,
@@ -219,8 +219,6 @@ class portfolio_pdf {
                     'Resultado' => !empty($p->passed) ? 'Apto' : 'No apto',
                 ]);
             }
-        } else {
-            $pdf->writeHTML('<p>No constan Talleres Tipo B PAT vinculados.</p>', true, false, true, false, '');
         }
 
         $pdf->writeHTML('<h2 style="color:#2b4b1e;">Formaciones externas reconocidas como Tipo B</h2>', true, false, true, false, '');

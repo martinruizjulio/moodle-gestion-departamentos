@@ -249,7 +249,7 @@
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="active"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
-        <FIELD NAME="academicyear" TYPE="char" LENGTH="9" NOTNULL="true" DEFAULT="" COMMENT="Curso académico, formato 2026/2027"/>
+        <FIELD NAME="academicyear" TYPE="char" LENGTH="9" NOTNULL="true" COMMENT="Curso académico, formato 2026/2027"/>
       </FIELDS>
       <KEYS><KEY NAME="primary" TYPE="primary" FIELDS="id"/></KEYS>
       <INDEXES>
@@ -321,7 +321,7 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="workshopid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="editionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
-        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true"/>
         <FIELD NAME="description" TYPE="text" NOTNULL="false"/>
         <FIELD NAME="url" TYPE="text" NOTNULL="false"/>
         <FIELD NAME="visible" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
@@ -507,11 +507,11 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="studentkey" TYPE="char" LENGTH="64" NOTNULL="true"/>
-        <FIELD NAME="studentid" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT=""/>
-        <FIELD NAME="dni" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT=""/>
-        <FIELD NAME="firstname" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT=""/>
-        <FIELD NAME="lastname" TYPE="char" LENGTH="150" NOTNULL="true" DEFAULT=""/>
-        <FIELD NAME="email" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="studentid" TYPE="char" LENGTH="100" NOTNULL="true"/>
+        <FIELD NAME="dni" TYPE="char" LENGTH="100" NOTNULL="true"/>
+        <FIELD NAME="firstname" TYPE="char" LENGTH="100" NOTNULL="true"/>
+        <FIELD NAME="lastname" TYPE="char" LENGTH="150" NOTNULL="true"/>
+        <FIELD NAME="email" TYPE="char" LENGTH="255" NOTNULL="true"/>
         <FIELD NAME="workshopkey" TYPE="char" LENGTH="64" NOTNULL="true"/>
         <FIELD NAME="workshopname" TYPE="char" LENGTH="255" NOTNULL="true"/>
         <FIELD NAME="academicyear" TYPE="char" LENGTH="9" NOTNULL="true"/>
@@ -519,7 +519,7 @@
         <FIELD NAME="grade" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="false"/>
         <FIELD NAME="hours" TYPE="number" LENGTH="10" DECIMALS="2" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="passed" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
-        <FIELD NAME="sourcefile" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="sourcefile" TYPE="char" LENGTH="255" NOTNULL="true"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
