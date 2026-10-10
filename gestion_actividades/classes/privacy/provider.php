@@ -38,6 +38,7 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
             'local_ga_institutional_hours' => ['userid', 'typeahours', 'typebhours', 'taskgrade', 'typebreflection', 'usermodified'],
             'local_ga_course_settings' => ['usermodified'],
             'local_ga_authorized' => ['userid'],
+            'local_ga_typeb_pat' => ['userid', 'studentid', 'dni', 'email', 'attendance', 'grade', 'passed'],
         ];
         foreach ($tables as $table => $fields) {
             $metadata = [];
@@ -110,6 +111,7 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
             'Reconocimiento institucional' => ['local_ga_institutional_hours', 'userid'],
             'Historial de calificaciones HEE' => ['local_ga_grade_log', 'userid'],
             'Autorización HEE' => ['local_ga_authorized', 'userid'],
+            'Talleres Tipo B PAT' => ['local_ga_typeb_pat', 'userid'],
         ];
         foreach ($definitions as $label => [$table, $field]) {
             if (!self::table_exists($table)) {
@@ -206,7 +208,7 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
         global $DB;
         $context = $userlist->get_context();
         if ($context->contextlevel === CONTEXT_SYSTEM) {
-            foreach (['local_ga_typeb_certs', 'local_ga_typeb_transfers', 'local_ga_institutional_hours', 'local_ga_grade_log', 'local_ga_authorized'] as $table) {
+            foreach (['local_ga_typeb_certs', 'local_ga_typeb_transfers', 'local_ga_institutional_hours', 'local_ga_grade_log', 'local_ga_authorized', 'local_ga_typeb_pat'] as $table) {
                 if (self::table_exists($table)) {
                     $userlist->add_from_sql('userid', "SELECT DISTINCT userid FROM {{$table}} WHERE userid > 0", []);
                 }
