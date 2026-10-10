@@ -126,10 +126,10 @@ if ($preview) {
             s($name),
             $top === null ? '-' : format_float($top, 2, true),
             html_writer::empty_tag('input', [
-                'type' => 'number', 'name' => 'grademax[' . (int)$col . ']', 'min' => '0.5', 'step' => '0.5', 'value' => '10',
+                'type' => 'number', 'name' => 'grademax[' . (int)$col . ']', 'min' => '0.5', 'step' => '0.5', 'value' => '5',
                 'class' => 'form-control form-control-sm', 'required' => 'required', 'style' => 'max-width:120px',
-            ]) . ($top !== null && $top <= 5.0 ? html_writer::div('La nota más alta es ' . format_float($top, 2, true)
-                . ': comprueba si el cuestionario es sobre 5.', 'small text-warning') : ''),
+            ]) . ($top !== null && $top > 5.0 ? html_writer::div('Hay notas por encima de 5 (' . format_float($top, 2, true)
+                . '): comprueba la nota máxima de este cuestionario.', 'small text-warning') : ''),
             html_writer::empty_tag('input', [
                 'type' => 'number', 'name' => 'hours[' . (int)$col . ']', 'min' => '0.25', 'step' => '0.25',
                 'class' => 'form-control form-control-sm', 'required' => 'required', 'style' => 'max-width:140px',

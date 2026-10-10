@@ -208,15 +208,18 @@ class portfolio_pdf {
             $pdf->writeHTML('<p>No constan certificados de Talleres Tipo B internos.</p>', true, false, true, false, '');
         }
 
+        // Tipo B PAT (1.º): same format as the other Tipo B talleres; only the
+        // ones that count, with the quiz in place of the reflection.
+        $patrows = array_filter($patrows, static fn($p) => !empty($p->passed));
         if ($patrows) {
-            $pdf->writeHTML('<h2 style="color:#2b4b1e;">Talleres Tipo B PAT</h2>', true, false, true, false, '');
+            $pdf->writeHTML('<h2 style="color:#2b4b1e;">Talleres Tipo B PAT (1.º)</h2>', true, false, true, false, '');
             foreach ($patrows as $p) {
                 self::write_certificate_card($pdf, (string)$p->workshopname, [
                     'Curso académico' => (string)$p->academicyear,
-                    'Asistencia' => $p->attendance === null ? '-' : format_float((float)$p->attendance, 2, true) . '%',
-                    'Nota cuestionario' => \local_gestion_actividades\local\pat_typeb::grade_text($p),
                     'Horas' => self::format_hours((float)$p->hours),
-                    'Resultado' => !empty($p->passed) ? 'Apto' : 'No apto',
+                    'Asistencia' => 'Confirmada',
+                    'Cuestionario (en lugar de reflexión)' => 'Superado',
+                    'Resultado' => 'Apto',
                 ]);
             }
         }

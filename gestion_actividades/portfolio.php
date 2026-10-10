@@ -329,30 +329,25 @@ if ($typebworkshopcerts) {
     echo $OUTPUT->notification('Todavía no tienes certificados de talleres Tipo B internos.', 'info');
 }
 
-$patrows = \local_gestion_actividades\local\pat_typeb::for_user((int)$USER->id);
-// Only students with PAT records see this section.
+// Tipo B PAT (1.º): shown like the other Tipo B talleres — only the ones that
+// count (aptos), with attendance and, in place of the reflection, the quiz.
+$patrows = array_filter(\local_gestion_actividades\local\pat_typeb::for_user((int)$USER->id), static fn($p) => !empty($p->passed));
 if ($patrows) {
-echo html_writer::tag('h2', 'Talleres Tipo B PAT', ['class' => 'mt-4']);
-echo html_writer::tag(
-    'p',
-    'Talleres PAT realizados en 1.º curso. Computan cuando consta asistencia completa y una nota de cuestionario de al menos la mitad de la máxima (equivale a 5 sobre 10).',
-    ['class' => 'text-muted']
-);
-if ($patrows) {
+    echo html_writer::tag('h2', 'Talleres Tipo B PAT (1.º)', ['class' => 'mt-4']);
+    echo html_writer::tag('p', 'Talleres PAT de 1.º curso. Igual que en los Tipo B, cuentan con la asistencia confirmada y, en lugar de la reflexión, el cuestionario superado.', ['class' => 'text-muted']);
     $table = new html_table();
-    $table->head = ['Curso académico', 'Taller', 'Asistencia', 'Nota cuestionario', 'Horas', 'Resultado'];
+    $table->head = ['Curso académico', 'Taller', 'Horas', 'Asistencia', 'Cuestionario (en lugar de reflexión)', 'Resultado'];
     foreach ($patrows as $p) {
         $table->data[] = [
             s($p->academicyear),
             s($p->workshopname),
-            $p->attendance === null ? '-' : format_float((float)$p->attendance, 2, true) . '%',
-            \local_gestion_actividades\local\pat_typeb::grade_text($p),
             format_float((float)$p->hours, 2, true) . ' h',
-            !empty($p->passed) ? html_writer::span('Apto', 'badge bg-success') : html_writer::span('No apto', 'badge bg-danger'),
+            'Confirmada',
+            'Superado',
+            html_writer::span('Apto', 'badge bg-success'),
         ];
     }
     echo html_writer::table($table);
-}
 }
 
 echo html_writer::tag('h2', 'Formación externa Tipo B', ['class' => 'mt-4']);

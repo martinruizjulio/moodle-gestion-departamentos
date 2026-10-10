@@ -809,3 +809,9 @@ Pendiente de confirmar con datos reales: que la columna «Asistencia: … (Real)
   - Anulación de un lote con alumnos vinculados: sus horas Tipo B bajan de 5 a 0.
   - pat_test, hee_e2e, cert y typeb_cat: ALL OK. Esquema sin diferencias.
   - Los datos reales solo se usaron en el Moodle de prueba local, se anularon y la copia del Excel se borró.
+
+## 2026-10-11 — local 1.5.181-alpha (2026100596): PAT en el portafolio como los Tipo B
+- Julio confirma que el cuestionario PAT es sobre 5. El importador propone 5 como nota máxima por defecto y avisa si hay notas por encima de 5.
+- En el portafolio del alumno y en su PDF, los talleres PAT se presentan igual que los Tipo B: solo los que cuentan (aptos). Columnas: Curso académico, Taller, Horas, Asistencia «Confirmada», «Cuestionario (en lugar de reflexión)» «Superado» y Resultado «Apto». Ya no se muestran porcentaje ni nota.
+- «Buscar alumno» (gestor) sigue mostrando el detalle completo: asistencia, nota «x / 5» y apto o no apto.
+- Validado en local: página del portafolio del alumno y texto del PDF.
