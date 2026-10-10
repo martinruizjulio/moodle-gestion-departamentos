@@ -155,7 +155,25 @@ class hours_calculator {
             }
         }
 
-        // 3. Institutional recognition.
+        // 3. Historical Type B PAT: attendance 100 + quiz grade >= 5.
+        if ($has('local_ga_typeb_pat')) {
+            try {
+                pat_typeb::reconcile_users($userids);
+            } catch (\Throwable $e) {
+                // Best effort: existing linked rows still count.
+            }
+            [$insql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'pat');
+            $params['patpassed'] = 1;
+            $sql = "SELECT userid, COALESCE(SUM(hours), 0) AS hours
+                      FROM {local_ga_typeb_pat}
+                     WHERE userid $insql AND passed = :patpassed
+                  GROUP BY userid";
+            foreach ($DB->get_records_sql($sql, $params) as $r) {
+                $out[(int)$r->userid]->pattypeb += (float)$r->hours;
+            }
+        }
+
+        // 4. Institutional recognition.
         if ($has('local_ga_institutional_hours')) {
             [$insql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'ih');
             $sql = "SELECT userid, COALESCE(SUM(typeahours), 0) AS a, COALESCE(SUM(typebhours), 0) AS b
@@ -168,7 +186,7 @@ class hours_calculator {
             }
         }
 
-        // 4. Active transfers A -> B.
+        // 5. Active transfers A -> B.
         if ($has('local_ga_typeb_transfers')) {
             [$insql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'tr');
             $params['active'] = 'active';
@@ -194,6 +212,7 @@ class hours_calculator {
             'typebpendingreflection' => 0.0,
             'externaltypeb' => 0.0,
             'externalpending' => 0.0,
+            'pattypeb' => 0.0,
             'institutionaltypea' => 0.0,
             'institutionaltypeb' => 0.0,
             'transferhours' => 0.0,
@@ -205,7 +224,7 @@ class hours_calculator {
         $grossa = $s->workshoptypea + $s->institutionaltypea;
         $transfer = min($s->transferhours, $grossa);
         $s->typeahours = round(max(0.0, $grossa - $transfer), 2);
-        $s->typebhours = round(max(0.0, $s->workshoptypeb + $s->externaltypeb + $s->institutionaltypeb + $transfer), 2);
+        $s->typebhours = round(max(0.0, $s->workshoptypeb + $s->externaltypeb + $s->pattypeb + $s->institutionaltypeb + $transfer), 2);
         $s->totalhours = round($s->typeahours + $s->typebhours, 2);
         $s->remaining = round(max(0.0, self::TARGET_HOURS - $s->totalhours), 2);
         $s->target = self::TARGET_HOURS;
