@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * archive.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -27,7 +50,9 @@ function local_ga_archive_type_badge(?string $type): string {
 
 function local_ga_archive_series_edition(stdClass $series, int $workshopid): ?stdClass {
     $editions = manager::list_workshop_editions($workshopid);
-    if (!$editions) { return null; }
+    if (!$editions) {
+        return null;
+    }
     foreach ($editions as $edition) {
         if (isset($edition->seriesid) && (int)$edition->seriesid === (int)$series->id) {
             return $edition;
@@ -40,10 +65,12 @@ function local_ga_archive_series_edition(stdClass $series, int $workshopid): ?st
             continue; // Linked to another Edición de talleres: never borrow it by dates.
         }
         $date = (int)($edition->sessiondate ?? 0);
-        if ($date > 0 && $date >= (int)$series->datefrom && $date <= (int)$series->dateto) { $matching[] = $edition; }
+        if ($date > 0 && $date >= (int)$series->datefrom && $date <= (int)$series->dateto) {
+            $matching[] = $edition;
+        }
     }
     if ($matching) {
-        usort($matching, static function($a, $b) {
+        usort($matching, static function ($a, $b) {
             $datecmp = ((int)($b->sessiondate ?? 0)) <=> ((int)($a->sessiondate ?? 0));
             return $datecmp !== 0 ? $datecmp : ((int)$b->id <=> (int)$a->id);
         });
@@ -61,7 +88,9 @@ function local_ga_archive_course_series_url(stdClass $series): moodle_url {
     $params = ['id' => (int)$series->courseid];
     if (!empty($series->sectionid)) {
         $section = $DB->get_record('course_sections', ['id' => (int)$series->sectionid], 'id,section', IGNORE_MISSING);
-        if ($section) { $params['section'] = (int)$section->section; }
+        if ($section) {
+            $params['section'] = (int)$section->section;
+        }
     }
     return new moodle_url('/course/view.php', $params);
 }
@@ -81,30 +110,42 @@ echo academic_year::selector(new moodle_url('/local/gestion_actividades/archive.
 $serieslist = workshop_series::list_for_course(0);
 $alllinkedworkshops = [];
 foreach ($serieslist as $allseries) {
-    foreach (workshop_series::items((int)$allseries->id) as $allitem) { $alllinkedworkshops[(int)$allitem->workshopid] = true; }
+    foreach (workshop_series::items((int)$allseries->id) as $allitem) {
+        $alllinkedworkshops[(int)$allitem->workshopid] = true;
+    }
 }
 
 // Finished Ediciones, folded: most recent first and, for the same date,
 // Tipo A before Tipo B. Each one opens with a click.
 $archived = [];
 foreach ($serieslist as $series) {
-    if (($series->status ?? '') !== 'finished') { continue; }
+    if (($series->status ?? '') !== 'finished') {
+        continue;
+    }
     $items = workshop_series::items((int)$series->id);
-    if (!$items) { continue; }
+    if (!$items) {
+        continue;
+    }
     $types = [];
     foreach ($items as $it) {
         $types[manager::normalize_workshop_type((string)($it->workshoptype ?? 'typea')) === 'typeb' ? 'B' : 'A'] = true;
     }
     ksort($types);
     $year = academic_year::for_series($series);
-    if (!academic_year::matches($ay, $year)) { continue; }
+    if (!academic_year::matches($ay, $year)) {
+        continue;
+    }
     $archived[] = (object)['series' => $series, 'items' => $items, 'types' => array_keys($types), 'year' => $year];
 }
-usort($archived, static function($a, $b) {
+usort($archived, static function ($a, $b) {
     $y = strcmp($b->year, $a->year);
-    if ($y !== 0) { return $y; }
+    if ($y !== 0) {
+        return $y;
+    }
     $d = (int)$b->series->datefrom <=> (int)$a->series->datefrom;
-    if ($d !== 0) { return $d; }
+    if ($d !== 0) {
+        return $d;
+    }
     $rank = static fn($t) => $t === ['A'] ? 0 : ($t === ['B'] ? 1 : 2);
     $r = $rank($a->types) <=> $rank($b->types);
     return $r !== 0 ? $r : ((int)$b->series->id <=> (int)$a->series->id);
@@ -150,14 +191,18 @@ foreach ($archived as $entry) {
         $sessionend = (int)($item->sessionenddate ?? 0);
         $teachers = $edition ? manager::get_edition_teachers((int)$edition->id) : [];
         $teachernames = [];
-        foreach ($teachers as $teacher) { $teachernames[] = fullname($teacher); }
+        foreach ($teachers as $teacher) {
+            $teachernames[] = fullname($teacher);
+        }
         [$datetext, $schedule] = \local_gestion_actividades\local\workshop_series::schedule_parts($sessiondate, $item);
         $datetext = nl2br(s($datetext));
         $schedule = nl2br(s($schedule));
         $groupname = '-';
         if ($edition && !empty($edition->groupid)) {
             $group = $DB->get_record('groups', ['id' => (int)$edition->groupid], 'id,name', IGNORE_MISSING);
-            if ($group) { $groupname = format_string($group->name); }
+            if ($group) {
+                $groupname = format_string($group->name);
+            }
         }
         $actions = '-';
         if ($edition) {
@@ -176,8 +221,12 @@ foreach ($archived as $entry) {
 $legacyarchived = [];
 foreach (manager::get_workshop_overview_rows() as $row) {
     $workshopid = (int)($row->workshopid ?? 0);
-    if (!empty($alllinkedworkshops[$workshopid])) { continue; }
-    if (($row->computedstatus ?? '') === 'archived' && academic_year::matches($ay, academic_year::for_time((int)($row->sessiondate ?? 0)))) { $legacyarchived[] = $row; }
+    if (!empty($alllinkedworkshops[$workshopid])) {
+        continue;
+    }
+    if (($row->computedstatus ?? '') === 'archived' && academic_year::matches($ay, academic_year::for_time((int)($row->sessiondate ?? 0)))) {
+        $legacyarchived[] = $row;
+    }
 }
 if ($legacyarchived) {
     echo html_writer::tag('h3', 'Talleres anteriores sin Edición de talleres', ['class' => 'h4 mt-4']);
@@ -194,6 +243,10 @@ if ($legacyarchived) {
     }
     echo html_writer::table($table);
 }
-if ($archivedseriescount === 0 && !$legacyarchived) { echo $OUTPUT->notification(get_string('noarchivedworkshops', 'local_gestion_actividades'), 'info'); }
-if (function_exists('local_gestion_actividades_enable_interactive_tables')) { local_gestion_actividades_enable_interactive_tables(); }
+if ($archivedseriescount === 0 && !$legacyarchived) {
+    echo $OUTPUT->notification(get_string('noarchivedworkshops', 'local_gestion_actividades'), 'info');
+}
+if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
+    local_gestion_actividades_enable_interactive_tables();
+}
 echo $OUTPUT->footer();

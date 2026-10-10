@@ -1,12 +1,43 @@
 <?php
-defined('MOODLE_INTERNAL') || die();
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+/**
+ * block_gestion_hee.php page/script for block_gestion_hee.
+ *
+ * @package    block_gestion_hee
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+/**
+ * Gestión HEE block: hour summary and help for students, tools for Profesor HEE and managers.
+ */
 class block_gestion_hee extends block_base {
-
+    /**
+     * Initialise the block title.
+     */
     public function init(): void {
         $this->title = get_string('title', 'block_gestion_hee');
     }
 
+    /**
+     * Pages where the block can be added.
+     *
+     * @return array
+     */
     public function applicable_formats(): array {
         return [
             'course-view' => true,
@@ -16,14 +47,27 @@ class block_gestion_hee extends block_base {
         ];
     }
 
+    /**
+     * Only one instance per page.
+     *
+     * @return bool
+     */
     public function instance_allow_multiple(): bool {
         return false;
     }
 
+    /**
+     * The block has no global settings.
+     *
+     * @return bool
+     */
     public function has_config(): bool {
         return false;
     }
 
+    /**
+     * Build the block content for the current user.
+     */
     public function get_content() {
         global $USER, $DB;
 
@@ -44,9 +88,11 @@ class block_gestion_hee extends block_base {
             // A newly assigned Profesor HEE may still have a cached zero summary for a few
             // minutes. Check the canonical assignment table before falling back to the
             // student view so the teacher tools appear immediately after assignment.
-            if (empty($teachersummary['total'])
+            if (
+                empty($teachersummary['total'])
                     && $DB->get_manager()->table_exists(new xmldb_table('local_ga_edition_teachers'))
-                    && $DB->record_exists('local_ga_edition_teachers', ['userid' => (int)$USER->id])) {
+                    && $DB->record_exists('local_ga_edition_teachers', ['userid' => (int)$USER->id])
+            ) {
                 \block_gestion_hee\local\teacher_workshops_cache::invalidate_user((int)$USER->id);
                 $teachersummary = \block_gestion_hee\local\teacher_workshops_cache::get_summary((int)$USER->id);
             }
@@ -62,7 +108,7 @@ class block_gestion_hee extends block_base {
             }
         } catch (Throwable $e) {
             if (function_exists('debugging')) {
-                debugging('No se ha podido renderizar block_gestion_hee: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                debugging('Could not render block_gestion_hee: ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
             $this->content->text = html_writer::div(
                 get_string('temporarilyunavailable', 'block_gestion_hee'),
@@ -73,13 +119,22 @@ class block_gestion_hee extends block_base {
         return $this->content;
     }
 
+    /**
+     * Render the student hour summary and actions.
+     *
+     * @param array $summary
+     * @return string
+     */
     private function render_summary(array $summary): string {
         $typeahours = (float)($summary['typeahours'] ?? 0);
         $typebhours = (float)($summary['typebhours'] ?? 0);
         $total = (float)($summary['total'] ?? ($typeahours + $typebhours));
         $remaining = (float)($summary['remaining'] ?? max(0, 54 - $total));
 
-        $html = html_writer::tag('style', '.block-gestion-hee-student-summary .local-ga-badge-remaining{background:#d96c06;color:#fff;}');
+        $html = html_writer::tag(
+            'style',
+            '.block-gestion-hee-student-summary .local-ga-badge-remaining{background:#d96c06;color:#fff;}'
+        );
         $html .= html_writer::start_div('block-gestion-hee-student-summary');
 
         if ($total <= 0) {
@@ -112,16 +167,16 @@ class block_gestion_hee extends block_base {
             [
                 'class' => 'btn btn-sm ' . ($transfereligible ? 'btn-warning' : 'btn-outline-secondary') . ' d-block w-100 mb-1',
                 'title' => $transfereligible
-                    ? 'Puedes consultar y realizar los traspasos disponibles.'
-                    : 'Consulta aquí las condiciones y los talleres que pueden traspasarse.',
+                    ? get_string('transfertypeb_eligible', 'block_gestion_hee')
+                    : get_string('transfertypeb_info', 'block_gestion_hee'),
             ]
         );
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/typeb_upload.php', $this->course_params()),
-            'Solicitar validación Tipo B',
+            get_string('requesttypeb', 'block_gestion_hee'),
             [
                 'class' => 'btn btn-sm btn-outline-secondary d-block w-100 mb-1',
-                'title' => 'Sube un certificado de formación externa para solicitar su reconocimiento como Taller Tipo B.',
+                'title' => get_string('requesttypeb_help', 'block_gestion_hee'),
             ]
         );
         $html .= html_writer::link(
@@ -135,28 +190,63 @@ class block_gestion_hee extends block_base {
         return $html;
     }
 
+    /**
+     * Render the student instructions modal.
+     *
+     * @return string
+     */
     private function render_student_help(): string {
         $body = html_writer::tag('p', get_string('studenthelpintro', 'block_gestion_hee'), ['class' => 'lead fs-6']);
         foreach (['join', 'a', 'b', 'pat', 'bexternal', 'certs', 'transfer', 'selfassessment'] as $key) {
             $body .= $this->render_help_section('studenthelp' . $key . '_title', 'studenthelp' . $key . '_text');
         }
         $body .= html_writer::div(get_string('studenthelpfooter', 'block_gestion_hee'), 'alert alert-info mb-0');
-        return $this->render_help_modal('block-gestion-hee-student-help', get_string('studenthelpbutton', 'block_gestion_hee'),
-            'btn btn-warning fw-bold w-100 py-2', get_string('studenthelptitle', 'block_gestion_hee'), $body);
+        return $this->render_help_modal(
+            'block-gestion-hee-student-help',
+            get_string('studenthelpbutton', 'block_gestion_hee'),
+            'btn btn-warning fw-bold w-100 py-2',
+            get_string('studenthelptitle', 'block_gestion_hee'),
+            $body
+        );
     }
 
+    /**
+     * Render the teacher instructions modal.
+     *
+     * @return string
+     */
     private function render_teacher_help(): string {
         $body = html_writer::tag('p', get_string('teacherhelpintro', 'block_gestion_hee'), ['class' => 'lead fs-6']);
         foreach (['common', 'a', 'b', 'end', 'roles'] as $key) {
             $body .= $this->render_help_section('teacherhelp' . $key . '_title', 'teacherhelp' . $key . '_text');
         }
         $body .= html_writer::div(get_string('teacherhelpfooter', 'block_gestion_hee'), 'alert alert-info mb-0');
-        return $this->render_help_modal('block-gestion-hee-teacher-help', get_string('teacherhelpbutton', 'block_gestion_hee'),
-            'btn btn-info fw-bold w-100 py-2 text-white', get_string('teacherhelptitle', 'block_gestion_hee'), $body);
+        return $this->render_help_modal(
+            'block-gestion-hee-teacher-help',
+            get_string('teacherhelpbutton', 'block_gestion_hee'),
+            'btn btn-info fw-bold w-100 py-2 text-white',
+            get_string('teacherhelptitle', 'block_gestion_hee'),
+            $body
+        );
     }
 
-    /** Button + Bootstrap modal (moved to <body> so the block drawer does not clip it). */
-    private function render_help_modal(string $modalid, string $buttonlabel, string $buttonclass, string $title, string $body): string {
+    /**
+     * Button + Bootstrap modal (moved to <body> so the block drawer does not clip it).
+     *
+     * @param string $modalid
+     * @param string $buttonlabel
+     * @param string $buttonclass
+     * @param string $title
+     * @param string $body
+     * @return string
+     */
+    private function render_help_modal(
+        string $modalid,
+        string $buttonlabel,
+        string $buttonclass,
+        string $title,
+        string $body
+    ): string {
         $html = html_writer::start_div('mt-2 mb-2');
         $html .= html_writer::tag('button', $buttonlabel, [
             'type' => 'button',
@@ -206,7 +296,12 @@ class block_gestion_hee extends block_base {
         return $html;
     }
 
-    /** Site admin or Gestor HEE (Usuarios autorizados). */
+    /**
+     * Site admin or Gestor HEE (Usuarios autorizados).
+     *
+     * @param int $userid
+     * @return bool
+     */
     private function is_hee_manager(int $userid): bool {
         if (is_siteadmin($userid)) {
             return true;
@@ -248,64 +343,101 @@ class block_gestion_hee extends block_base {
                                         WHERE ra.userid = :userid AND c.contextlevel = :level AND ra.roleid $in", $params);
     }
 
+    /**
+     * Render the view for managers and teachers.
+     *
+     * @param bool $ismanager
+     * @param array|null $teachersummary
+     * @return string
+     */
     private function render_staff_view(bool $ismanager, ?array $teachersummary): string {
         $html = html_writer::start_div('block-gestion-hee-staff');
         if ($ismanager) {
             $html .= html_writer::link(
                 // Carry the current course so «Volver al curso» returns here.
-                new moodle_url('/local/gestion_actividades/dashboard.php',
-                    $this->course_params()),
-                'Panel de Gestión HEE',
+                new moodle_url(
+                    '/local/gestion_actividades/dashboard.php',
+                    $this->course_params()
+                ),
+                get_string('managerpanel', 'block_gestion_hee'),
                 ['class' => 'btn btn-sm btn-primary d-block w-100 mb-1']
             );
         }
         if ($teachersummary) {
             $html .= $this->render_teacher_tools($teachersummary);
         } else if (!$ismanager) {
-            $html .= html_writer::tag('p', 'Todavía no tienes talleres HEE asignados. Cuando se te asigne uno aparecerá aquí.',
-                ['class' => 'text-muted small mb-2']);
+            $html .= html_writer::tag(
+                'p',
+                get_string('noassignedworkshops', 'block_gestion_hee'),
+                ['class' => 'text-muted small mb-2']
+            );
         }
         $html .= html_writer::start_div('mt-3 pt-2 border-top');
         $html .= $this->render_teacher_help();
         $html .= $this->render_student_help();
-        $html .= html_writer::tag('p', 'Las instrucciones para alumnos son las mismas que ve el alumnado.', ['class' => 'text-muted small mb-0']);
+        $html .= html_writer::tag('p', get_string('studenthelpsame', 'block_gestion_hee'), ['class' => 'text-muted small mb-0']);
         $html .= html_writer::end_div();
         $html .= html_writer::end_div();
         return $html;
     }
 
+    /**
+     * Render one section of a help modal.
+     *
+     * @param string $titlekey
+     * @param string $textkey
+     * @return string
+     */
     private function render_help_section(string $titlekey, string $textkey): string {
         $html = html_writer::tag('h6', get_string($titlekey, 'block_gestion_hee'), ['class' => 'fw-bold mt-3 mb-1']);
         $html .= html_writer::tag('p', get_string($textkey, 'block_gestion_hee'), ['class' => 'mb-2']);
         return $html;
     }
 
+    /**
+     * Render the Profesor HEE workshop links.
+     *
+     * @param array $summary
+     * @return string
+     */
     private function render_teacher_tools(array $summary): string {
         $active = (int)($summary['activecount'] ?? 0);
         $finished = (int)($summary['finishedcount'] ?? 0);
 
         $html = html_writer::start_div('block-gestion-hee-teacher-tools mt-2');
-        $html .= html_writer::tag('p', 'Gestiona únicamente los talleres HEE que tienes asignados.', ['class' => 'text-muted small mb-2']);
+        $html .= html_writer::tag('p', get_string('teachertoolsintro', 'block_gestion_hee'), ['class' => 'text-muted small mb-2']);
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'active'] + $this->course_params()),
-            'Talleres vigentes (' . $active . ')',
+            get_string('activeworkshops', 'block_gestion_hee', $active),
             ['class' => 'btn btn-sm btn-primary d-block w-100 mb-1']
         );
         $html .= html_writer::link(
             new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'finished'] + $this->course_params()),
-            'Mis talleres finalizados (' . $finished . ')',
+            get_string('finishedworkshops', 'block_gestion_hee', $finished),
             ['class' => 'btn btn-sm btn-outline-secondary d-block w-100']
         );
         $html .= html_writer::end_div();
         return $html;
     }
 
-    /** ['courseid' => N] on a course page, so «Volver al curso» returns here. */
+    /**
+     * ['courseid' => N] on a course page, so «Volver al curso» returns here.
+     *
+     * @return array
+     */
     private function course_params(): array {
         $course = $this->page->course ?? null;
         return ($course && (int)$course->id !== (int)SITEID) ? ['courseid' => (int)$course->id] : [];
     }
 
+    /**
+     * Render one hour metric with its badge.
+     *
+     * @param string $label
+     * @param float $value
+     * @param string $badgeclass
+     * @return string
+     */
     private function render_metric(string $label, float $value, string $badgeclass = 'bg-secondary'): string {
         $valueformatted = format_float($value, 2, true) . ' h';
         $content = html_writer::span(s($label), 'local-ga-label');

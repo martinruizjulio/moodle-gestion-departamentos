@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class academic_year for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\local;
 
 defined('MOODLE_INTERNAL') || die();
@@ -203,14 +226,21 @@ class academic_year {
             }
             $hidden .= \html_writer::empty_tag('input', ['type' => 'hidden', 'name' => $name, 'value' => $value]);
         }
-        $select = \html_writer::select($options, self::PARAM, self::param_value($selected), false,
-            ['class' => 'form-select form-select-sm d-inline-block w-auto', 'id' => 'local-ga-cursoac', 'onchange' => 'this.form.submit()']);
-        $form = \html_writer::tag('form',
+        $select = \html_writer::select(
+            $options,
+            self::PARAM,
+            self::param_value($selected),
+            false,
+            ['class' => 'form-select form-select-sm d-inline-block w-auto', 'id' => 'local-ga-cursoac', 'onchange' => 'this.form.submit()']
+        );
+        $form = \html_writer::tag(
+            'form',
             \html_writer::label('Curso académico:', 'local-ga-cursoac', false, ['class' => 'fw-bold me-2 mb-0'])
             . $select . $hidden
             . \html_writer::tag('noscript', \html_writer::tag('button', 'Ver', ['type' => 'submit', 'class' => 'btn btn-sm btn-secondary ms-2']))
             . ($note !== '' ? \html_writer::span($note, 'text-muted small ms-2') : ''),
-            ['method' => 'get', 'action' => $base->out_omit_querystring(), 'class' => 'd-flex flex-wrap align-items-center mb-3']);
+            ['method' => 'get', 'action' => $base->out_omit_querystring(), 'class' => 'd-flex flex-wrap align-items-center mb-3']
+        );
         return \html_writer::div($form, 'local-ga-academicyear-filter');
     }
 
@@ -227,7 +257,7 @@ class academic_year {
             return $map;
         }
         $map = [];
-        $add = static function(int $userid, string $year) use (&$map): void {
+        $add = static function (int $userid, string $year) use (&$map): void {
             if ($userid > 0 && $year !== '') {
                 $map[$userid][$year] = true;
             }
@@ -255,8 +285,10 @@ class academic_year {
             }
             $rs->close();
         }
-        foreach (['local_ga_typeb_certs' => 'timecreated', 'local_ga_typeb_transfers' => 'timecreated',
-                'local_ga_institutional_hours' => 'timemodified'] as $table => $field) {
+        foreach (
+            ['local_ga_typeb_certs' => 'timecreated', 'local_ga_typeb_transfers' => 'timecreated',
+                'local_ga_institutional_hours' => 'timemodified'] as $table => $field
+        ) {
             if (!$exists($table)) {
                 continue;
             }

@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class bulk_workshops for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\local;
 
 defined('MOODLE_INTERNAL') || die();
@@ -27,7 +50,9 @@ class bulk_workshops {
     public static function path_from_token(string $token): string {
         global $CFG;
         $token = preg_replace('/[^a-zA-Z0-9]/', '', $token);
-        if ($token === '') throw new \RuntimeException('Token de importación no válido.');
+        if ($token === '') {
+            throw new \RuntimeException('Token de importación no válido.');
+        }
         return $CFG->tempdir . '/' . self::TEMPDIR . '/' . $token . '.xlsx';
     }
 
@@ -40,7 +65,7 @@ class bulk_workshops {
         foreach ($rows as $row) {
             $row['errors'] = [];
             $row['warnings'] = [];
-            $row['type'] = in_array(\core_text::strtolower(trim((string)$row['type'])), ['b','typeb','tipo b'], true) ? 'typeb' : 'typea';
+            $row['type'] = in_array(\core_text::strtolower(trim((string)$row['type'])), ['b', 'typeb', 'tipo b'], true) ? 'typeb' : 'typea';
             $row['code'] = trim((string)$row['code']);
             $row['name'] = trim((string)$row['name']);
             $row['hours'] = self::decimal($row['hours']);
@@ -63,12 +88,24 @@ class bulk_workshops {
             $row['createnotes'] = self::yes($row['createnotes']);
             $row['teacherids'] = [];
 
-            if ($row['name'] === '') $row['errors'][] = 'Falta el nombre del taller.';
-            if ($row['hours'] <= 0) $row['errors'][] = 'Las horas deben ser superiores a 0.';
-            if ($row['places'] <= 0) $row['errors'][] = 'Las plazas deben ser superiores a 0.';
-            if ($row['sessiondate'] <= 0) $row['errors'][] = 'Fecha/hora de inicio del taller no válida.';
-            if ($row['sessionenddate'] <= 0) $row['errors'][] = 'Hora de fin del taller no válida.';
-            if ($row['sessiondate'] > 0 && $row['sessionenddate'] > 0 && $row['sessionenddate'] <= $row['sessiondate']) $row['errors'][] = 'La hora de fin debe ser posterior a la hora de inicio.';
+            if ($row['name'] === '') {
+                $row['errors'][] = 'Falta el nombre del taller.';
+            }
+            if ($row['hours'] <= 0) {
+                $row['errors'][] = 'Las horas deben ser superiores a 0.';
+            }
+            if ($row['places'] <= 0) {
+                $row['errors'][] = 'Las plazas deben ser superiores a 0.';
+            }
+            if ($row['sessiondate'] <= 0) {
+                $row['errors'][] = 'Fecha/hora de inicio del taller no válida.';
+            }
+            if ($row['sessionenddate'] <= 0) {
+                $row['errors'][] = 'Hora de fin del taller no válida.';
+            }
+            if ($row['sessiondate'] > 0 && $row['sessionenddate'] > 0 && $row['sessionenddate'] <= $row['sessiondate']) {
+                $row['errors'][] = 'La hora de fin debe ser posterior a la hora de inicio.';
+            }
             if (trim((string)($row['date2'] ?? '')) !== '') {
                 if ($row['session2date'] <= 0 || $row['session2enddate'] <= 0) {
                     $row['errors'][] = 'Fecha 2 / horas del segundo día no válidas.';
@@ -82,8 +119,12 @@ class bulk_workshops {
             if ($row['quizclose'] > 0 && $lastend > 0 && $row['quizclose'] <= $lastend) {
                 $row['errors'][] = 'El cierre del cuestionario debe ser posterior al final del taller' . ($row['session2date'] > 0 ? ' (segundo día).' : '.');
             }
-            if ($row['enrolenddate'] <= 0) $row['errors'][] = 'Fecha límite de inscripción no válida.';
-            if ($row['sessiondate'] > 0 && $row['enrolenddate'] >= $row['sessiondate']) $row['errors'][] = 'La inscripción debe cerrar antes del taller.';
+            if ($row['enrolenddate'] <= 0) {
+                $row['errors'][] = 'Fecha límite de inscripción no válida.';
+            }
+            if ($row['sessiondate'] > 0 && $row['enrolenddate'] >= $row['sessiondate']) {
+                $row['errors'][] = 'La inscripción debe cerrar antes del taller.';
+            }
             // The workshop code is generated on import from type + Edición +
             // order (TA-E12-01, TB-E12-02...): the «Código» column is only a
             // row number (1, 2, 3...) and can never clash or overwrite.
@@ -95,7 +136,9 @@ class bulk_workshops {
                 }
                 $row['warnings'][] = 'Tipo B: se creará automáticamente una tarea de reflexión con texto en línea (sin archivo adjunto).';
             }
-            if ($row['createquiz'] && $row['quizclose'] <= 0) $row['warnings'][] = 'Sin cierre de cuestionario: conservará la fecha del modelo.';
+            if ($row['createquiz'] && $row['quizclose'] <= 0) {
+                $row['warnings'][] = 'Sin cierre de cuestionario: conservará la fecha del modelo.';
+            }
 
             // Email(s) link the Moodle teacher(s); the name is what the
             // calendar shows. Several teachers: separate with «;».
@@ -108,7 +151,9 @@ class bulk_workshops {
                         $found = true;
                     }
                 }
-                if (!$found) $row['warnings'][] = 'Profesor no encontrado en el curso: ' . $email . ' (en el calendario se mostrará el nombre escrito).';
+                if (!$found) {
+                    $row['warnings'][] = 'Profesor no encontrado en el curso: ' . $email . ' (en el calendario se mostrará el nombre escrito).';
+                }
             }
             $row['teacherids'] = array_values(array_unique($row['teacherids']));
 
@@ -126,7 +171,9 @@ class bulk_workshops {
             throw new \RuntimeException('La edición de talleres no pertenece al curso seleccionado.');
         }
         $rows = self::preview($token, $courseid);
-        $validrows = array_values(array_filter($rows, function($row) { return !empty($row['ok']); }));
+        $validrows = array_values(array_filter($rows, function ($row) {
+            return !empty($row['ok']);
+        }));
         $minstart = 0;
         $maxend = 0;
         foreach ($validrows as $row) {
@@ -194,8 +241,12 @@ class bulk_workshops {
                         'activitycreationtype' => 'quiz',
                         'timemodified' => time(),
                     ];
-                    if (isset($columns['requiredquizcmid'])) $update->requiredquizcmid = 0;
-                    if (isset($columns['requiredassigncmid'])) $update->requiredassigncmid = 0;
+                    if (isset($columns['requiredquizcmid'])) {
+                        $update->requiredquizcmid = 0;
+                    }
+                    if (isset($columns['requiredassigncmid'])) {
+                        $update->requiredassigncmid = 0;
+                    }
                     $DB->update_record('local_ga_workshop_editions', $update);
                     $edition = manager::get_workshop_edition($editionid);
                 }
@@ -246,8 +297,12 @@ class bulk_workshops {
                         'activitycreationtype' => 'quiz',
                         'timemodified' => time(),
                     ];
-                    if (isset($columns['requiredquizcmid'])) $update->requiredquizcmid = $quizcmid;
-                    if (isset($columns['requiredassigncmid'])) $update->requiredassigncmid = 0;
+                    if (isset($columns['requiredquizcmid'])) {
+                        $update->requiredquizcmid = $quizcmid;
+                    }
+                    if (isset($columns['requiredassigncmid'])) {
+                        $update->requiredassigncmid = 0;
+                    }
                     $DB->update_record('local_ga_workshop_editions', $update);
                     // Same group linkage as the default quiz: group restriction,
                     // separate groups with the edition grouping, visible inside
@@ -374,7 +429,9 @@ class bulk_workshops {
     public static function notes_templates(int $courseid): array {
         $out = [0 => 'No duplicar recurso de apuntes'];
         foreach (['folder', 'resource'] as $modname) {
-            foreach (self::module_templates($courseid, $modname, false) as $id => $label) $out[$id] = $label;
+            foreach (self::module_templates($courseid, $modname, false) as $id => $label) {
+                $out[$id] = $label;
+            }
         }
         return $out;
     }
@@ -391,9 +448,11 @@ class bulk_workshops {
                    AND cm.deletioninprogress = 0
               ORDER BY x.name";
         foreach ($DB->get_records_sql($sql, ['courseid' => $courseid, 'modname' => $modname]) as $row) {
-            if ($modname === 'quiz'
+            if (
+                $modname === 'quiz'
                     && (strpos((string)($row->idnumber ?? ''), 'HEE_') === 0
-                        || preg_match('/^Cuestionario T-\\d+$/u', trim((string)$row->name)))) {
+                        || preg_match('/^Cuestionario T-\\d+$/u', trim((string)$row->name)))
+            ) {
                 continue;
             }
             $out[(int)$row->id] = format_string($row->name) . ' (CMID ' . (int)$row->id . ')';
@@ -405,18 +464,28 @@ class bulk_workshops {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/course/lib.php');
         $template = get_fast_modinfo($course)->get_cm($templatecmid);
-        if (!$template || (int)$template->course !== (int)$course->id) throw new \RuntimeException('La actividad modelo no pertenece al curso.');
-        if (!function_exists('duplicate_module')) throw new \RuntimeException('Moodle no permite duplicar módulos mediante la API estándar en esta instalación.');
+        if (!$template || (int)$template->course !== (int)$course->id) {
+            throw new \RuntimeException('La actividad modelo no pertenece al curso.');
+        }
+        if (!function_exists('duplicate_module')) {
+            throw new \RuntimeException('Moodle no permite duplicar módulos mediante la API estándar en esta instalación.');
+        }
         $copy = duplicate_module($course, $template);
         $newcmid = is_object($copy) ? (int)($copy->id ?? 0) : (int)$copy;
-        if ($newcmid <= 0) throw new \RuntimeException('No se ha podido duplicar la actividad modelo.');
+        if ($newcmid <= 0) {
+            throw new \RuntimeException('No se ha podido duplicar la actividad modelo.');
+        }
         $cm = get_coursemodule_from_id('', $newcmid, $course->id, false, MUST_EXIST);
         $table = $cm->modname;
         if ($DB->get_manager()->table_exists(new \xmldb_table($table))) {
             $columns = $DB->get_columns($table);
             $record = (object)['id' => (int)$cm->instance];
-            if (isset($columns['name'])) $record->name = $name;
-            if ($table === 'quiz' && $timeclose > 0 && isset($columns['timeclose'])) $record->timeclose = $timeclose;
+            if (isset($columns['name'])) {
+                $record->name = $name;
+            }
+            if ($table === 'quiz' && $timeclose > 0 && isset($columns['timeclose'])) {
+                $record->timeclose = $timeclose;
+            }
             $DB->update_record($table, $record);
         }
         $cmcolumns = $DB->get_columns('course_modules');
@@ -446,15 +515,17 @@ class bulk_workshops {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
-        if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) throw new \RuntimeException('PhpSpreadsheet no está disponible para generar la plantilla XLSX.');
+        if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
+            throw new \RuntimeException('PhpSpreadsheet no está disponible para generar la plantilla XLSX.');
+        }
         $isb = $type === 'typeb';
         $letter = $isb ? 'B' : 'A';
         $book = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $book->getActiveSheet();
         $sheet->setTitle('TALLERES_' . $letter);
 
-        $headers = ['Código','Nombre','Descripción','Fecha','Inicio','Fin','Horas','Plazas','Cierre inscripción',
-            'Nombre profesor','Email profesor','Crear apuntes'];
+        $headers = ['Código', 'Nombre', 'Descripción', 'Fecha', 'Inicio', 'Fin', 'Horas', 'Plazas', 'Cierre inscripción',
+            'Nombre profesor', 'Email profesor', 'Crear apuntes'];
         if (!$isb) {
             $headers[] = 'Cierre cuestionario';
         }
@@ -485,7 +556,9 @@ class bulk_workshops {
         $validation->setShowDropDown(true);
         $validation->setFormula1('"Sí,No"');
         $sheet->setDataValidation($letterof('Crear apuntes') . '3:' . $letterof('Crear apuntes') . '300', $validation);
-        foreach (range('A', $lastcol) as $c) $sheet->getColumnDimension($c)->setAutoSize(true);
+        foreach (range('A', $lastcol) as $c) {
+            $sheet->getColumnDimension($c)->setAutoSize(true);
+        }
         $sheet->getColumnDimension('A')->setAutoSize(false);
         $sheet->getColumnDimension('A')->setWidth(10);
         $sheet->freezePane('A3');
@@ -494,12 +567,12 @@ class bulk_workshops {
         $help = $book->createSheet();
         $help->setTitle('INSTRUCCIONES_' . $letter);
         $example = $isb
-            ? ['1','Nombre del taller Tipo B','','20/09/2026','10:00','12:00',2,25,'13/09/2026 23:59','Luis Pérez','luis.perez@ucv.es','No','','','']
-            : ['1','Nombre del taller Tipo A','','19/09/2026','12:30','14:30',2,25,'12/09/2026 23:59','Ana García','ana.garcia@ucv.es','Sí','23/09/2026 23:59','','',''];
+            ? ['1', 'Nombre del taller Tipo B', '', '20/09/2026', '10:00', '12:00', 2, 25, '13/09/2026 23:59', 'Luis Pérez', 'luis.perez@ucv.es', 'No', '', '', '']
+            : ['1', 'Nombre del taller Tipo A', '', '19/09/2026', '12:30', '14:30', 2, 25, '12/09/2026 23:59', 'Ana García', 'ana.garcia@ucv.es', 'Sí', '23/09/2026 23:59', '', '', ''];
         // Two-day taller: «Horas» is the total of both days.
         $example2 = $isb
-            ? ['2','Taller de dos días Tipo B','','21/09/2026','10:00','12:00',4,25,'13/09/2026 23:59','Luis Pérez','luis.perez@ucv.es','No','22/09/2026','10:00','12:00']
-            : ['2','Taller de dos días Tipo A','','21/09/2026','12:30','14:30',4,25,'12/09/2026 23:59','Ana García','ana.garcia@ucv.es','No','25/09/2026 23:59','22/09/2026','12:30','14:30'];
+            ? ['2', 'Taller de dos días Tipo B', '', '21/09/2026', '10:00', '12:00', 4, 25, '13/09/2026 23:59', 'Luis Pérez', 'luis.perez@ucv.es', 'No', '22/09/2026', '10:00', '12:00']
+            : ['2', 'Taller de dos días Tipo A', '', '21/09/2026', '12:30', '14:30', 4, 25, '12/09/2026 23:59', 'Ana García', 'ana.garcia@ucv.es', 'No', '25/09/2026 23:59', '22/09/2026', '12:30', '14:30'];
         $help->fromArray([
             ['PLANTILLA TALLERES TIPO ' . $letter . ' · cómo rellenar la hoja TALLERES_' . $letter],
             ['Esta plantilla es SOLO para talleres de Tipo ' . $letter . '. Para Tipo ' . ($isb ? 'A' : 'B') . ' descarga Plantilla_Talleres_' . ($isb ? 'A' : 'B') . '.'],
@@ -520,7 +593,9 @@ class bulk_workshops {
         ], null, 'A1');
         $help->getStyle('A1')->getFont()->setBold(true)->setSize(13);
         $help->getStyle('A12:' . $lastcol . '12')->getFont()->setBold(true);
-        foreach (range('A', $lastcol) as $c) $help->getColumnDimension($c)->setAutoSize(true);
+        foreach (range('A', $lastcol) as $c) {
+            $help->getColumnDimension($c)->setAutoSize(true);
+        }
         $book->setActiveSheetIndex(0);
 
         $path = tempnam(make_temp_directory(self::TEMPDIR), 'tpl_');
@@ -530,10 +605,16 @@ class bulk_workshops {
     }
 
     private static function read_xlsx(string $path): array {
-        if (!is_readable($path)) throw new \RuntimeException('No se puede leer el Excel subido.');
-        if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\IOFactory')) throw new \RuntimeException('Esta instalación no dispone de PhpSpreadsheet para leer .xlsx.');
+        if (!is_readable($path)) {
+            throw new \RuntimeException('No se puede leer el Excel subido.');
+        }
+        if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\IOFactory')) {
+            throw new \RuntimeException('Esta instalación no dispone de PhpSpreadsheet para leer .xlsx.');
+        }
         $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($path);
-        if (method_exists($reader, 'setReadDataOnly')) $reader->setReadDataOnly(true);
+        if (method_exists($reader, 'setReadDataOnly')) {
+            $reader->setReadDataOnly(true);
+        }
         $book = $reader->load($path);
         try {
             // Plantilla_Talleres_A / _B (type given by the sheet) or the older
@@ -552,9 +633,13 @@ class bulk_workshops {
             }
             $data = $sheet->toArray('', true, true, false);
         } finally {
-            if (method_exists($book, 'disconnectWorksheets')) $book->disconnectWorksheets();
+            if (method_exists($book, 'disconnectWorksheets')) {
+                $book->disconnectWorksheets();
+            }
         }
-        if (!$data) return [];
+        if (!$data) {
+            return [];
+        }
         // Skip title rows above the header row (the one containing «Nombre»).
         $headerrow = null;
         $skipped = 0;
@@ -566,23 +651,32 @@ class bulk_workshops {
                 break;
             }
         }
-        if ($headerrow === null) return [];
+        if ($headerrow === null) {
+            return [];
+        }
         $headers = $headerrow;
         $index = [];
-        foreach ($headers as $i => $name) $index[$name] = $i;
+        foreach ($headers as $i => $name) {
+            $index[$name] = $i;
+        }
         $aliases = [
-            'code' => ['codigo','codigotaller','taller'], 'name' => ['nombre','actividad','nombretaller'], 'type' => ['tipo','tipotaller'],
-            'description' => ['descripcion'], 'date' => ['fecha', 'fecha1'], 'start' => ['inicio','horainicio','inicio1'], 'end' => ['fin','horafin','fin1'],
-            'date2' => ['fecha2','fechasegundodia','segundodia'], 'start2' => ['inicio2','horainicio2'], 'end2' => ['fin2','horafin2'],
-            'hours' => ['horas'], 'places' => ['plazas'], 'enrolend' => ['cierreinscripcion','fininscripcion','fechalimiteinscripcion'],
-            'teacheremail' => ['emailprofesor','correoprofesor','emaildocente','correodocente','profesor'],
-            'teachername' => ['nombreprofesor','profesornombre','nombredocente','docente'], 'createnotes' => ['crearapuntes','apuntes'],
-            'createquiz' => ['crearcuestionario','cuestionario'], 'quizclose' => ['cierrecuestionario','fincuestionario'], 'editioncode' => ['codigoedicion','edicion'],
+            'code' => ['codigo', 'codigotaller', 'taller'], 'name' => ['nombre', 'actividad', 'nombretaller'], 'type' => ['tipo', 'tipotaller'],
+            'description' => ['descripcion'], 'date' => ['fecha', 'fecha1'], 'start' => ['inicio', 'horainicio', 'inicio1'], 'end' => ['fin', 'horafin', 'fin1'],
+            'date2' => ['fecha2', 'fechasegundodia', 'segundodia'], 'start2' => ['inicio2', 'horainicio2'], 'end2' => ['fin2', 'horafin2'],
+            'hours' => ['horas'], 'places' => ['plazas'], 'enrolend' => ['cierreinscripcion', 'fininscripcion', 'fechalimiteinscripcion'],
+            'teacheremail' => ['emailprofesor', 'correoprofesor', 'emaildocente', 'correodocente', 'profesor'],
+            'teachername' => ['nombreprofesor', 'profesornombre', 'nombredocente', 'docente'], 'createnotes' => ['crearapuntes', 'apuntes'],
+            'createquiz' => ['crearcuestionario', 'cuestionario'], 'quizclose' => ['cierrecuestionario', 'fincuestionario'], 'editioncode' => ['codigoedicion', 'edicion'],
         ];
         $cols = [];
         foreach ($aliases as $key => $names) {
             $cols[$key] = null;
-            foreach ($names as $name) if (array_key_exists($name, $index)) { $cols[$key] = $index[$name]; break; }
+            foreach ($names as $name) {
+                if (array_key_exists($name, $index)) {
+                    $cols[$key] = $index[$name];
+                    break;
+                }
+            }
         }
         $rows = [];
         foreach ($data as $i => $cells) {
@@ -591,7 +685,9 @@ class bulk_workshops {
             foreach ($cols as $key => $col) {
                 $value = $col === null ? '' : trim((string)($cells[$col] ?? ''));
                 $row[$key] = $value;
-                if ($value !== '') $hasdata = true;
+                if ($value !== '') {
+                    $hasdata = true;
+                }
             }
             if ($hasdata) {
                 if ($defaulttype !== '' && $row['type'] === '') {
@@ -606,7 +702,9 @@ class bulk_workshops {
     private static function normalise(string $value): string {
         $value = \core_text::strtolower(trim($value));
         $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
-        if ($ascii !== false) $value = $ascii;
+        if ($ascii !== false) {
+            $value = $ascii;
+        }
         return preg_replace('/[^a-z0-9]+/', '', $value);
     }
 
@@ -616,7 +714,7 @@ class bulk_workshops {
     }
 
     private static function yes($value): bool {
-        return in_array(self::normalise((string)$value), ['si','yes','1','true','x'], true);
+        return in_array(self::normalise((string)$value), ['si', 'yes', '1', 'true', 'x'], true);
     }
 
     private static function parse_datetime($value): int {

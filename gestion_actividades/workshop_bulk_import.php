@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * workshop_bulk_import.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\bulk_workshops;
@@ -18,8 +41,10 @@ $action = optional_param('action', '', PARAM_ALPHA);
 $courseid = optional_param('courseid', 0, PARAM_INT);
 if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
     $SESSION->local_ga_return_courseid = $courseid;
-} else if ($courseid <= 0 && !empty($SESSION->local_ga_return_courseid)
-        && $DB->record_exists('course', ['id' => (int)$SESSION->local_ga_return_courseid])) {
+} else if (
+    $courseid <= 0 && !empty($SESSION->local_ga_return_courseid)
+        && $DB->record_exists('course', ['id' => (int)$SESSION->local_ga_return_courseid])
+) {
     $courseid = (int)$SESSION->local_ga_return_courseid;
 }
 $token = optional_param('token', '', PARAM_ALPHANUM);
@@ -42,24 +67,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_sesskey();
     try {
         if ($action === 'upload') {
-            if ($courseid <= 0) throw new RuntimeException('Selecciona el curso antes de subir la plantilla.');
-            if (trim($seriestitle) === '') throw new RuntimeException('Indica el título de la edición de talleres.');
+            if ($courseid <= 0) {
+                throw new RuntimeException('Selecciona el curso antes de subir la plantilla.');
+            }
+            if (trim($seriestitle) === '') {
+                throw new RuntimeException('Indica el título de la edición de talleres.');
+            }
             $seriesfrom = date_helper::parse_user_datetime($seriesfromtext);
             $seriesto = date_helper::parse_user_datetime($seriestotext);
-            if ($seriesfrom <= 0 || $seriesto <= 0 || $seriesto < $seriesfrom) throw new RuntimeException('Las fechas de la edición no son válidas.');
+            if ($seriesfrom <= 0 || $seriesto <= 0 || $seriesto < $seriesfrom) {
+                throw new RuntimeException('Las fechas de la edición no son válidas.');
+            }
             $token = bulk_workshops::save_uploaded_file($_FILES['workshopfile'] ?? []);
             $preview = bulk_workshops::preview($token, $courseid);
         } else if ($action === 'confirm') {
-            if ($courseid <= 0 || $token === '') throw new RuntimeException('La importación ha caducado. Vuelve a subir el Excel.');
+            if ($courseid <= 0 || $token === '') {
+                throw new RuntimeException('La importación ha caducado. Vuelve a subir el Excel.');
+            }
             $seriesfrom = date_helper::parse_user_datetime($seriesfromtext);
             $seriesto = date_helper::parse_user_datetime($seriestotext);
-            if ($seriesfrom <= 0 || $seriesto <= 0 || $seriesto < $seriesfrom) throw new RuntimeException('Las fechas de la edición no son válidas.');
-            if (trim($seriestitle) === '') throw new RuntimeException('Indica el título de la edición de talleres.');
+            if ($seriesfrom <= 0 || $seriesto <= 0 || $seriesto < $seriesfrom) {
+                throw new RuntimeException('Las fechas de la edición no son válidas.');
+            }
+            if (trim($seriestitle) === '') {
+                throw new RuntimeException('Indica el título de la edición de talleres.');
+            }
 
             // Validate all rows before creating the parent section. An Edición de
             // talleres is strictly Type A or Type B; never both.
             $preview = bulk_workshops::preview($token, $courseid);
-            if (!$preview) throw new RuntimeException('La plantilla no contiene talleres.');
+            if (!$preview) {
+                throw new RuntimeException('La plantilla no contiene talleres.');
+            }
             $types = [];
             foreach ($preview as $row) {
                 if (empty($row['ok'])) {
@@ -112,7 +151,9 @@ echo html_writer::start_div('alert alert-info');
 echo '<strong>Manual y automático comparten el mismo modelo:</strong> nombre, descripción, inicio, fin, horas, plazas, cierre de inscripción, profesorado y contenido Moodle. Los cambios posteriores regeneran el calendario desde esos mismos datos.';
 echo html_writer::end_div();
 
-if ($error !== '') echo $OUTPUT->notification(s($error), 'error');
+if ($error !== '') {
+    echo $OUTPUT->notification(s($error), 'error');
+}
 if ($result) {
     echo $OUTPUT->notification('Edición creada: ' . (int)$result->created . ' taller(s); ' . (int)$result->skipped . ' omitidos; ' . (int)$result->quizcreated . ' cuestionario(s); ' . (int)$result->notescreated . ' recurso(s) de apuntes.', 'success');
     echo html_writer::div(
@@ -124,7 +165,9 @@ if ($result) {
         echo html_writer::start_div('card-body');
         echo html_writer::tag('h3', 'Detalle', ['class' => 'h5']);
         echo html_writer::start_tag('ul');
-        foreach ($result->messages as $message) echo html_writer::tag('li', s($message));
+        foreach ($result->messages as $message) {
+            echo html_writer::tag('li', s($message));
+        }
         echo html_writer::end_tag('ul');
         echo html_writer::end_div();
         echo html_writer::end_div();
@@ -169,7 +212,11 @@ if ($token === '' && !$result) {
 
 if ($token !== '' && $courseid > 0) {
     if (!$preview) {
-        try { $preview = bulk_workshops::preview($token, $courseid); } catch (Throwable $e) { $error = $e->getMessage(); }
+        try {
+            $preview = bulk_workshops::preview($token, $courseid);
+        } catch (Throwable $e) {
+            $error = $e->getMessage();
+        }
     }
     $quizoptions = bulk_workshops::quiz_templates($courseid);
     $notesoptions = bulk_workshops::notes_templates($courseid);
@@ -186,13 +233,21 @@ if ($token !== '' && $courseid > 0) {
     foreach ($preview as $row) {
         $rowvalid = !empty($row['ok']);
         $messages = [];
-        foreach ($row['errors'] as $m) $messages[] = html_writer::span(s($m), 'text-danger d-block');
-        foreach ($row['warnings'] as $m) $messages[] = html_writer::span(s($m), 'text-warning d-block');
+        foreach ($row['errors'] as $m) {
+            $messages[] = html_writer::span(s($m), 'text-danger d-block');
+        }
+        foreach ($row['warnings'] as $m) {
+            $messages[] = html_writer::span(s($m), 'text-warning d-block');
+        }
         if ($rowvalid && $seriesfrom && $seriesto && ((int)$row['sessiondate'] < $seriesfrom || max((int)$row['sessionenddate'], (int)($row['session2enddate'] ?? 0)) > $seriesto)) {
             $messages[] = html_writer::span('Fuera de las fechas indicadas: la Edición de talleres se ampliará automáticamente para incluirlo.', 'text-warning d-block');
         }
-        if ($rowvalid) $valid++;
-        if (!$messages) $messages[] = html_writer::span('Preparado', 'badge bg-success');
+        if ($rowvalid) {
+            $valid++;
+        }
+        if (!$messages) {
+            $messages[] = html_writer::span('Preparado', 'badge bg-success');
+        }
         $schedule = '-';
         if (!empty($row['sessiondate'])) {
             $schedule = userdate((int)$row['sessiondate'], '%d/%m/%Y %H:%M');

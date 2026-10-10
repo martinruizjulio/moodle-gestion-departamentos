@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * manager_downloads.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir . '/filelib.php');
 
@@ -96,8 +119,10 @@ function local_ga_dl_series_sql(bool $haseditions): stdClass {
         'joins' => '',
         'fields' => "NULL AS seriesid, '' AS seriestitle, 0 AS seriesdatefrom, 999999 AS seriessortorder",
     ];
-    if (!$DB->get_manager()->table_exists(new xmldb_table('local_ga_series_items'))
-            || !$DB->get_manager()->table_exists(new xmldb_table('local_ga_workshop_series'))) {
+    if (
+        !$DB->get_manager()->table_exists(new xmldb_table('local_ga_series_items'))
+            || !$DB->get_manager()->table_exists(new xmldb_table('local_ga_workshop_series'))
+    ) {
         return $result;
     }
     $editionhasseriesid = $haseditions
@@ -286,8 +311,10 @@ function local_ga_dl_typeb_rows(): array {
 
 function local_ga_dl_internal_typeb_rows(): array {
     global $DB;
-    if (!$DB->get_manager()->table_exists(new xmldb_table('local_ga_workshops'))
-            || !$DB->get_manager()->table_exists(new xmldb_table('local_ga_workshop_editions'))) {
+    if (
+        !$DB->get_manager()->table_exists(new xmldb_table('local_ga_workshops'))
+            || !$DB->get_manager()->table_exists(new xmldb_table('local_ga_workshop_editions'))
+    ) {
         return [];
     }
     $hascerts = $DB->get_manager()->table_exists(new xmldb_table('local_ga_certificates'));
@@ -346,19 +373,28 @@ function local_ga_dl_userids_with_portfolio(): array {
 function local_ga_dl_add_typea_file(stdClass $cert, string $zipname, string $tempdir, array &$files): void {
     global $DB;
     $course = $DB->get_record('course', ['id' => (int)$cert->courseid], '*', IGNORE_MISSING);
-    if (!$course) { return; }
+    if (!$course) {
+        return;
+    }
     $coursecontext = context_course::instance((int)$course->id, IGNORE_MISSING);
-    if (!$coursecontext) { return; }
+    if (!$coursecontext) {
+        return;
+    }
     $fs = get_file_storage();
     $filename = (string)($cert->filename ?? '');
     $file = $filename !== '' ? $fs->get_file($coursecontext->id, 'local_gestion_actividades', 'certificate', (int)$cert->id, '/', $filename) : false;
     if (!$file || $file->is_directory()) {
         $area = $fs->get_area_files($coursecontext->id, 'local_gestion_actividades', 'certificate', (int)$cert->id, 'filename', false);
         foreach ($area as $candidate) {
-            if (!$candidate->is_directory()) { $file = $candidate; break; }
+            if (!$candidate->is_directory()) {
+                $file = $candidate;
+                break;
+            }
         }
     }
-    if (!$file || $file->is_directory()) { return; }
+    if (!$file || $file->is_directory()) {
+        return;
+    }
     $path = $tempdir . '/typea_' . (int)$cert->id . '.pdf';
     $file->copy_content_to($path);
     $files[$zipname] = $path;
@@ -372,10 +408,15 @@ function local_ga_dl_add_typeb_file(stdClass $cert, string $zipname, string $tem
     if (!$file || $file->is_directory()) {
         $area = $fs->get_area_files($context->id, 'local_gestion_actividades', 'typeb_certificate', (int)$cert->id, 'filename', false);
         foreach ($area as $candidate) {
-            if (!$candidate->is_directory()) { $file = $candidate; break; }
+            if (!$candidate->is_directory()) {
+                $file = $candidate;
+                break;
+            }
         }
     }
-    if (!$file || $file->is_directory()) { return; }
+    if (!$file || $file->is_directory()) {
+        return;
+    }
     $path = $tempdir . '/typeb_' . (int)$cert->id . '.pdf';
     $file->copy_content_to($path);
     $files[$zipname] = $path;
@@ -394,7 +435,9 @@ function local_ga_dl_send_zip(array $files, string $zipname, string $emptyredire
 
 function local_ga_dl_action_url(string $action, bool $includesesskey = false): moodle_url {
     $params = ['action' => $action] + academic_year::url_params(academic_year::selected());
-    if ($includesesskey) { $params['sesskey'] = sesskey(); }
+    if ($includesesskey) {
+        $params['sesskey'] = sesskey();
+    }
     return new moodle_url('/local/gestion_actividades/manager_downloads.php', $params);
 }
 
@@ -404,7 +447,9 @@ function local_ga_dl_empty_notice(string $text): string {
 }
 
 function local_ga_dl_render_table(array $headers, array $rows): string {
-    if (!$rows) { return local_ga_dl_empty_notice('No hay registros para mostrar.'); }
+    if (!$rows) {
+        return local_ga_dl_empty_notice('No hay registros para mostrar.');
+    }
     $table = new html_table();
     $table->head = $headers;
     $table->data = $rows;
@@ -418,14 +463,18 @@ function local_ga_dl_render_card(string $title, string $badge, string $descripti
     $out .= html_writer::tag('h3', $title, ['class' => 'h5 mb-2']);
     $out .= html_writer::tag('div', $badge, ['class' => 'badge bg-light text-dark mb-1', 'style' => 'font-size:0.85rem;padding:5px 8px;']);
     $out .= html_writer::tag('p', $description, ['class' => 'text-muted mb-2']);
-    foreach ($buttons as $buttonhtml) { $out .= $buttonhtml; }
+    foreach ($buttons as $buttonhtml) {
+        $out .= $buttonhtml;
+    }
     $out .= html_writer::end_div() . html_writer::end_div();
     return $out;
 }
 
 function local_ga_dl_typea_activity_summary(stdClass $row): stdClass {
     $summary = (object)['activity' => '-', 'status' => '-', 'result' => '-'];
-    if (empty($row->userid)) { return $summary; }
+    if (empty($row->userid)) {
+        return $summary;
+    }
     if (empty($row->editionid)) {
         $summary->activity = 'Actividad evaluada (reconocimiento institucional)';
         if ($row->taskgrade !== null && $row->taskgrade !== '') {
@@ -547,10 +596,14 @@ function local_ga_dl_year_suffix(string $ay): string {
 $allhoursrows = manager::get_hours_summary_by_student();
 $hoursrows = array_filter($allhoursrows, static fn($r) => local_ga_dl_user_in_year((int)$r->id, $ay));
 $hourssummarybyuser = [];
-foreach ($allhoursrows as $hoursrow) { $hourssummarybyuser[(int)$hoursrow->id] = $hoursrow; }
+foreach ($allhoursrows as $hoursrow) {
+    $hourssummarybyuser[(int)$hoursrow->id] = $hoursrow;
+}
 $hoursstudentcount = count($hoursrows);
 $hourstotal = 0.0;
-foreach ($hoursrows as $hrow) { $hourstotal += (float)($hrow->totalhours ?? 0); }
+foreach ($hoursrows as $hrow) {
+    $hourstotal += (float)($hrow->totalhours ?? 0);
+}
 $portfolioids = array_values(array_filter(local_ga_dl_userids_with_portfolio(), static fn($uid) => local_ga_dl_user_in_year((int)$uid, $ay)));
 
 $downloadactions = ['workshops_csv', 'typeb_workshops_csv', 'typea_csv', 'typeb_csv', 'transfers_csv', 'hours_csv', 'portfolios_csv', 'typea_zip', 'typeb_zip', 'packages_zip'];
@@ -561,7 +614,7 @@ if (in_array($action, $downloadactions, true)) {
         foreach (local_ga_dl_y_workshops($ay) as $r) {
             $activity = local_ga_dl_typea_activity_summary($r);
             $attendancevalue = $r->userid ? (!empty($r->attended) ? 'Sí' : 'No') : '-';
-            $rows[] = [(string)($r->academicyear ?? ''), 
+            $rows[] = [(string)($r->academicyear ?? ''),
                 $r->seriestitle ?? '', $r->coursename ?? '', $r->workshopid, $r->code, $r->workshopname,
                 isset($r->hours) ? (string)$r->hours : '', $r->editionid ?: '', $r->editioncode ?: '', $r->editionname ?: '',
                 !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%Y-%m-%d %H:%M') : '',
@@ -614,7 +667,9 @@ if (in_array($action, $downloadactions, true)) {
         $rows = [];
         foreach ($portfolioids as $userid) {
             $user = $DB->get_record('user', ['id' => (int)$userid, 'deleted' => 0], '*', IGNORE_MISSING);
-            if (!$user) { continue; }
+            if (!$user) {
+                continue;
+            }
             $summaryrow = $hourssummarybyuser[(int)$userid] ?? null;
             $typeacerts = manager::list_user_certificates((int)$userid);
             $typeahours = (float)($summaryrow->totaltypeahours ?? 0.0);
@@ -625,7 +680,9 @@ if (in_array($action, $downloadactions, true)) {
         local_ga_dl_send_csv('listado_portafolios' . local_ga_dl_year_suffix($ay) . '.csv', ['Cursos con actividad', 'Alumno', 'Email', 'Grupo', 'Certificados Tipo A', 'Horas Tipo A', 'Horas Tipo B', 'Total reconocido', 'Horas pendientes hasta 54'], $rows);
     }
     if ($action === 'typea_zip') {
-        $tempdir = make_request_directory(); $files = []; $n = 1;
+        $tempdir = make_request_directory();
+        $files = [];
+        $n = 1;
         foreach (local_ga_dl_y_typea($ay) as $c) {
             $date = !empty($c->timeissued) ? userdate((int)$c->timeissued, '%Y%m%d') : 'sin_fecha';
             $student = local_ga_dl_clean(local_ga_dl_name($c), 'alumno');
@@ -635,9 +692,13 @@ if (in_array($action, $downloadactions, true)) {
         local_ga_dl_send_zip($files, 'certificados_tipo_a_' . date('Ymd_His') . '.zip', '/local/gestion_actividades/manager_downloads.php');
     }
     if ($action === 'typeb_zip') {
-        $tempdir = make_request_directory(); $files = []; $n = 1;
+        $tempdir = make_request_directory();
+        $files = [];
+        $n = 1;
         foreach (local_ga_dl_y_typeb($ay) as $c) {
-            if (!portfolio_typeb::is_countable($c)) { continue; }
+            if (!portfolio_typeb::is_countable($c)) {
+                continue;
+            }
             $date = !empty($c->activitydate) ? userdate((int)$c->activitydate, '%Y%m%d') : 'sin_fecha';
             $student = local_ga_dl_clean(local_ga_dl_name($c), 'alumno');
             $title = local_ga_dl_clean($c->activityname ?? 'certificado_tipo_b', 'certificado_tipo_b');
@@ -647,10 +708,13 @@ if (in_array($action, $downloadactions, true)) {
     }
     if ($action === 'packages_zip') {
         global $DB;
-        $tempdir = make_request_directory(); $files = [];
+        $tempdir = make_request_directory();
+        $files = [];
         foreach ($portfolioids as $userid) {
             $user = $DB->get_record('user', ['id' => (int)$userid, 'deleted' => 0], '*', IGNORE_MISSING);
-            if (!$user) { continue; }
+            if (!$user) {
+                continue;
+            }
             $folder = local_ga_dl_clean(fullname($user), 'alumno_' . (int)$userid);
             $mainpath = $tempdir . '/portfolio_' . (int)$userid . '.pdf';
             file_put_contents($mainpath, portfolio_pdf::render_pdf_string((int)$userid));
@@ -687,8 +751,11 @@ echo $OUTPUT->header();
 
 if ($viewmode !== '') {
     echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_btn_icon('t/left', 'Volver al panel'), ['class' => 'btn local-ga-back-panel me-2 mb-3']) . html_writer::link(new moodle_url('/local/gestion_actividades/manager_downloads.php', academic_year::url_params($ay)), local_ga_btn_icon('t/left', 'Volver a listados'), ['class' => 'btn local-ga-back-panel mb-3']), 'mb-2');
-    echo academic_year::selector(new moodle_url('/local/gestion_actividades/manager_downloads.php', ['action' => $viewmode]), $ay,
-        in_array($viewmode, ['view_hours', 'view_portfolios'], true) ? 'Alumnos con actividad en ese curso; las horas son el total acumulado de la carrera.' : 'El CSV y los ZIP descargan el mismo curso seleccionado.');
+    echo academic_year::selector(
+        new moodle_url('/local/gestion_actividades/manager_downloads.php', ['action' => $viewmode]),
+        $ay,
+        in_array($viewmode, ['view_hours', 'view_portfolios'], true) ? 'Alumnos con actividad en ese curso; las horas son el total acumulado de la carrera.' : 'El CSV y los ZIP descargan el mismo curso seleccionado.'
+    );
     if ($viewmode === 'view_workshops') {
         echo html_writer::tag('h2', 'Listado de Talleres Tipo A');
         echo html_writer::tag('p', 'Consulta talleres y ediciones. La actividad muestra el Cuestionario Moodle canónico en talleres nuevos y conserva la Tarea Moodle solo en ediciones históricas.', ['class' => 'text-muted']);
@@ -708,22 +775,27 @@ if ($viewmode !== '') {
         echo html_writer::div(html_writer::link(local_ga_dl_action_url('typeb_workshops_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary mb-3']), 'mb-2');
         $rows = [];
         foreach (local_ga_dl_y_internal_typeb($ay) as $r) {
-            $submitted = !empty($r->reflectionsubmitted); $text = trim(strip_tags((string)($r->reflectiontext ?? '')));
+            $submitted = !empty($r->reflectionsubmitted);
+            $text = trim(strip_tags((string)($r->reflectiontext ?? '')));
             $rows[] = [(string)($r->academicyear ?? ''), s($r->seriestitle ?: '-'), s($r->coursename ?? ''), s($r->code ?? ''), s($r->workshopname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', s($r->editionname ?? '-'), !empty($r->sessiondate) ? userdate((int)$r->sessiondate, '%d/%m/%Y %H:%M') : '-', $r->userid ? s(local_ga_dl_name($r)) : '-', s($r->email ?? ''), !empty($r->attended) ? html_writer::span('Confirmada', 'badge bg-success') : html_writer::span('No confirmada', 'badge bg-warning text-dark'), $submitted ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), $text !== '' ? s(\core_text::substr($text, 0, 220)) : ($submitted ? 'Entrega mediante archivo' : '-'), !empty($r->certificateid) ? html_writer::span('Generado', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), !empty($r->certificatetimeissued) ? userdate((int)$r->certificatetimeissued, '%d/%m/%Y %H:%M') : '-', '-'];
         }
         foreach (local_ga_dl_y_typeb($ay) as $r) {
-            $status = (string)($r->status ?? 'pending'); $hasreflection = trim((string)($r->reflectiontext ?? '')) !== '';
+            $status = (string)($r->status ?? 'pending');
+            $hasreflection = trim((string)($r->reflectiontext ?? '')) !== '';
             $confirm = html_writer::span($status === 'validated' ? 'Validado' : 'Pendiente', $status === 'validated' ? 'badge bg-success' : 'badge bg-warning text-dark');
             if ($status === 'pending') {
                 $confirm = html_writer::start_tag('form', ['method' => 'post', 'action' => new moodle_url('/local/gestion_actividades/typeb_review.php'), 'class' => 'm-0']);
-                $confirm .= html_writer::empty_tag('input', ['type'=>'hidden','name'=>'id','value'=>(int)$r->id]);
-                $confirm .= html_writer::empty_tag('input', ['type'=>'hidden','name'=>'action','value'=>'validate']);
-                $confirm .= html_writer::empty_tag('input', ['type'=>'hidden','name'=>'sesskey','value'=>sesskey()]);
-                $confirm .= html_writer::tag('label', html_writer::empty_tag('input', ['type'=>'checkbox','name'=>'confirm','value'=>'1','required'=>'required']) . ' Por confirmar', ['class'=>'d-block mb-1']);
-                $confirm .= html_writer::tag('button', 'Confirmar', ['type'=>'submit','class'=>'btn btn-success btn-sm']) . html_writer::end_tag('form');
-            } else if ($status === 'rejected') { $confirm = html_writer::span('Rechazado', 'badge bg-danger'); }
-            else if ($status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) { $confirm = html_writer::span('Validado · falta reflexión', 'badge bg-warning text-dark'); }
-            $evidence = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id'=>(int)$r->id]), local_ga_btn_icon('t/download', 'Ver evidencia'), ['class'=>'btn btn-secondary btn-sm']);
+                $confirm .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => (int)$r->id]);
+                $confirm .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'validate']);
+                $confirm .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+                $confirm .= html_writer::tag('label', html_writer::empty_tag('input', ['type' => 'checkbox', 'name' => 'confirm', 'value' => '1', 'required' => 'required']) . ' Por confirmar', ['class' => 'd-block mb-1']);
+                $confirm .= html_writer::tag('button', 'Confirmar', ['type' => 'submit', 'class' => 'btn btn-success btn-sm']) . html_writer::end_tag('form');
+            } else if ($status === 'rejected') {
+                $confirm = html_writer::span('Rechazado', 'badge bg-danger');
+            } else if ($status === portfolio_typeb::STATUS_VALIDATED_PENDING_REFLECTION) {
+                $confirm = html_writer::span('Validado · falta reflexión', 'badge bg-warning text-dark');
+            }
+            $evidence = html_writer::link(new moodle_url('/local/gestion_actividades/typeb_download.php', ['id' => (int)$r->id]), local_ga_btn_icon('t/download', 'Ver evidencia'), ['class' => 'btn btn-secondary btn-sm']);
             $rows[] = [(string)($r->academicyear ?? ''), 'Externo', 'Externo', '-', s($r->activityname ?? ''), format_float((float)($r->hours ?? 0), 2, true) . ' h', 'Subido por el alumno', !empty($r->activitydate) ? userdate((int)$r->activitydate, '%d/%m/%Y') : '-', s(local_ga_dl_name($r)), s($r->email ?? ''), html_writer::span('No procede', 'badge bg-secondary'), $hasreflection ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('Pendiente', 'badge bg-warning text-dark'), $hasreflection ? s(\core_text::substr((string)$r->reflectiontext, 0, 220)) : '-', $status === 'validated' ? html_writer::span('Reconocido', 'badge bg-success') : html_writer::span('No computa', 'badge bg-warning text-dark'), !empty($r->timereviewed) ? userdate((int)$r->timereviewed, '%d/%m/%Y %H:%M') : '-', $evidence . html_writer::div($confirm, 'mt-1')];
         }
         echo local_ga_dl_render_table(['Curso académico', 'Edición de talleres/origen', 'Curso/origen', 'Código', 'Taller', 'Horas', 'Edición/origen', 'Fecha taller', 'Alumno', 'Email', 'Asistencia', 'Reflexión', 'Contenido', 'Reconocimiento', 'Fecha revisión', 'Acciones'], $rows);
@@ -778,7 +850,9 @@ if ($viewmode !== '') {
         $rows = [];
         foreach ($portfolioids as $userid) {
             $user = $DB->get_record('user', ['id' => (int)$userid, 'deleted' => 0], '*', IGNORE_MISSING);
-            if (!$user) { continue; }
+            if (!$user) {
+                continue;
+            }
             $summaryrow = $hourssummarybyuser[(int)$userid] ?? null;
             $typeacerts = manager::list_user_certificates((int)$userid);
             $typeahours = (float)($summaryrow->totaltypeahours ?? 0.0);
@@ -789,8 +863,11 @@ if ($viewmode !== '') {
         }
         echo local_ga_dl_render_table(['Cursos con actividad', 'Alumno', 'Email', 'Grupo', 'Certificados A', 'Horas A', 'Horas B', 'Total reconocido', 'Pendiente hasta 54', 'Acciones'], $rows);
     }
-    if (function_exists('local_gestion_actividades_enable_interactive_tables')) { local_gestion_actividades_enable_interactive_tables(); }
-    echo $OUTPUT->footer(); exit;
+    if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
+        local_gestion_actividades_enable_interactive_tables();
+    }
+    echo $OUTPUT->footer();
+    exit;
 }
 
 echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_btn_icon('t/left', 'Volver al panel'), ['class' => 'btn local-ga-back-panel mb-3']), 'mb-2');
@@ -809,8 +886,16 @@ $rightcards = [
     local_ga_dl_render_card('Portafolios', count($portfolioids) . ' alumno(s)', 'Portafolios y expedientes completos con Tipo B externo solo cuando está validado y tiene reflexión.', [html_writer::link(local_ga_dl_action_url('view_portfolios'), local_ga_btn_icon('i/search', 'Ver listado'), ['class' => 'btn btn-outline-secondary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('portfolios_csv', true), local_ga_btn_icon('t/download', 'Descargar CSV'), ['class' => 'btn btn-primary me-1 mb-1']), html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_all.php', ['sesskey' => sesskey()]), local_ga_btn_icon('t/download', 'Descargar portafolios PDF ZIP'), ['class' => 'btn btn-primary me-1 mb-1']), html_writer::link(local_ga_dl_action_url('packages_zip', true), local_ga_btn_icon('t/download', 'Descargar expedientes completos ZIP'), ['class' => 'btn btn-secondary mb-1'])]),
 ];
 echo html_writer::start_div('row');
-echo html_writer::start_div('col-md-6'); foreach ($leftcards as $cardhtml) { echo $cardhtml; } echo html_writer::end_div();
-echo html_writer::start_div('col-md-6'); foreach ($rightcards as $cardhtml) { echo $cardhtml; } echo html_writer::end_div();
+echo html_writer::start_div('col-md-6');
+foreach ($leftcards as $cardhtml) {
+    echo $cardhtml;
+} echo html_writer::end_div();
+echo html_writer::start_div('col-md-6');
+foreach ($rightcards as $cardhtml) {
+    echo $cardhtml;
+} echo html_writer::end_div();
 echo html_writer::end_div();
-if (function_exists('local_gestion_actividades_enable_interactive_tables')) { local_gestion_actividades_enable_interactive_tables(); }
+if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
+    local_gestion_actividades_enable_interactive_tables();
+}
 echo $OUTPUT->footer();

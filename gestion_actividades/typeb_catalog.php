@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * typeb_catalog.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 // Catálogo de talleres Tipo B externos (nombre + horas). Solo Gestor HEE.
 require_once(__DIR__ . '/../../config.php');
 
@@ -34,12 +57,20 @@ if ($action !== '' && data_submitted()) {
         }
         if ($action === 'delete') {
             $ok = typeb_catalog::delete_unused($id);
-            redirect($url, $ok ? 'Taller eliminado del catálogo.' : 'No se puede eliminar: hay solicitudes de alumnos con este taller. Usa «Retirar».',
-                null, $ok ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_WARNING);
+            redirect(
+                $url,
+                $ok ? 'Taller eliminado del catálogo.' : 'No se puede eliminar: hay solicitudes de alumnos con este taller. Usa «Retirar».',
+                null,
+                $ok ? \core\output\notification::NOTIFY_SUCCESS : \core\output\notification::NOTIFY_WARNING
+            );
         }
     } catch (invalid_parameter_exception $e) {
-        redirect(new moodle_url($url, $id > 0 ? ['edit' => $id] : []), $e->debuginfo ?: $e->getMessage(), null,
-            \core\output\notification::NOTIFY_ERROR);
+        redirect(
+            new moodle_url($url, $id > 0 ? ['edit' => $id] : []),
+            $e->debuginfo ?: $e->getMessage(),
+            null,
+            \core\output\notification::NOTIFY_ERROR
+        );
     }
 }
 
@@ -67,7 +98,8 @@ $form = html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey'
         . html_writer::div(html_writer::label('Horas', 'id_hours') . html_writer::empty_tag('input', ['type' => 'text', 'inputmode' => 'decimal', 'name' => 'hours', 'id' => 'id_hours',
             'class' => 'form-control', 'required' => 'required', 'placeholder' => '2,5', 'value' => $editing ? format_float((float)$editing->hours, 2, true) : '']), 'col-md-2 mb-2')
         . html_writer::div(html_writer::empty_tag('input', ['type' => 'submit', 'class' => 'btn btn-primary w-100', 'value' => $editing ? 'Guardar' : 'Añadir']), 'col-md-2 mb-2 d-flex align-items-end'),
-        'row');
+        'row'
+    );
 if ($editing) {
     $form .= html_writer::div('Si cambias el nombre o las horas, también se actualizan en las solicitudes aún no validadas de este taller. Las ya validadas conservan sus horas.', 'text-muted small')
         . html_writer::link($url, 'Cancelar edición', ['class' => 'small']);
@@ -81,7 +113,7 @@ $counts = typeb_catalog::request_counts();
 if (!$items) {
     echo $OUTPUT->notification('El catálogo está vacío. Añade el primer taller con el formulario de arriba.', 'info');
 } else {
-    $postbutton = function(string $action, int $id, string $label, string $class, string $confirm = '') use ($url) {
+    $postbutton = function (string $action, int $id, string $label, string $class, string $confirm = '') use ($url) {
         $attrs = ['method' => 'post', 'action' => $url->out(false), 'class' => 'd-inline'];
         if ($confirm !== '') {
             $attrs['onsubmit'] = 'return confirm(' . json_encode($confirm) . ');';

@@ -819,3 +819,15 @@ Pendiente de confirmar con datos reales: que la columna «Asistencia: … (Real)
 ## 2026-10-11 — block 1.0.36-alpha (2026100520): ayuda PAT para alumnos
 - Ayuda del alumno (ES/EN), sección PAT: en el portafolio los PAT aparecen como los demás Tipo B (asistencia confirmada y cuestionario superado en lugar de la reflexión); solo suman horas y su nota no entra en la calificación (A 60 % + portafolio 30 % + autoevaluación 10 %).
 - ZIPs finales entregados: local 1.5.181-alpha y block 1.0.36-alpha, generados desde el mismo HEAD.
+
+## 2026-10-11 — local 1.5.182-alpha (2026100597) + block 1.0.37-alpha (2026100521): requisitos del revisor de plugins
+Informe recibido del revisor externo (reviewer.learningsystemsstudio.com) sobre `gestion_hee`, de hace una semana: 2 BLOCKER, 16 MEDIUM y 3 LOW. Ese servicio web no se puede ejecutar desde esta sesión. Se ha usado en su lugar el comprobador oficial de Moodle (moodlehq/moodle-cs, phpcs 3.13.4, estándares `moodle` y `moodle-extra`), que aplica las mismas reglas del checklist del Plugins Directory.
+
+- **BLOCKER Privacy API**: el bloque ya tenía `classes/privacy/provider.php` (null_provider) y la cadena `privacy:metadata` en ES/EN; el informe es anterior. El plugin local tiene su provider completo.
+- **BLOCKER LICENSE**: añadido `LICENSE` (GPL v3, el mismo texto que Moodle) en la raíz de `gestion_hee`, `gestion_actividades` y `hee_demo`.
+- **MEDIUM boilerplate**: cabecera GPL de Moodle y docblock de archivo (`@package`, `@copyright 2026 Julio Martín Ruiz`, `@license GPL v3 or later`) en los 124 PHP y AMD src de ambos plugins.
+- **MEDIUM cadenas fijas** (bloque): 10 textos pasan a cadenas de idioma ES/EN (`requesttypeb`, `managerpanel`, `activeworkshops`, etc.).
+- **LOW comentarios en español** (bloque): traducidos al inglés, igual que los mensajes de depuración.
+- **Bloque**: 0 errores y 0 avisos con `moodle-extra`. Además: docblocks de todas las funciones, clases y constantes; líneas de más de 132 caracteres partidas; `MOODLE_INTERNAL` innecesarios quitados; catch vacío con `debugging()`.
+- **Plugin local**: correcciones automáticas de estilo con phpcbf (espacios, llaves, comas; sin cambios de lógica). Quedan 842 errores y 684 avisos no bloqueantes: docblocks de funciones, líneas de más de 180 caracteres, catch vacíos y textos en español sin cadenas de idioma.
+- Validación local: lint de todos los PHP; hee_e2e, cert, typeb_cat y pat_test ALL OK (dos_dias: el fallo conocido de horas acumuladas del usuario de prueba); recorrido Playwright de 1.160 páginas y 24 descargas sin errores; bloque correcto para gestor, profesor y alumno; auditoría PAT/Buscar alumno OK.

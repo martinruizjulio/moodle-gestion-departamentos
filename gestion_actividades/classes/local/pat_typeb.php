@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class pat_typeb for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\local;
 
 defined('MOODLE_INTERNAL') || die();
@@ -77,7 +100,11 @@ class pat_typeb {
         }
 
         $now = time();
-        $created = 0; $updated = 0; $linked = 0; $pending = 0; $passed = 0;
+        $created = 0;
+        $updated = 0;
+        $linked = 0;
+        $pending = 0;
+        $passed = 0;
         $linkeduserids = [];
         $transaction = $DB->start_delegated_transaction();
         global $USER;
@@ -105,7 +132,9 @@ class pat_typeb {
                 $hours = (float)$hoursbycol[$col];
                 $grademax = (float)$maxbycol[$col];
                 $ispassed = $attendance !== null && $attendance >= 100.0 && $grade !== null && $grade >= $grademax / 2.0;
-                if ($ispassed) { $passed++; }
+                if ($ispassed) {
+                    $passed++;
+                }
                 $workshopkey = sha1(self::normalise_key($workshopname));
                 $existing = $DB->get_record(self::TABLE, [
                     'studentkey' => $identity->studentkey,
@@ -249,7 +278,8 @@ class pat_typeb {
         foreach ($users as $user) {
             $idnumber = trim((string)$user->idnumber);
             $email = trim((string)$user->email);
-            $conditions = []; $p = [];
+            $conditions = [];
+            $p = [];
             if ($idnumber !== '') {
                 $conditions[] = '(' . $DB->sql_equal('TRIM(studentid)', ':sid', false, false)
                     . ' OR ' . $DB->sql_equal('TRIM(dni)', ':dni', false, false) . ')';
@@ -260,7 +290,9 @@ class pat_typeb {
                 $conditions[] = $DB->sql_equal('email', ':email', false, false);
                 $p['email'] = $email;
             }
-            if (!$conditions) { continue; }
+            if (!$conditions) {
+                continue;
+            }
             $records = $DB->get_records_select(self::TABLE, 'userid = 0 AND (' . implode(' OR ', $conditions) . ')', $p, '', 'id');
             foreach ($records as $record) {
                 $DB->set_field(self::TABLE, 'userid', (int)$user->id, ['id' => (int)$record->id]);
@@ -287,12 +319,16 @@ class pat_typeb {
             $idnumber = trim($idnumber);
             if ($idnumber !== '') {
                 $userid = self::find_user_by('idnumber', $idnumber);
-                if ($userid) { return $userid; }
+                if ($userid) {
+                    return $userid;
+                }
             }
         }
         if ($identity->email !== '') {
             $userid = self::find_user_by('email', $identity->email);
-            if ($userid) { return $userid; }
+            if ($userid) {
+                return $userid;
+            }
         }
         return 0;
     }
@@ -307,17 +343,21 @@ class pat_typeb {
 
     private static function identity_from_row(array $row, array $headers): \stdClass {
         $map = [];
-        foreach ($headers as $i => $h) { $map[self::normalise_key($h)] = $i; }
-        $get = static function(array $names) use ($row, $map): string {
+        foreach ($headers as $i => $h) {
+            $map[self::normalise_key($h)] = $i;
+        }
+        $get = static function (array $names) use ($row, $map): string {
             foreach ($names as $name) {
                 $key = pat_typeb::normalise_key($name);
-                if (isset($map[$key])) { return trim((string)($row[$map[$key]] ?? '')); }
+                if (isset($map[$key])) {
+                    return trim((string)($row[$map[$key]] ?? ''));
+                }
             }
             return '';
         };
-        $studentid = $get(['Número de ID','Numero de ID']);
+        $studentid = $get(['Número de ID', 'Numero de ID']);
         $dni = $get(['Departamento']);
-        $email = \core_text::strtolower($get(['Dirección de correo','Direccion de correo','Correo']));
+        $email = \core_text::strtolower($get(['Dirección de correo', 'Direccion de correo', 'Correo']));
         $seed = $dni !== '' ? 'dni:' . self::normalise_key($dni)
             : ($studentid !== '' ? 'id:' . self::normalise_key($studentid) : ($email !== '' ? 'mail:' . $email : ''));
         return (object)[
@@ -326,14 +366,18 @@ class pat_typeb {
             'dni' => $dni,
             'email' => $email,
             'firstname' => $get(['Nombre']),
-            'lastname' => $get(['Apellido(s)','Apellidos']),
+            'lastname' => $get(['Apellido(s)', 'Apellidos']),
         ];
     }
 
     private static function numeric_value($value): ?float {
-        if ($value === null) { return null; }
+        if ($value === null) {
+            return null;
+        }
         $text = trim((string)$value);
-        if ($text === '' || $text === '-') { return null; }
+        if ($text === '' || $text === '-') {
+            return null;
+        }
         $text = str_replace(',', '.', $text);
         return is_numeric($text) ? (float)$text : null;
     }
@@ -355,17 +399,24 @@ class pat_typeb {
             throw new \RuntimeException('PhpSpreadsheet no está disponible en esta instalación.');
         }
         $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($path);
-        if (method_exists($reader, 'setReadDataOnly')) { $reader->setReadDataOnly(true); }
+        if (method_exists($reader, 'setReadDataOnly')) {
+            $reader->setReadDataOnly(true);
+        }
         $book = $reader->load($path);
         try {
             $sheet = $book->getSheet(0);
             $data = $sheet->toArray('', true, true, false);
         } finally {
-            if (method_exists($book, 'disconnectWorksheets')) { $book->disconnectWorksheets(); }
+            if (method_exists($book, 'disconnectWorksheets')) {
+                $book->disconnectWorksheets();
+            }
         }
-        if (!$data) { throw new \RuntimeException('El Excel está vacío.'); }
+        if (!$data) {
+            throw new \RuntimeException('El Excel está vacío.');
+        }
         $headers = array_map(static fn($v) => trim((string)$v), array_shift($data));
-        $quizcols = []; $attendancecol = -1;
+        $quizcols = [];
+        $attendancecol = -1;
         foreach ($headers as $i => $header) {
             if (preg_match('/^Cuestionario\s*:/iu', $header)) {
                 $quizcols[$i] = self::clean_quiz_name($header);
@@ -373,10 +424,18 @@ class pat_typeb {
                 $attendancecol = $i;
             }
         }
-        if (!$quizcols) { throw new \RuntimeException('No se han encontrado columnas de cuestionario.'); }
-        if ($attendancecol < 0) { throw new \RuntimeException('No se ha encontrado la columna de asistencia.'); }
-        $rows = array_values(array_filter($data, static function($row): bool {
-            foreach ($row as $v) { if (trim((string)$v) !== '') { return true; } }
+        if (!$quizcols) {
+            throw new \RuntimeException('No se han encontrado columnas de cuestionario.');
+        }
+        if ($attendancecol < 0) {
+            throw new \RuntimeException('No se ha encontrado la columna de asistencia.');
+        }
+        $rows = array_values(array_filter($data, static function ($row): bool {
+            foreach ($row as $v) {
+                if (trim((string)$v) !== '') {
+                    return true;
+                }
+            }
             return false;
         }));
         return ['headers' => $headers, 'quizcols' => $quizcols, 'attendancecol' => $attendancecol, 'rows' => $rows];

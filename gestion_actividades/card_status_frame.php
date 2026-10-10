@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * card_status_frame.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 // Server-rendered, per-user enrolment status for workshop cards.
 
 define('NO_DEBUG_DISPLAY', true);
@@ -49,9 +72,9 @@ html,body{margin:0;padding:0;background:transparent;overflow:hidden;font-family:
 </style>
 </head>
 <body>
-<?php if ($disabled): ?>
+<?php if ($disabled) : ?>
 <span class="ga-status" aria-disabled="true"><?php echo s($label); ?></span>
-<?php else: ?>
+<?php else : ?>
 <a class="ga-status" href="<?php echo $href->out(false); ?>" target="_top"><?php echo s($label); ?></a>
 <?php endif; ?>
 </body>

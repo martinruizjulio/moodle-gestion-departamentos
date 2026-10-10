@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * institutional_import.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -141,7 +164,8 @@ if ($message !== '') {
 }
 if ($error !== '') {
     echo $OUTPUT->notification('No se ha podido procesar el archivo. Revisa el formato y vuelve a intentarlo.', 'error');
-    echo html_writer::tag('details',
+    echo html_writer::tag(
+        'details',
         html_writer::tag('summary', 'Ver detalle técnico') .
         html_writer::tag('pre', s($error), ['class' => 'small mb-0']),
         ['class' => 'alert alert-light border']
@@ -168,8 +192,11 @@ echo html_writer::start_div('card-body');
 echo html_writer::tag('p', 'No hace falta un formato fijo: el sistema busca la fila de encabezados y reconoce las columnas por su nombre, '
     . 'en cualquier orden. Puede haber títulos encima y columnas de más (se ignoran). Se lee la hoja llamada <strong>TODOS</strong> '
     . 'o, si no existe, la primera hoja. Si prefieres no pensarlo, descarga la plantilla y rellénala.');
-echo html_writer::link(new moodle_url('/local/gestion_actividades/institutional_import.php', ['action' => 'template', 'sesskey' => sesskey()]),
-    local_ga_inst_btn_icon('t/download', 'Descargar plantilla de reconocimiento'), ['class' => 'btn btn-outline-primary mb-3']);
+echo html_writer::link(
+    new moodle_url('/local/gestion_actividades/institutional_import.php', ['action' => 'template', 'sesskey' => sesskey()]),
+    local_ga_inst_btn_icon('t/download', 'Descargar plantilla de reconocimiento'),
+    ['class' => 'btn btn-outline-primary mb-3']
+);
 $cols = new html_table();
 $cols->attributes['class'] = 'generaltable table-sm';
 $cols->head = ['Dato', '¿Obligatorio?', 'Encabezados que se reconocen', 'Contenido'];

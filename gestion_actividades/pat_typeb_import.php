@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * pat_typeb_import.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\academic_year;
@@ -34,16 +57,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else if ($action === 'annul') {
             $importid = required_param('importid', PARAM_INT);
             $deleted = pat_typeb::annul_import($importid);
-            redirect(new moodle_url('/local/gestion_actividades/pat_typeb_import.php'),
+            redirect(
+                new moodle_url('/local/gestion_actividades/pat_typeb_import.php'),
                 'Importación anulada: se han eliminado ' . $deleted . ' registro(s) PAT y las horas se han recalculado.',
-                null, \core\output\notification::NOTIFY_SUCCESS);
+                null,
+                \core\output\notification::NOTIFY_SUCCESS
+            );
         }
     } catch (Throwable $e) {
         $error = $e->getMessage();
     }
 }
 if ($token !== '' && !$preview && !$result) {
-    try { $preview = pat_typeb::preview($token); } catch (Throwable $e) { $error = $e->getMessage(); }
+    try {
+        $preview = pat_typeb::preview($token);
+    } catch (Throwable $e) {
+        $error = $e->getMessage();
+    }
 }
 
 $PAGE->set_context($context);
@@ -53,12 +83,16 @@ $PAGE->set_heading('Gestión HEE');
 
 echo $OUTPUT->header();
 echo html_writer::div(
-    html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), '← Volver al panel',
-        ['class' => 'btn local-ga-back-panel mb-3']),
+    html_writer::link(
+        new moodle_url('/local/gestion_actividades/dashboard.php'),
+        '← Volver al panel',
+        ['class' => 'btn local-ga-back-panel mb-3']
+    ),
     'mb-2'
 );
 echo $OUTPUT->heading('Importar talleres Tipo B PAT');
-echo html_writer::tag('p',
+echo html_writer::tag(
+    'p',
     'Importa directamente el Excel exportado por la plataforma de 1.º. Estos talleres PAT son distintos de los Tipo B internos: '
     . 'computan horas cuando el alumno tiene asistencia completa (100) y una nota de cuestionario igual o superior a la mitad de la nota máxima (5 sobre 10, 2,5 sobre 5…). '
     . 'Si el alumno todavía no existe en este Moodle, sus datos quedan guardados y se vincularán cuando aparezca en cursos posteriores.',
@@ -89,8 +123,13 @@ if ($token === '' && !$result) {
     foreach (academic_year::options([$academicyear]) as $year) {
         $opts[$year] = $year . ($year === academic_year::current() ? ' (actual)' : '');
     }
-    echo html_writer::select($opts, 'academicyear', academic_year::normalise($academicyear) ?: academic_year::current(),
-        false, ['class' => 'form-select mb-3', 'required' => 'required']);
+    echo html_writer::select(
+        $opts,
+        'academicyear',
+        academic_year::normalise($academicyear) ?: academic_year::current(),
+        false,
+        ['class' => 'form-select mb-3', 'required' => 'required']
+    );
     echo html_writer::label('Excel exportado por la plataforma', 'patfile');
     echo html_writer::empty_tag('input', [
         'type' => 'file', 'name' => 'patfile', 'id' => 'patfile', 'accept' => '.xlsx',
@@ -104,7 +143,8 @@ if ($token === '' && !$result) {
 
 if ($preview) {
     echo html_writer::tag('h3', 'Talleres detectados', ['class' => 'h4']);
-    echo html_writer::tag('p',
+    echo html_writer::tag(
+        'p',
         'La asistencia del archivo se aplicará a todos los talleres detectados. Indica las horas que corresponde reconocer por cada taller '
         . 'y la nota máxima de su cuestionario. Es apto quien tiene asistencia 100 y al menos la mitad de la nota máxima.',
         ['class' => 'text-muted']
@@ -145,16 +185,23 @@ if ($preview) {
         $t->attributes['class'] = 'generaltable table-sm';
         $t->head = ['Nombre', 'Apellidos', 'Número ID', 'DNI / Departamento', 'Correo', 'Asistencia'];
         $headers = [];
-        foreach ($preview['headers'] as $i => $h) { $headers[core_text::strtolower(trim($h))] = $i; }
-        $idx = static function(array $names) use ($headers): int {
+        foreach ($preview['headers'] as $i => $h) {
+            $headers[core_text::strtolower(trim($h))] = $i;
+        }
+        $idx = static function (array $names) use ($headers): int {
             foreach ($names as $name) {
                 $k = core_text::strtolower(trim($name));
-                if (isset($headers[$k])) { return (int)$headers[$k]; }
+                if (isset($headers[$k])) {
+                    return (int)$headers[$k];
+                }
             }
             return -1;
         };
-        $ni=$idx(['Nombre']); $ai=$idx(['Apellido(s)','Apellidos']); $idi=$idx(['Número de ID','Numero de ID']);
-        $dni=$idx(['Departamento']); $emi=$idx(['Dirección de correo','Direccion de correo']);
+        $ni = $idx(['Nombre']);
+        $ai = $idx(['Apellido(s)', 'Apellidos']);
+        $idi = $idx(['Número de ID', 'Numero de ID']);
+        $dni = $idx(['Departamento']);
+        $emi = $idx(['Dirección de correo', 'Direccion de correo']);
         foreach ($sample as $row) {
             $t->data[] = [
                 $ni >= 0 ? s($row[$ni] ?? '') : '-',

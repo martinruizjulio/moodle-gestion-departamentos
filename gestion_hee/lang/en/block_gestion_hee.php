@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Language strings for block_gestion_hee.
+ *
+ * @package    block_gestion_hee
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Gestión HEE - Student';
@@ -51,3 +74,13 @@ $string['teacherhelproles_title'] = '5. Where to find your workshops';
 $string['teacherhelproles_text'] = 'This block lists your current and finished workshops with their students. You only see and manage the workshops assigned to you; the rest of the course does not change.';
 $string['teacherhelpfooter'] = 'If a student is missing from the list, an activity is not visible or a certificate is not generated, contact the Gestión HEE coordination.';
 $string['privacy:metadata'] = 'The Gestión HEE block does not store personal data. It displays hours and workshops managed by the local_gestion_actividades plugin.';
+$string['transfertypeb_eligible'] = 'You can view and make the available transfers.';
+$string['transfertypeb_info'] = 'Check here the conditions and the workshops that can be transferred.';
+$string['requesttypeb'] = 'Request Type B validation';
+$string['requesttypeb_help'] = 'Upload an external training certificate to request its recognition as a Type B workshop.';
+$string['managerpanel'] = 'Gestión HEE panel';
+$string['noassignedworkshops'] = 'You have no HEE workshops assigned yet. They will appear here once assigned.';
+$string['studenthelpsame'] = 'The student instructions are the same ones students see.';
+$string['teachertoolsintro'] = 'Manage only the HEE workshops assigned to you.';
+$string['activeworkshops'] = 'Current workshops ({$a})';
+$string['finishedworkshops'] = 'My finished workshops ({$a})';

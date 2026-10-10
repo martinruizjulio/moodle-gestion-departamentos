@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Upgrade definitions for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
 
 function local_gestion_actividades_add_index_if_possible($dbman, string $tablename, string $indexname, array $fields): void {
@@ -177,8 +200,10 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071024, 'local', 'gestion_actividades');
     }
 
-    foreach ([2026071027, 2026071028, 2026071029, 2026071030, 2026071031, 2026071032, 2026071033, 2026071034,
-              2026071035, 2026071036, 2026071037, 2026071038, 2026071039, 2026071040, 2026071041, 2026071042] as $version) {
+    foreach (
+        [2026071027, 2026071028, 2026071029, 2026071030, 2026071031, 2026071032, 2026071033, 2026071034,
+              2026071035, 2026071036, 2026071037, 2026071038, 2026071039, 2026071040, 2026071041, 2026071042] as $version
+    ) {
         if ($oldversion < $version) {
             upgrade_plugin_savepoint(true, $version, 'local', 'gestion_actividades');
         }
@@ -282,8 +307,10 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026071053, 'local', 'gestion_actividades');
     }
 
-    foreach ([2026071054, 2026071055, 2026071056, 2026071057, 2026071058, 2026071059, 2026071060, 2026071061,
-              2026071062, 2026071063, 2026071064, 2026071065, 2026071066] as $version) {
+    foreach (
+        [2026071054, 2026071055, 2026071056, 2026071057, 2026071058, 2026071059, 2026071060, 2026071061,
+              2026071062, 2026071063, 2026071064, 2026071065, 2026071066] as $version
+    ) {
         if ($oldversion < $version) {
             upgrade_plugin_savepoint(true, $version, 'local', 'gestion_actividades');
         }
@@ -310,7 +337,8 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             $dbman->create_table($table);
         }
         if (get_config('local_gestion_actividades', 'certificatetemplatehtml') === false) {
-            set_config('certificatetemplatehtml',
+            set_config(
+                'certificatetemplatehtml',
                 '<p>Se certifica que <strong>{alumno}</strong> ha participado y completado satisfactoriamente el taller <strong>{taller}</strong>, realizado el día <strong>{fecha}</strong>, con una duración de <strong>{horas}</strong> horas, dentro del programa de <strong>Talleres Tipo A</strong>.</p>',
                 'local_gestion_actividades'
             );
@@ -919,9 +947,12 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
             $rs = $DB->get_recordset('local_ga_workshop_series', null, '', 'id, datefrom, timecreated, academicyear');
             foreach ($rs as $row) {
                 if (!\local_gestion_actividades\local\academic_year::is_valid((string)$row->academicyear)) {
-                    $DB->set_field('local_ga_workshop_series', 'academicyear',
+                    $DB->set_field(
+                        'local_ga_workshop_series',
+                        'academicyear',
                         \local_gestion_actividades\local\academic_year::for_time((int)$row->datefrom ?: (int)$row->timecreated),
-                        ['id' => $row->id]);
+                        ['id' => $row->id]
+                    );
                 }
             }
             $rs->close();
@@ -1002,15 +1033,24 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
                                              WHERE importid = 0
                                           GROUP BY sourcefile, academicyear");
             foreach ($groups as $g) {
-                $names = $DB->get_fieldset_select('local_ga_typeb_pat', 'DISTINCT workshopname',
-                    'importid = 0 AND sourcefile = ? AND academicyear = ?', [$g->sourcefile, $g->academicyear]);
+                $names = $DB->get_fieldset_select(
+                    'local_ga_typeb_pat',
+                    'DISTINCT workshopname',
+                    'importid = 0 AND sourcefile = ? AND academicyear = ?',
+                    [$g->sourcefile, $g->academicyear]
+                );
                 $batchid = $DB->insert_record('local_ga_typeb_pat_imports', (object)[
                     'filename' => (string)$g->sourcefile, 'academicyear' => (string)$g->academicyear,
                     'workshops' => implode("\n", $names), 'created' => (int)$g->n, 'updated' => 0,
                     'passed' => (int)$g->passed, 'usermodified' => 0, 'timecreated' => (int)$g->t,
                 ]);
-                $DB->set_field_select('local_ga_typeb_pat', 'importid', $batchid,
-                    'importid = 0 AND sourcefile = ? AND academicyear = ?', [$g->sourcefile, $g->academicyear]);
+                $DB->set_field_select(
+                    'local_ga_typeb_pat',
+                    'importid',
+                    $batchid,
+                    'importid = 0 AND sourcefile = ? AND academicyear = ?',
+                    [$g->sourcefile, $g->academicyear]
+                );
             }
         }
         upgrade_plugin_savepoint(true, 2026100595, 'local', 'gestion_actividades');

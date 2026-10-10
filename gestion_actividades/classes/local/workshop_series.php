@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class workshop_series for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\local;
 
 defined('MOODLE_INTERNAL') || die();
@@ -16,8 +39,10 @@ class workshop_series {
 
     public static function ensure_schema(): void {
         global $DB;
-        if (!$DB->get_manager()->table_exists(new \xmldb_table(self::TABLE))
-                || !$DB->get_manager()->table_exists(new \xmldb_table(self::ITEMTABLE))) {
+        if (
+            !$DB->get_manager()->table_exists(new \xmldb_table(self::TABLE))
+                || !$DB->get_manager()->table_exists(new \xmldb_table(self::ITEMTABLE))
+        ) {
             throw new \coding_exception('El esquema de Ediciones de talleres no está instalado. Ejecuta la actualización de Moodle.');
         }
     }
@@ -311,7 +336,8 @@ class workshop_series {
             throw new \RuntimeException(
                 'No se puede borrar esta Edición porque ya contiene datos académicos (' . implode(', ', $evidence) . '). '
                 . 'Usa «Finalizar y ocultar»: conserva inscripciones, asistencia, reflexiones, certificados y horas, '
-                . 'y la mueve al histórico.');
+                . 'y la mueve al histórico.'
+            );
         }
         $columns = $DB->get_columns('local_ga_workshop_editions');
         foreach ($editionids as $editionid) {
@@ -437,8 +463,10 @@ class workshop_series {
 
     /** [start, end] of the second day, or null for one-day talleres. */
     public static function second_day(?\stdClass $item): ?array {
-        if (!$item || empty($item->session2date) || empty($item->session2enddate)
-                || (int)$item->session2enddate <= (int)$item->session2date) {
+        if (
+            !$item || empty($item->session2date) || empty($item->session2enddate)
+                || (int)$item->session2enddate <= (int)$item->session2date
+        ) {
             return null;
         }
         return [(int)$item->session2date, (int)$item->session2enddate];
@@ -549,10 +577,12 @@ class workshop_series {
             $subsectioncmid = (int)($item->subsectioncmid ?? 0);
             $subsectionsectionid = (int)($item->subsectionsectionid ?? 0);
 
-            if ($subsectioncmid > 0 && $DB->record_exists('course_modules', [
+            if (
+                $subsectioncmid > 0 && $DB->record_exists('course_modules', [
                     'id' => $subsectioncmid,
                     'course' => $courseid,
-                ])) {
+                ])
+            ) {
                 $delegated = $subsectionsectionid > 0
                     ? $DB->get_record('course_sections', [
                         'id' => $subsectionsectionid,
@@ -1101,11 +1131,11 @@ class workshop_series {
             return;
         }
         $current = array_values(array_filter(array_map('intval', explode(',', (string)$section->sequence))));
-        $wanted = array_values(array_filter(array_map('intval', $orderedcmids), static function(int $cmid) use ($current): bool {
+        $wanted = array_values(array_filter(array_map('intval', $orderedcmids), static function (int $cmid) use ($current): bool {
             return in_array($cmid, $current, true);
         }));
         $wanted = array_values(array_unique($wanted));
-        $rest = array_values(array_filter($current, static function(int $cmid) use ($wanted): bool {
+        $rest = array_values(array_filter($current, static function (int $cmid) use ($wanted): bool {
             return !in_array($cmid, $wanted, true);
         }));
         $sequence = array_merge($wanted, $rest);
@@ -1217,8 +1247,10 @@ class workshop_series {
 
             // Remove the separate enrolment label created by 1.5.129 so an
             // upgraded course does not keep a confusing box between workshops.
-            if ($DB->record_exists('modules', ['name' => 'label'])
-                    && $DB->get_manager()->table_exists(new \xmldb_table('label'))) {
+            if (
+                $DB->record_exists('modules', ['name' => 'label'])
+                    && $DB->get_manager()->table_exists(new \xmldb_table('label'))
+            ) {
                 $marker = 'HEE_ENROL_EDITION_' . (int)$edition->id;
                 $oldcmid = (int)$DB->get_field_sql(
                     "SELECT cm.id
@@ -1286,8 +1318,10 @@ class workshop_series {
                 if ($editionseries > 0 && $editionseries !== (int)$series->id) {
                     continue;
                 }
-                if ($editionseries === 0 && ((int)$edition->sessiondate < (int)$series->datefrom
-                        || (int)$edition->sessiondate > (int)$series->dateto)) {
+                if (
+                    $editionseries === 0 && ((int)$edition->sessiondate < (int)$series->datefrom
+                        || (int)$edition->sessiondate > (int)$series->dateto)
+                ) {
                     continue;
                 }
             }

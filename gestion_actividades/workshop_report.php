@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * workshop_report.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -124,8 +147,10 @@ $editions = $DB->get_records_sql(
   LEFT JOIN {course} c ON c.id = w.courseid
    ORDER BY c.fullname ASC, w.name ASC, e.sessiondate DESC, e.id DESC"
 );
-$editions = array_filter($editions, static fn($e) => academic_year::matches($ay,
-    academic_year::for_row((int)($e->seriesid ?? 0), (int)($e->sessiondate ?? 0))));
+$editions = array_filter($editions, static fn($e) => academic_year::matches(
+    $ay,
+    academic_year::for_row((int)($e->seriesid ?? 0), (int)($e->sessiondate ?? 0))
+));
 
 $reportrows = [];
 if ($selected) {
@@ -211,7 +236,8 @@ if (!$editions) {
 echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'card mb-4']);
 echo html_writer::start_div('card-body');
 echo html_writer::tag('h3', 'Seleccionar talleres', ['class' => 'h5']);
-echo html_writer::tag('div',
+echo html_writer::tag(
+    'div',
     html_writer::tag('button', 'Seleccionar todos', ['type' => 'button', 'class' => 'btn btn-outline-secondary btn-sm me-2', 'id' => 'ga-select-all']) .
     html_writer::tag('button', 'Quitar selección', ['type' => 'button', 'class' => 'btn btn-outline-secondary btn-sm', 'id' => 'ga-clear-all']),
     ['class' => 'mb-3']

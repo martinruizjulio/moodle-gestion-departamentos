@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Language strings for block_gestion_hee.
+ *
+ * @package    block_gestion_hee
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Gestión HEE - Alumno';
@@ -51,3 +74,13 @@ $string['teacherhelproles_title'] = '5. Dónde ver tus talleres';
 $string['teacherhelproles_text'] = 'En este bloque tienes «Talleres vigentes» y «Mis talleres finalizados» con su alumnado y su seguimiento. Los talleres finalizados siguen siendo revisables para correcciones académicas. Solo ves y gestionas los talleres que tienes asignados; el resto de la asignatura no cambia. Los talleres Tipo B PAT de 1.º se importan de forma histórica por Gestión HEE y no forman parte de la gestión del Profesor HEE.';
 $string['teacherhelpfooter'] = 'Si un alumno no aparece en la lista, una actividad no se ve o un certificado no se genera, contacta con la coordinación de Gestión HEE.';
 $string['privacy:metadata'] = 'El bloque Gestión HEE no almacena datos personales. Muestra horas y talleres gestionados por el plugin local_gestion_actividades.';
+$string['transfertypeb_eligible'] = 'Puedes consultar y realizar los traspasos disponibles.';
+$string['transfertypeb_info'] = 'Consulta aquí las condiciones y los talleres que pueden traspasarse.';
+$string['requesttypeb'] = 'Solicitar validación Tipo B';
+$string['requesttypeb_help'] = 'Sube un certificado de formación externa para solicitar su reconocimiento como Taller Tipo B.';
+$string['managerpanel'] = 'Panel de Gestión HEE';
+$string['noassignedworkshops'] = 'Todavía no tienes talleres HEE asignados. Cuando se te asigne uno aparecerá aquí.';
+$string['studenthelpsame'] = 'Las instrucciones para alumnos son las mismas que ve el alumnado.';
+$string['teachertoolsintro'] = 'Gestiona únicamente los talleres HEE que tienes asignados.';
+$string['activeworkshops'] = 'Talleres vigentes ({$a})';
+$string['finishedworkshops'] = 'Mis talleres finalizados ({$a})';

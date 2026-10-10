@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * my_workshops.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -8,8 +31,10 @@ $view = optional_param('view', 'active', PARAM_ALPHA);
 $courseid = optional_param('courseid', 0, PARAM_INT);
 if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
     $SESSION->local_ga_return_courseid = $courseid;
-} else if ($courseid <= 0 && !empty($SESSION->local_ga_return_courseid)
-        && $DB->record_exists('course', ['id' => (int)$SESSION->local_ga_return_courseid])) {
+} else if (
+    $courseid <= 0 && !empty($SESSION->local_ga_return_courseid)
+        && $DB->record_exists('course', ['id' => (int)$SESSION->local_ga_return_courseid])
+) {
     $courseid = (int)$SESSION->local_ga_return_courseid;
 }
 $view = $view === 'finished' ? 'finished' : 'active';
@@ -59,9 +84,11 @@ $backurl = $courseid > 0
     : new moodle_url('/my/');
 $backlabel = $courseid > 0 ? 'Volver al curso' : 'Volver a mis cursos';
 echo html_writer::div(
-    html_writer::link($backurl,
+    html_writer::link(
+        $backurl,
         $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $backlabel,
-        ['class' => 'btn btn-outline-secondary mb-3']),
+        ['class' => 'btn btn-outline-secondary mb-3']
+    ),
     'mb-2'
 );
 echo $OUTPUT->heading($view === 'finished' ? 'Profesor HEE · Mis talleres finalizados' : 'Profesor HEE · Mis talleres vigentes');
@@ -72,10 +99,16 @@ echo html_writer::tag(
 );
 
 echo html_writer::start_div('mb-3');
-echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php', array_filter(['view' => 'active', 'courseid' => $courseid])),
-    'Talleres vigentes', ['class' => 'btn ' . ($view === 'active' ? 'btn-primary' : 'btn-outline-secondary') . ' me-2']);
-echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php', array_filter(['view' => 'finished', 'courseid' => $courseid])),
-    'Mis talleres finalizados', ['class' => 'btn ' . ($view === 'finished' ? 'btn-primary' : 'btn-outline-secondary')]);
+echo html_writer::link(
+    new moodle_url('/local/gestion_actividades/my_workshops.php', array_filter(['view' => 'active', 'courseid' => $courseid])),
+    'Talleres vigentes',
+    ['class' => 'btn ' . ($view === 'active' ? 'btn-primary' : 'btn-outline-secondary') . ' me-2']
+);
+echo html_writer::link(
+    new moodle_url('/local/gestion_actividades/my_workshops.php', array_filter(['view' => 'finished', 'courseid' => $courseid])),
+    'Mis talleres finalizados',
+    ['class' => 'btn ' . ($view === 'finished' ? 'btn-primary' : 'btn-outline-secondary')]
+);
 echo html_writer::end_div();
 
 if (!$rows) {

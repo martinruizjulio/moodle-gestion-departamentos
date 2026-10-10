@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * test_cleanup.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -72,7 +95,8 @@ echo html_writer::div(
 );
 
 echo $OUTPUT->heading('Limpieza de datos de prueba HEE');
-echo html_writer::tag('p',
+echo html_writer::tag(
+    'p',
     'Herramienta destructiva para reiniciar las pruebas de Talleres/Ediciones de un curso. '
     . 'Borra talleres, Ediciones, inscripciones, grupos HEE, horas/certificados/reflexiones internos y las actividades Moodle propias de cada edición. '
     . 'Las actividades vinculadas que no son propias de una sola edición (asistencia o certificado del curso, actividades compartidas, autoevaluación) se conservan; '
@@ -182,7 +206,8 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
     $preview = new html_table();
     $preview->attributes['class'] = 'generaltable table-sm';
     $preview->head = ['Dato HEE', 'Cantidad'];
-    foreach ([
+    foreach (
+        [
         'Ediciones de talleres' => $summary->series,
         'Talleres' => $summary->workshops,
         'Ediciones concretas' => $summary->editions,
@@ -193,7 +218,8 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
         'Entregas' => $summary->submissions,
         'Traspasos' => $summary->transfers,
         'Grupos de Edición' => $summary->groups,
-    ] + ($seriesid > 0 ? [] : ['Estructuras HEE huérfanas en el curso' => $summary->orphanstructures]) as $label => $value) {
+        ] + ($seriesid > 0 ? [] : ['Estructuras HEE huérfanas en el curso' => $summary->orphanstructures]) as $label => $value
+    ) {
         $preview->data[] = [$label, (int)$value];
     }
     echo html_writer::table($preview);
@@ -202,7 +228,8 @@ if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
         echo $OUTPUT->notification('No hay datos ni estructuras HEE que limpiar en este curso.', 'info');
     } else {
         $expected = $scope === 'all' ? 'BORRAR TODO' : 'BORRAR PRUEBAS';
-        echo html_writer::tag('p',
+        echo html_writer::tag(
+            'p',
             'Esta acción es irreversible. Se borrará <strong>' . $scopelabel . '</strong>. Para confirmar, escribe exactamente <strong>'
                 . $expected . '</strong>.',
             ['class' => 'alert alert-danger']

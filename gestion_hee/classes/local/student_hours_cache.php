@@ -1,15 +1,60 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class student_hours_cache for block_gestion_hee.
+ *
+ * @package    block_gestion_hee
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace block_gestion_hee\local;
 
-defined('MOODLE_INTERNAL') || die();
-
+/**
+ * Short-lived cache of the hour summary shown to students in the block.
+ */
 class student_hours_cache {
+    /**
+     * Seconds a cached hour summary is considered fresh.
+     */
     private const HOURS_FRESH_TTL = 300;
+    /**
+     * Seconds the detected database schema is cached.
+     */
     private const SCHEMA_CACHE_TTL = 3600;
+    /**
+     * Hours required to complete HEE.
+     */
     private const TARGET_HOURS = 54.0;
+    /**
+     * Seconds to wait for the recalculation lock.
+     */
     private const LOCK_TIMEOUT_SECONDS = 1;
+    /**
+     * Prefix of the lock resource name.
+     */
     private const LOCK_RESOURCE_PREFIX = 'student_hours_';
 
+    /**
+     * Return the cached summary, recalculating it when it is stale.
+     *
+     * @param int $userid
+     * @return array
+     */
     public static function get_summary(int $userid): array {
         $userid = max(0, $userid);
         if ($userid <= 0) {
@@ -55,7 +100,7 @@ class student_hours_cache {
             $cache->set($key, $summary);
             return $summary;
         } catch (\Throwable $e) {
-            self::debug_error('No se han podido calcular las horas del bloque Gestión HEE.', $e);
+            self::debug_error('Could not calculate the Gestión HEE block hours.', $e);
             if (is_array($cached) && self::is_valid_summary($cached)) {
                 $cached['stale'] = true;
                 return $cached;
@@ -70,7 +115,7 @@ class student_hours_cache {
                     $lock->release();
                 } catch (\Throwable $e) {
                     self::debug_error(
-                        'No se ha podido liberar el lock del bloque Gestión HEE.',
+                        'Could not release the Gestión HEE block lock.',
                         $e
                     );
                 }
@@ -78,6 +123,11 @@ class student_hours_cache {
         }
     }
 
+    /**
+     * Invalidate the cached summary of one user.
+     *
+     * @param int $userid
+     */
     public static function invalidate_user(int $userid): void {
         $userid = max(0, $userid);
         if ($userid <= 0) {
@@ -86,29 +136,40 @@ class student_hours_cache {
         try {
             \cache::make('block_gestion_hee', 'student_hours')->delete(self::user_key($userid));
         } catch (\Throwable $e) {
-            self::debug_error('No se ha podido invalidar la caché de usuario del bloque Gestión HEE.', $e);
+            self::debug_error('Could not invalidate the Gestión HEE block user cache.', $e);
         }
     }
 
+    /**
+     * Invalidate the cached summaries of several users.
+     *
+     * @param array $userids
+     */
     public static function invalidate_users(array $userids): void {
         foreach (array_unique(array_map('intval', $userids)) as $userid) {
             self::invalidate_user($userid);
         }
     }
 
+    /**
+     * Invalidate every cached hour summary.
+     */
     public static function invalidate_all(): void {
         try {
             \cache::make('block_gestion_hee', 'student_hours')->purge();
         } catch (\Throwable $e) {
-            self::debug_error('No se ha podido purgar la caché de horas del bloque Gestión HEE.', $e);
+            self::debug_error('Could not purge the Gestión HEE block hours cache.', $e);
         }
     }
 
+    /**
+     * Invalidate the cached schema information.
+     */
     public static function invalidate_schema(): void {
         try {
             \cache::make('block_gestion_hee', 'schema')->purge();
         } catch (\Throwable $e) {
-            self::debug_error('No se ha podido purgar la caché de esquema del bloque Gestión HEE.', $e);
+            self::debug_error('Could not purge the Gestión HEE block schema cache.', $e);
         }
     }
 
@@ -166,7 +227,8 @@ class student_hours_cache {
             $historycolumns = $hashistory ? $DB->get_columns('local_ga_hour_history') : [];
             $candedupe = $hashistory && isset($certcolumns['editionid']) && isset($historycolumns['editionid']);
             $notexists = $candedupe
-                ? ' AND NOT EXISTS (SELECT 1 FROM {local_ga_hour_history} h WHERE h.userid = c.userid AND h.editionid = c.editionid)'
+                ? ' AND NOT EXISTS (SELECT 1 FROM {local_ga_hour_history} h'
+                    . ' WHERE h.userid = c.userid AND h.editionid = c.editionid)'
                 : '';
             $typeafilter = isset($certcolumns['certificatetype'])
                 ? " AND (c.certificatetype = 'typea' OR c.certificatetype IS NULL OR c.certificatetype = '')"
@@ -229,10 +291,18 @@ class student_hours_cache {
         return self::build_summary($typeahours, $typebhours);
     }
 
+    /**
+     * Detect which tables and columns of local_gestion_actividades are available.
+     *
+     * @return array
+     */
     private static function get_schema(): array {
         $cache = \cache::make('block_gestion_hee', 'schema');
         $cached = $cache->get('tables');
-        if (is_array($cached) && !empty($cached['timecreated']) && (time() - (int)$cached['timecreated']) <= self::SCHEMA_CACHE_TTL) {
+        if (
+            is_array($cached) && !empty($cached['timecreated'])
+                && (time() - (int)$cached['timecreated']) <= self::SCHEMA_CACHE_TTL
+        ) {
             return $cached;
         }
 
@@ -251,6 +321,13 @@ class student_hours_cache {
         return $schema;
     }
 
+    /**
+     * Build the summary array returned to the block.
+     *
+     * @param float $typeahours
+     * @param float $typebhours
+     * @return array
+     */
     private static function build_summary(float $typeahours, float $typebhours): array {
         $typeahours = round(max(0.0, $typeahours), 2);
         $typebhours = round(max(0.0, $typebhours), 2);
@@ -269,16 +346,33 @@ class student_hours_cache {
         ];
     }
 
+    /**
+     * Summary used when there is no data.
+     *
+     * @return array
+     */
     private static function empty_summary(): array {
         return self::build_summary(0.0, 0.0);
     }
 
+    /**
+     * Whether a cached hour summary is still fresh.
+     *
+     * @param mixed $summary
+     * @return bool
+     */
     private static function is_fresh_summary($summary): bool {
         return self::is_valid_summary($summary)
             && !empty($summary['timecreated'])
             && (time() - (int)$summary['timecreated']) <= self::HOURS_FRESH_TTL;
     }
 
+    /**
+     * Whether a cached value has the expected structure.
+     *
+     * @param mixed $summary
+     * @return bool
+     */
     private static function is_valid_summary($summary): bool {
         return is_array($summary)
             && array_key_exists('typeahours', $summary)
@@ -287,10 +381,22 @@ class student_hours_cache {
             && array_key_exists('remaining', $summary);
     }
 
+    /**
+     * Cache key for a user.
+     *
+     * @param int $userid
+     * @return string
+     */
     private static function user_key(int $userid): string {
         return 'u' . $userid;
     }
 
+    /**
+     * Report an error to developers without breaking the page.
+     *
+     * @param string $message
+     * @param \Throwable $e
+     */
     private static function debug_error(string $message, \Throwable $e): void {
         if (function_exists('debugging')) {
             debugging($message . ' ' . $e->getMessage(), DEBUG_DEVELOPER);

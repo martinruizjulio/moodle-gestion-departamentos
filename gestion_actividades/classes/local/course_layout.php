@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class course_layout for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\local;
 
 defined('MOODLE_INTERNAL') || die();
@@ -29,7 +52,7 @@ class course_layout {
                   JOIN {local_ga_workshops} w ON w.id = i.workshopid
                  WHERE i.seriesid = :seriesid";
         $types = array_values($DB->get_fieldset_sql($sql, ['seriesid' => $seriesid]));
-        $types = array_values(array_unique(array_map(static function($type): string {
+        $types = array_values(array_unique(array_map(static function ($type): string {
             return (string)$type === 'typeb' ? 'typeb' : 'typea';
         }, $types)));
         if (!$types) {
@@ -62,8 +85,10 @@ class course_layout {
         if ($courseid <= 0 || !$DB->record_exists('course', ['id' => $courseid])) {
             return;
         }
-        if (!$DB->get_manager()->table_exists(new \xmldb_table(workshop_series::TABLE))
-                || !$DB->get_manager()->table_exists(new \xmldb_table(workshop_series::ITEMTABLE))) {
+        if (
+            !$DB->get_manager()->table_exists(new \xmldb_table(workshop_series::TABLE))
+                || !$DB->get_manager()->table_exists(new \xmldb_table(workshop_series::ITEMTABLE))
+        ) {
             return;
         }
         require_once($CFG->dirroot . '/course/lib.php');
@@ -122,8 +147,8 @@ class course_layout {
             }
         }
 
-        $sort = static function(array &$entries): void {
-            usort($entries, static function($a, $b): int {
+        $sort = static function (array &$entries): void {
+            usort($entries, static function ($a, $b): int {
                 if ($a->datefrom !== $b->datefrom) {
                     return $b->datefrom <=> $a->datefrom;
                 }
@@ -173,8 +198,10 @@ class course_layout {
         if (array_key_exists('component', $DB->get_columns('course_sections'))) {
             $where .= ' AND component IS NULL';
         }
-        return (int)$DB->get_field_sql('SELECT COALESCE(MAX(section), 0) FROM {course_sections} WHERE ' . $where,
-            ['courseid' => $courseid]);
+        return (int)$DB->get_field_sql(
+            'SELECT COALESCE(MAX(section), 0) FROM {course_sections} WHERE ' . $where,
+            ['courseid' => $courseid]
+        );
     }
 
     private static function series_label(\stdClass $series, string $type, bool $history): string {

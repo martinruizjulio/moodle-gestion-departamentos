@@ -1,31 +1,68 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * lib.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 // Library callbacks for Gestion_actividades.
 
 defined('MOODLE_INTERNAL') || die();
 
 
 function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
-    if (!in_array($filearea, ['material', 'certificate', 'taskfile', 'tasksubmission'], true)) { return false; }
-    if ($context->contextlevel != CONTEXT_COURSE) { return false; }
+    if (!in_array($filearea, ['material', 'certificate', 'taskfile', 'tasksubmission'], true)) {
+        return false;
+    }
+    if ($context->contextlevel != CONTEXT_COURSE) {
+        return false;
+    }
     require_login($course);
     global $USER, $DB;
-    if (empty($args)) { return false; }
+    if (empty($args)) {
+        return false;
+    }
     $itemidpeek = (int)$args[0];
     $courseid = (int)$context->instanceid;
 
     if ($filearea === 'certificate') {
         $cert = $itemidpeek ? $DB->get_record('local_ga_certificates', ['id' => $itemidpeek], '*', IGNORE_MISSING) : false;
-        if (!$cert || (int)$cert->courseid !== $courseid) { return false; }
+        if (!$cert || (int)$cert->courseid !== $courseid) {
+            return false;
+        }
         $canmanage = \local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id)
             || (!empty($cert->editionid) && \local_gestion_actividades\local\manager::can_manage_edition((int)$cert->editionid, (int)$USER->id));
-        if ((int)$cert->userid !== (int)$USER->id && !$canmanage) { return false; }
+        if ((int)$cert->userid !== (int)$USER->id && !$canmanage) {
+            return false;
+        }
     }
 
     if ($filearea === 'material') {
         $mat = $itemidpeek ? $DB->get_record('local_ga_materials', ['fileitemid' => $itemidpeek], '*', IGNORE_MISSING) : false;
-        if (!$mat) { return false; }
+        if (!$mat) {
+            return false;
+        }
         $workshop = $DB->get_record('local_ga_workshops', ['id' => (int)$mat->workshopid], '*', IGNORE_MISSING);
-        if (!$workshop || (int)$workshop->courseid !== $courseid) { return false; }
+        if (!$workshop || (int)$workshop->courseid !== $courseid) {
+            return false;
+        }
         $editionid = !empty($mat->editionid) ? (int)$mat->editionid : 0;
         if ($editionid > 0) {
             if (!\local_gestion_actividades\local\manager::user_can_access_workshop_resources($editionid, (int)$USER->id)) {
@@ -43,20 +80,32 @@ function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea,
 
     if ($filearea === 'taskfile') {
         $edition = $DB->get_record('local_ga_workshop_editions', ['taskfileitemid' => $itemidpeek], '*', IGNORE_MULTIPLE);
-        if (!$edition) { return false; }
-        if ((int)$DB->get_field('local_ga_workshops', 'courseid', ['id' => (int)$edition->workshopid]) !== $courseid) { return false; }
-        if (!\local_gestion_actividades\local\manager::can_manage_edition((int)$edition->id, (int)$USER->id)
-                && !\local_gestion_actividades\local\manager::user_can_access_workshop_resources((int)$edition->id, (int)$USER->id)) {
+        if (!$edition) {
+            return false;
+        }
+        if ((int)$DB->get_field('local_ga_workshops', 'courseid', ['id' => (int)$edition->workshopid]) !== $courseid) {
+            return false;
+        }
+        if (
+            !\local_gestion_actividades\local\manager::can_manage_edition((int)$edition->id, (int)$USER->id)
+                && !\local_gestion_actividades\local\manager::user_can_access_workshop_resources((int)$edition->id, (int)$USER->id)
+        ) {
             return false;
         }
     }
 
     if ($filearea === 'tasksubmission') {
         $submission = $DB->get_record('local_ga_task_submissions', ['fileitemid' => $itemidpeek], '*', IGNORE_MISSING);
-        if (!$submission) { return false; }
+        if (!$submission) {
+            return false;
+        }
         $edition = $DB->get_record('local_ga_workshop_editions', ['id' => (int)$submission->editionid], '*', IGNORE_MISSING);
-        if (!$edition) { return false; }
-        if ((int)$DB->get_field('local_ga_workshops', 'courseid', ['id' => (int)$edition->workshopid]) !== $courseid) { return false; }
+        if (!$edition) {
+            return false;
+        }
+        if ((int)$DB->get_field('local_ga_workshops', 'courseid', ['id' => (int)$edition->workshopid]) !== $courseid) {
+            return false;
+        }
         $canmanage = \local_gestion_actividades\local\manager::can_manage_edition((int)$edition->id, (int)$USER->id);
         if (!$canmanage && (int)$submission->userid !== (int)$USER->id) {
             return false;
@@ -68,11 +117,15 @@ function local_gestion_actividades_pluginfile($course, $cm, $context, $filearea,
     $filepath = empty($args) ? '/' : '/' . implode('/', $args) . '/';
     $fs = get_file_storage();
     $file = $fs->get_file($context->id, 'local_gestion_actividades', $filearea, $itemid, $filepath, $filename);
-    if (!$file || $file->is_directory()) { return false; }
+    if (!$file || $file->is_directory()) {
+        return false;
+    }
     // Task submissions are uploaded by students: never render active content
     // (HTML/SVG/...) inline in the Moodle origin.
-    if ($filearea === 'tasksubmission'
-            && !in_array($file->get_mimetype(), ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'], true)) {
+    if (
+        $filearea === 'tasksubmission'
+            && !in_array($file->get_mimetype(), ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'], true)
+    ) {
         $forcedownload = true;
     }
     send_stored_file($file, 0, 0, $forcedownload, $options);
@@ -524,8 +577,10 @@ function local_gestion_actividades_require_card_status_v2(int $courseid): void {
  * its plain link to the workshop page.
  */
 function local_gestion_actividades_card_script(int $courseid): string {
-    $status = json_encode((new moodle_url('/local/gestion_actividades/card_status.php', ['courseid' => $courseid]))->out(false),
-        JSON_UNESCAPED_SLASHES);
+    $status = json_encode(
+        (new moodle_url('/local/gestion_actividades/card_status.php', ['courseid' => $courseid]))->out(false),
+        JSON_UNESCAPED_SLASHES
+    );
     $toggle = json_encode((new moodle_url('/local/gestion_actividades/enrol_toggle.php'))->out(false), JSON_UNESCAPED_SLASHES);
     $js = <<<'JS'
 (function(){"use strict";
@@ -644,8 +699,10 @@ function local_gestion_actividades_require_card_status_js(int $courseid): void {
  */
 function local_gestion_actividades_before_http_headers(): void {
     global $PAGE;
-    if (!isloggedin() || isguestuser() || empty($PAGE->course->id)
-            || strpos((string)$PAGE->pagetype, 'course-view') !== 0) {
+    if (
+        !isloggedin() || isguestuser() || empty($PAGE->course->id)
+            || strpos((string)$PAGE->pagetype, 'course-view') !== 0
+    ) {
         return;
     }
     $PAGE->requires->js_call_amd('local_gestion_actividades/card_status', 'init', [(int)$PAGE->course->id]);
@@ -674,8 +731,10 @@ function local_gestion_actividades_before_footer(): void {
 function local_gestion_actividades_before_standard_html_head(): string {
     global $PAGE;
 
-    if (strpos((string)$PAGE->pagetype, 'course-view') !== 0 || empty($PAGE->course->id)
-            || !isloggedin() || isguestuser()) {
+    if (
+        strpos((string)$PAGE->pagetype, 'course-view') !== 0 || empty($PAGE->course->id)
+            || !isloggedin() || isguestuser()
+    ) {
         return '';
     }
     return '<script>' . local_gestion_actividades_card_script((int)$PAGE->course->id) . '</script>';
@@ -688,8 +747,10 @@ function local_gestion_actividades_before_standard_html_head(): string {
 function local_gestion_actividades_before_standard_footer_html(): string {
     global $PAGE;
 
-    if (strpos((string)$PAGE->pagetype, 'course-view') !== 0 || empty($PAGE->course->id)
-            || !isloggedin() || isguestuser()) {
+    if (
+        strpos((string)$PAGE->pagetype, 'course-view') !== 0 || empty($PAGE->course->id)
+            || !isloggedin() || isguestuser()
+    ) {
         return '';
     }
     // Same guarded script: a no-op when the head callback already installed it.

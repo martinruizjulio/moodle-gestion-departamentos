@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * grades_report.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\grade_manager;
@@ -27,8 +50,11 @@ if ($courseid > 0 && !$course) {
 if ($course && data_submitted() && confirm_sesskey()) {
     $action = optional_param('action', '', PARAM_ALPHANUMEXT);
     if ($action === 'create_quiz') {
-        $cmid = selfassessment_quiz::create_and_link((int)$course->id, (int)$USER->id,
-            optional_param('replace', 0, PARAM_BOOL));
+        $cmid = selfassessment_quiz::create_and_link(
+            (int)$course->id,
+            (int)$USER->id,
+            optional_param('replace', 0, PARAM_BOOL)
+        );
         grade_manager::get_course_grade_rows((int)$course->id, true);
         redirect(
             new moodle_url('/local/gestion_actividades/grades_report.php', ['courseid' => $course->id]),
@@ -42,8 +68,12 @@ if ($course && data_submitted() && confirm_sesskey()) {
         try {
             grade_manager::save_selfassessment_quiz((int)$course->id, $cmid, (int)$USER->id);
         } catch (\invalid_parameter_exception $e) {
-            redirect(new moodle_url('/local/gestion_actividades/grades_report.php', ['courseid' => $course->id]),
-                $e->debuginfo ?: $e->getMessage(), null, \core\output\notification::NOTIFY_ERROR);
+            redirect(
+                new moodle_url('/local/gestion_actividades/grades_report.php', ['courseid' => $course->id]),
+                $e->debuginfo ?: $e->getMessage(),
+                null,
+                \core\output\notification::NOTIFY_ERROR
+            );
         }
         grade_manager::get_course_grade_rows((int)$course->id, true);
         redirect(

@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * workshop_edit.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\course_layout;
@@ -50,8 +73,12 @@ if (data_submitted() && confirm_sesskey()) {
     if (!$record && $postseriesid <= 0) {
         // Every new taller must belong to an Edición: that is what gives it its
         // own group, attendance list, quiz/reflection and enrol button.
-        throw new moodle_exception('invaliddata', 'error', '',
-            'Crea el taller desde su Edición de talleres («Añadir taller») o mediante la importación Excel.');
+        throw new moodle_exception(
+            'invaliddata',
+            'error',
+            '',
+            'Crea el taller desde su Edición de talleres («Añadir taller») o mediante la importación Excel.'
+        );
     }
     if ($postseriesid > 0) {
         course_layout::assert_series_accepts_type($postseriesid, $workshoptype);
@@ -68,8 +95,12 @@ if (data_submitted() && confirm_sesskey()) {
     ];
     if (!$record && $postseriesid > 0) {
         // Same rule as the Excel import: TA-E12-03 / TB-E12-03.
-        $data->code = manager::series_workshop_code($workshoptype, $postseriesid,
-            $postsortorder > 0 ? $postsortorder : workshop_series::next_sortorder($postseriesid), $selectedcourseid);
+        $data->code = manager::series_workshop_code(
+            $workshoptype,
+            $postseriesid,
+            $postsortorder > 0 ? $postsortorder : workshop_series::next_sortorder($postseriesid),
+            $selectedcourseid
+        );
     }
     $savedworkshopid = manager::save_workshop($data);
     if ($postseriesid > 0) {

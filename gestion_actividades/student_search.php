@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * student_search.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 // Buscar alumno: ficha completa con todo su historial HEE (talleres,
 // asistencia, calificaciones, certificados, Tipo B externo, traspasos y
 // reconocimiento institucional) para comprobar si falta algo. Consulta por defecto; los botones Editar abren los controles canónicos.
@@ -91,7 +114,8 @@ echo $OUTPUT->header();
 echo html_writer::div(
     html_writer::link(new moodle_url('/local/gestion_actividades/dashboard.php'), local_ga_ss_icon('t/left', 'Volver al panel'), ['class' => 'btn local-ga-back-panel me-2 mb-3'])
     . ($userid > 0 && $q !== '' ? html_writer::link(new moodle_url('/local/gestion_actividades/student_search.php', ['q' => $q]), local_ga_ss_icon('t/left', 'Volver a resultados'), ['class' => 'btn local-ga-back-panel mb-3']) : ''),
-    'mb-2');
+    'mb-2'
+);
 echo $OUTPUT->heading('Buscar alumno');
 echo html_writer::tag('p', 'Busca un alumno por nombre, apellidos, correo o DNI/ID para ver todo su historial HEE en una sola página: '
     . 'talleres en los que se inscribió (asistencia, calificación y resultado), certificados, Tipo B externo, traspasos, reconocimiento institucional y total de horas. '
@@ -102,7 +126,9 @@ echo html_writer::div(
     html_writer::empty_tag('input', ['type' => 'text', 'name' => 'q', 'value' => $q, 'class' => 'form-control',
         'placeholder' => 'Nombre, apellidos, correo o DNI', 'autofocus' => 'autofocus', 'aria-label' => 'Buscar alumno'])
     . html_writer::tag('button', local_ga_ss_icon('a/search', 'Buscar'), ['type' => 'submit', 'class' => 'btn btn-primary']),
-    'input-group', ['style' => 'max-width:640px']);
+    'input-group',
+    ['style' => 'max-width:640px']
+);
 echo html_writer::end_tag('form');
 
 // Search results.
@@ -123,8 +149,15 @@ if ($userid <= 0 && $q !== '') {
         }
         $conds[] = '(' . implode(' OR ', $or) . ')';
     }
-    $users = $conds ? $DB->get_records_select('user', 'deleted = 0 AND id > 1 AND ' . implode(' AND ', $conds), $params,
-        'lastname ASC, firstname ASC', 'id, firstname, lastname, email, idnumber', 0, 100) : [];
+    $users = $conds ? $DB->get_records_select(
+        'user',
+        'deleted = 0 AND id > 1 AND ' . implode(' AND ', $conds),
+        $params,
+        'lastname ASC, firstname ASC',
+        'id, firstname, lastname, email, idnumber',
+        0,
+        100
+    ) : [];
     if (count($users) === 1) {
         $userid = (int)reset($users)->id;
     } else if ($users) {
@@ -137,8 +170,11 @@ if ($userid <= 0 && $q !== '') {
             $table->data[] = [s($u->lastname), s($u->firstname), s($u->email), s($u->idnumber ?: '-'),
                 s(local_gestion_actividades_student_group((int)$u->id)),
                 format_float((float)$h->totalhours, 2, true) . ' h',
-                html_writer::link(new moodle_url('/local/gestion_actividades/student_search.php', ['userid' => $u->id, 'q' => $q]),
-                    local_ga_ss_icon('i/search', 'Ver historial'), ['class' => 'btn btn-sm btn-primary'])];
+                html_writer::link(
+                    new moodle_url('/local/gestion_actividades/student_search.php', ['userid' => $u->id, 'q' => $q]),
+                    local_ga_ss_icon('i/search', 'Ver historial'),
+                    ['class' => 'btn btn-sm btn-primary']
+                )];
         }
         echo html_writer::table($table);
     } else {
@@ -156,7 +192,7 @@ if ($user) {
     echo html_writer::div(s($user->email) . ($user->idnumber ? ' · DNI/ID: ' . s($user->idnumber) : '')
         . ' · Grupo: ' . s(local_gestion_actividades_student_group((int)$user->id))
         . ' · Cursos con actividad: ' . s(academic_year::user_years_text((int)$user->id)), 'text-muted mb-3');
-    $kpi = static function(string $label, float $value, string $style = ''): string {
+    $kpi = static function (string $label, float $value, string $style = ''): string {
         return html_writer::div(html_writer::div(s($label), 'small text-muted')
             . html_writer::div(format_float($value, 2, true) . ' h', 'h4 mb-0'), 'border rounded p-2 me-2 mb-2', ['style' => 'min-width:150px;' . $style]);
     };
@@ -165,13 +201,15 @@ if ($user) {
         . $kpi('Horas Tipo B', (float)$hours->typebhours)
         . $kpi('Total reconocido', (float)$hours->totalhours, 'background:#eef7ea')
         . $kpi('Pendiente hasta ' . (int)$hours->target, (float)$hours->remaining),
-        'd-flex flex-wrap');
+        'd-flex flex-wrap'
+    );
     echo html_writer::div(
         html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['userid' => $user->id]), local_ga_ss_icon('i/report', 'Portafolio y Tipo B'), ['class' => 'btn btn-outline-primary me-1 mb-1'])
         . html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_pdf_download.php', ['userid' => $user->id]), local_ga_ss_icon('t/download', 'Portafolio PDF'), ['class' => 'btn btn-outline-secondary me-1 mb-1'])
         . html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_package_download.php', ['userid' => $user->id]), local_ga_ss_icon('t/download', 'Expediente completo ZIP'), ['class' => 'btn btn-outline-secondary me-1 mb-1'])
         . html_writer::link(new moodle_url('/user/profile.php', ['id' => $user->id]), local_ga_ss_icon('i/user', 'Perfil Moodle'), ['class' => 'btn btn-outline-secondary mb-1']),
-        'mt-2');
+        'mt-2'
+    );
     echo html_writer::end_div() . html_writer::end_div();
 
     // 1. Talleres (every enrolment, active or not).
@@ -202,8 +240,12 @@ if ($user) {
             $active = in_array((string)($r->enrolstatus ?? ''), ['', 'enrolled', 'attended', 'manual'], true);
             $attendance = $r->attended === null ? local_ga_ss_badge('Sin registrar', 'bg-secondary')
                 : (!empty($r->attended) ? local_ga_ss_badge('Presente', 'bg-success') : local_ga_ss_badge('Ausente', 'bg-danger'));
-            [$status, $result] = local_ga_ss_activity_status(manager::get_workshop_edition((int)$r->editionid),
-                manager::get_workshop((int)$r->workshopid), (int)$user->id, $r->attended);
+            [$status, $result] = local_ga_ss_activity_status(
+                manager::get_workshop_edition((int)$r->editionid),
+                manager::get_workshop((int)$r->workshopid),
+                (int)$user->id,
+                $r->attended
+            );
             $cert = $certbyedition[(int)$r->editionid] ?? null;
             $certcell = $cert
                 ? html_writer::link(new moodle_url('/local/gestion_actividades/certificate_download.php', ['id' => $cert->id]), local_ga_ss_icon('t/download', 'Sí'), ['class' => 'btn btn-sm btn-outline-success'])

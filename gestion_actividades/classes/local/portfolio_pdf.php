@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class portfolio_pdf for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\local;
 
 defined('MOODLE_INTERNAL') || die();
@@ -41,7 +64,7 @@ class portfolio_pdf {
     public static function get_typea_certificates(int $userid): array {
         if (class_exists('local_gestion_actividades\\local\\manager') && method_exists(manager::class, 'list_user_certificates')) {
             $certs = manager::list_user_certificates($userid);
-            usort($certs, function($a, $b) {
+            usort($certs, function ($a, $b) {
                 return ((int)($b->timeissued ?? 0)) <=> ((int)($a->timeissued ?? 0));
             });
             return $certs;
@@ -58,10 +81,10 @@ class portfolio_pdf {
     }
 
     public static function get_typeb_certificates(int $userid): array {
-        $certs = array_values(array_filter(portfolio_typeb::list_for_user($userid), function($cert) {
+        $certs = array_values(array_filter(portfolio_typeb::list_for_user($userid), function ($cert) {
             return portfolio_typeb::is_countable($cert);
         }));
-        usort($certs, function($a, $b) {
+        usort($certs, function ($a, $b) {
             return ((int)($b->activitydate ?? 0)) <=> ((int)($a->activitydate ?? 0));
         });
         return $certs;

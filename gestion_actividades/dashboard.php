@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * dashboard.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -61,7 +84,7 @@ function local_ga_dash_series_edition(stdClass $series, int $workshopid): ?stdCl
         }
     }
     if ($matching) {
-        usort($matching, static function($a, $b) {
+        usort($matching, static function ($a, $b) {
             $datecmp = ((int)($b->sessiondate ?? 0)) <=> ((int)($a->sessiondate ?? 0));
             return $datecmp !== 0 ? $datecmp : ((int)$b->id <=> (int)$a->id);
         });
@@ -125,8 +148,10 @@ $returncourseid = $courseid;
 // Without ?courseid, prefer the course page the user just came from.
 if ($returncourseid <= 0) {
     $referer = get_local_referer(false);
-    if ($referer && preg_match('~/course/view\.php\?(?:[^#]*&)?id=(\d+)~', $referer, $m)
-            && $DB->record_exists('course', ['id' => (int)$m[1]]) && (int)$m[1] !== (int)SITEID) {
+    if (
+        $referer && preg_match('~/course/view\.php\?(?:[^#]*&)?id=(\d+)~', $referer, $m)
+            && $DB->record_exists('course', ['id' => (int)$m[1]]) && (int)$m[1] !== (int)SITEID
+    ) {
         $returncourseid = (int)$m[1];
         $SESSION->local_ga_return_courseid = $returncourseid;
     }
@@ -153,7 +178,8 @@ echo html_writer::div(
 echo html_writer::div(
     html_writer::span('Curso académico actual: ' . html_writer::tag('strong', s(academic_year::current())), 'me-2')
     . html_writer::span('Cambia automáticamente el 1 de septiembre. Cada Edición de talleres guarda su curso (se puede cambiar en «Editar edición») y los listados filtran por curso.', 'text-muted small'),
-    'mb-3 p-2 border rounded bg-light');
+    'mb-3 p-2 border rounded bg-light'
+);
 
 // ---------------------------------------------------------------------------
 // Portada simplificada: «Pendiente» + 4 bloques por tarea (mismas opciones).
@@ -180,24 +206,36 @@ foreach (workshop_series::list_for_course($courseid) as $ps) {
         $overdue[] = $ps;
     }
     foreach (workshop_series::items((int)$ps->id) as $pitem) {
-        $ped = $DB->get_record('local_ga_workshop_editions', ['seriesid' => (int)$ps->id, 'workshopid' => (int)$pitem->workshopid],
-            'id, attendancecmid, groupid, sessiondate', IGNORE_MULTIPLE);
-        if (!$ped || empty($ped->attendancecmid) || workshop_series::last_end($pitem) >= $now
-                || manager::get_edition_enrolment_count((int)$ped->id) <= 0) {
+        $ped = $DB->get_record(
+            'local_ga_workshop_editions',
+            ['seriesid' => (int)$ps->id, 'workshopid' => (int)$pitem->workshopid],
+            'id, attendancecmid, groupid, sessiondate',
+            IGNORE_MULTIPLE
+        );
+        if (
+            !$ped || empty($ped->attendancecmid) || workshop_series::last_end($pitem) >= $now
+                || manager::get_edition_enrolment_count((int)$ped->id) <= 0
+        ) {
             continue;
         }
         $attid = (int)$DB->get_field('course_modules', 'instance', ['id' => (int)$ped->attendancecmid]);
-        if ($attid && $DB->record_exists_select('attendance_sessions',
+        if (
+            $attid && $DB->record_exists_select(
+                'attendance_sessions',
                 'attendanceid = :a AND lasttaken = 0 AND sessdate + duration < :now AND (groupid = :g OR groupid = 0)',
-                ['a' => $attid, 'now' => $now, 'g' => (int)$ped->groupid])) {
+                ['a' => $attid, 'now' => $now, 'g' => (int)$ped->groupid]
+            )
+        ) {
             $untaken[] = (object)['id' => (int)$ped->id, 'name' => $pitem->name];
         }
     }
 }
 $alerts = [];
 if ($pendingtypeb > 0) {
-    $alerts[] = html_writer::link(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']),
-        '<strong>' . $pendingtypeb . '</strong> solicitud(es) Tipo B externo por validar') . ' › Revisar';
+    $alerts[] = html_writer::link(
+        new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending']),
+        '<strong>' . $pendingtypeb . '</strong> solicitud(es) Tipo B externo por validar'
+    ) . ' › Revisar';
 }
 if ($untaken) {
     $links = [];
@@ -208,24 +246,31 @@ if ($untaken) {
         . (count($untaken) > 5 ? ' …' : '');
 }
 if ($overdue) {
-    $alerts[] = html_writer::link(new moodle_url('/local/gestion_actividades/workshop_series.php'),
-        '<strong>' . count($overdue) . '</strong> Edición(es) con la fecha de fin pasada y sin finalizar') . ' › Finalizar';
+    $alerts[] = html_writer::link(
+        new moodle_url('/local/gestion_actividades/workshop_series.php'),
+        '<strong>' . count($overdue) . '</strong> Edición(es) con la fecha de fin pasada y sin finalizar'
+    ) . ' › Finalizar';
 }
 if ($alerts) {
-    echo html_writer::div(html_writer::tag('strong', 'Pendiente') . html_writer::alist($alerts, ['class' => 'mb-0 mt-1']),
-        'alert alert-warning');
+    echo html_writer::div(
+        html_writer::tag('strong', 'Pendiente') . html_writer::alist($alerts, ['class' => 'mb-0 mt-1']),
+        'alert alert-warning'
+    );
 }
 
-$tplurl = fn(string $t) => new moodle_url('/local/gestion_actividades/workshop_bulk_import.php',
-    ['action' => 'template', 'templatetype' => $t, 'sesskey' => sesskey()]);
+$tplurl = fn(string $t) => new moodle_url(
+    '/local/gestion_actividades/workshop_bulk_import.php',
+    ['action' => 'template', 'templatetype' => $t, 'sesskey' => sesskey()]
+);
 $btn = fn(moodle_url $url, string $pix, string $label, string $class = 'btn btn-outline-primary')
     => html_writer::link($url, local_ga_btn_icon($pix, $label), ['class' => $class . ' text-start']);
-$block = function(string $title, string $hint, array $buttons, string $cardstyle = ''): string {
+$block = function (string $title, string $hint, array $buttons, string $cardstyle = ''): string {
     return html_writer::div(html_writer::div(html_writer::div(
         html_writer::tag('h3', $title, ['class' => 'h5 card-title mb-1'])
         . html_writer::tag('p', $hint, ['class' => 'small mb-3' . ($cardstyle === '' ? ' text-muted' : '')])
         . html_writer::div(implode('', $buttons), 'd-grid gap-2'),
-        'card-body'), 'card h-100 shadow-sm', $cardstyle !== '' ? ['style' => $cardstyle] : []), 'col-md-6 col-xl-3 mb-3');
+        'card-body'
+    ), 'card h-100 shadow-sm', $cardstyle !== '' ? ['style' => $cardstyle] : []), 'col-md-6 col-xl-3 mb-3');
 };
 
 echo html_writer::start_div('row');
@@ -236,7 +281,8 @@ echo $block('🗓️ Talleres', 'Crear y gestionar las Ediciones de talleres.', 
     html_writer::div(
         html_writer::link($tplurl('typea'), local_ga_btn_icon('t/download', 'Plantilla A'), ['class' => 'btn btn-sm btn-outline-secondary flex-fill'])
         . html_writer::link($tplurl('typeb'), local_ga_btn_icon('t/download', 'Plantilla B'), ['class' => 'btn btn-sm btn-outline-secondary flex-fill']),
-        'd-flex gap-2'),
+        'd-flex gap-2'
+    ),
     $btn(new moodle_url('/local/gestion_actividades/archive.php', $cparams), 'i/folder', 'Ediciones anteriores', 'btn btn-outline-secondary'),
 ]);
 echo $block('🎓 Alumnos y horas', 'Validar y reconocer horas del alumnado.', [
@@ -244,8 +290,12 @@ echo $block('🎓 Alumnos y horas', 'Validar y reconocer horas del alumnado.', [
     $btn(new moodle_url('/local/gestion_actividades/index.php'), 'i/users', 'Alumnos y ranking'),
     $btn(new moodle_url('/local/gestion_actividades/institutional_import.php'), 'i/import', 'Importar reconocimiento institucional'),
     $btn(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), 't/edit', 'Catálogo de talleres B'),
-    $btn(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending'] + $cparams), 'i/checked',
-        'Validar Tipo B externo' . ($pendingtypeb > 0 ? ' (' . $pendingtypeb . ')' : ''), $pendingtypeb > 0 ? 'btn btn-warning' : 'btn btn-outline-primary'),
+    $btn(
+        new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending'] + $cparams),
+        'i/checked',
+        'Validar Tipo B externo' . ($pendingtypeb > 0 ? ' (' . $pendingtypeb . ')' : ''),
+        $pendingtypeb > 0 ? 'btn btn-warning' : 'btn btn-outline-primary'
+    ),
     $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php', ['action' => 'view_transfers']), 'i/switch', 'Ver traspasos A→B'),
     $btn(new moodle_url('/local/gestion_actividades/pat_typeb_import.php'), 'i/import', 'Importar talleres Tipo B PAT'),
 ]);
@@ -255,14 +305,17 @@ echo $block('📊 Notas e informes', 'Consultar notas y descargar listados.', [
     $btn(new moodle_url('/local/gestion_actividades/grades_report.php', $cparams), 'i/grades', 'Notas de la asignatura', 'btn btn-primary'),
 ]);
 echo $block('⚙️ Configuración', 'Recomendable solo para administradores: permisos y herramientas de mantenimiento.', [
-    html_writer::tag('details',
+    html_writer::tag(
+        'details',
         html_writer::tag('summary', 'Mostrar / ocultar opciones', ['class' => 'btn w-100 text-start',
             'style' => 'background:#fff;border:1px solid #e4a1a1;color:#9b2c2c'])
         . html_writer::div(
             $btn(new moodle_url('/local/gestion_actividades/authorized_users.php', $cparams), 'i/permissions', 'Usuarios autorizados y Profesores HEE', 'btn btn-outline-secondary')
             . $btn(new moodle_url('/local/gestion_actividades/portfolio_cover_template.php'), 't/edit', 'Portada del portafolio PDF', 'btn btn-outline-secondary')
             . $btn(new moodle_url('/local/gestion_actividades/test_cleanup.php'), 't/delete', 'Limpieza de pruebas', 'btn btn-outline-danger'),
-            'd-grid gap-2 mt-2')),
+            'd-grid gap-2 mt-2'
+        )
+    ),
 ], 'background:#fdecec;border-color:#f1b5b5;color:#7a1f1f');  // pastel red: delicate tools
 echo html_writer::end_div();
 

@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * task_activity.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -13,16 +36,26 @@ require_login();
 
 function local_ga_required_cmid_is_valid(int $cmid, int $courseid): bool {
     global $DB;
-    if ($cmid <= 0) { return false; }
+    if ($cmid <= 0) {
+        return false;
+    }
     $sql = "SELECT cm.id, cm.course, cm.instance, cm.module, cm.deletioninprogress, m.name AS modname
               FROM {course_modules} cm
               JOIN {modules} m ON m.id = cm.module
              WHERE cm.id = :cmid";
     $cm = $DB->get_record_sql($sql, ['cmid' => $cmid], IGNORE_MISSING);
-    if (!$cm || (int)$cm->course !== (int)$courseid || !empty($cm->deletioninprogress)) { return false; }
-    if (!in_array((string)$cm->modname, ['assign', 'quiz'], true)) { return false; }
-    if (!$DB->get_manager()->table_exists(new xmldb_table($cm->modname))) { return false; }
-    if (!$DB->record_exists($cm->modname, ['id' => (int)$cm->instance])) { return false; }
+    if (!$cm || (int)$cm->course !== (int)$courseid || !empty($cm->deletioninprogress)) {
+        return false;
+    }
+    if (!in_array((string)$cm->modname, ['assign', 'quiz'], true)) {
+        return false;
+    }
+    if (!$DB->get_manager()->table_exists(new xmldb_table($cm->modname))) {
+        return false;
+    }
+    if (!$DB->record_exists($cm->modname, ['id' => (int)$cm->instance])) {
+        return false;
+    }
     try {
         get_coursemodule_from_id((string)$cm->modname, (int)$cm->id, (int)$courseid, false, MUST_EXIST);
     } catch (Throwable $e) {
@@ -35,8 +68,12 @@ function local_ga_clear_required_activity(int $editionid): void {
     global $DB;
     $edition = $DB->get_record('local_ga_workshop_editions', ['id' => $editionid], '*', MUST_EXIST);
     $columns = $DB->get_columns('local_ga_workshop_editions');
-    if (isset($columns['requiredcmid'])) { $edition->requiredcmid = 0; }
-    if (isset($columns['requiredmodname'])) { $edition->requiredmodname = ''; }
+    if (isset($columns['requiredcmid'])) {
+        $edition->requiredcmid = 0;
+    }
+    if (isset($columns['requiredmodname'])) {
+        $edition->requiredmodname = '';
+    }
     $edition->timemodified = time();
     $DB->update_record('local_ga_workshop_editions', $edition);
 }
@@ -108,7 +145,7 @@ if ($go && confirm_sesskey()) {
     redirect(new moodle_url('/local/gestion_actividades/task_activity.php', ['id' => $id, 'type' => $type]), $created->message ?: 'No se pudo crear la actividad.', null, \core\output\notification::NOTIFY_ERROR);
 }
 
-$candidates = array_values(array_filter(manager::find_candidate_required_activities_by_type($edition, $type), function($candidate) use ($course) {
+$candidates = array_values(array_filter(manager::find_candidate_required_activities_by_type($edition, $type), function ($candidate) use ($course) {
     return !empty($candidate->cmid) && local_ga_required_cmid_is_valid((int)$candidate->cmid, (int)$course->id);
 }));
 

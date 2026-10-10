@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class provider for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\privacy;
 
 defined('MOODLE_INTERNAL') || die();
@@ -19,7 +42,7 @@ use core_privacy\local\metadata\provider as metadata_provider;
  * Academic evidence is exported, but deliberately not deleted automatically.
  * Retention/deletion of those records requires an institutional policy decision.
  */
-class provider implements metadata_provider, request_provider, core_userlist_provider {
+class provider implements core_userlist_provider, metadata_provider, request_provider {
     public static function get_metadata(collection $collection): collection {
         $tables = [
             'local_ga_imports' => ['userid'],
@@ -74,8 +97,10 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
                 ['contextlevel' => $courselevel, 'userid' => $userid]
             );
         }
-        if (self::table_exists('local_ga_edition_enrolments') && self::table_exists('local_ga_workshop_editions')
-                && self::table_exists('local_ga_workshops')) {
+        if (
+            self::table_exists('local_ga_edition_enrolments') && self::table_exists('local_ga_workshop_editions')
+                && self::table_exists('local_ga_workshops')
+        ) {
             $contextlist->add_from_sql(
                 "SELECT DISTINCT ctx.id
                    FROM {context} ctx
@@ -125,8 +150,12 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
                 if ($table === 'local_ga_typeb_certs') {
                     // Evidence uploaded by the student for external Type B review.
                     foreach ($records as $record) {
-                        writer::with_context($context)->export_area_files(['Gestión HEE', $label, (string)$record->id],
-                            'local_gestion_actividades', 'typeb_certificate', (int)$record->id);
+                        writer::with_context($context)->export_area_files(
+                            ['Gestión HEE', $label, (string)$record->id],
+                            'local_gestion_actividades',
+                            'typeb_certificate',
+                            (int)$record->id
+                        );
                     }
                 }
             }
@@ -140,8 +169,12 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
             if ($records) {
                 writer::with_context($context)->export_data(['Gestión HEE', 'Certificados'], (object)['records' => array_values($records)]);
                 foreach ($records as $record) {
-                    writer::with_context($context)->export_area_files(['Gestión HEE', 'Certificados', (string)$record->id],
-                        'local_gestion_actividades', 'certificate', (int)$record->id);
+                    writer::with_context($context)->export_area_files(
+                        ['Gestión HEE', 'Certificados', (string)$record->id],
+                        'local_gestion_actividades',
+                        'certificate',
+                        (int)$record->id
+                    );
                 }
             }
         }
@@ -185,8 +218,12 @@ class provider implements metadata_provider, request_provider, core_userlist_pro
                 writer::with_context($context)->export_data(['Gestión HEE', 'Entregas internas'], (object)['records' => array_values($records)]);
                 foreach ($records as $record) {
                     if (!empty($record->fileitemid)) {
-                        writer::with_context($context)->export_area_files(['Gestión HEE', 'Entregas internas', (string)$record->id],
-                            'local_gestion_actividades', 'tasksubmission', (int)$record->fileitemid);
+                        writer::with_context($context)->export_area_files(
+                            ['Gestión HEE', 'Entregas internas', (string)$record->id],
+                            'local_gestion_actividades',
+                            'tasksubmission',
+                            (int)$record->fileitemid
+                        );
                     }
                 }
             }

@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class typeb_catalog for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\local;
 
 defined('MOODLE_INTERNAL') || die();
@@ -62,9 +85,11 @@ class typeb_catalog {
             $record->timemodified = $now;
             $DB->update_record(self::TABLE, $record);
             // Requests not yet validated follow the catalogue (name and hours).
-            $DB->execute("UPDATE {local_ga_typeb_certs} SET activityname = :name, hours = :hours, timemodified = :now
+            $DB->execute(
+                "UPDATE {local_ga_typeb_certs} SET activityname = :name, hours = :hours, timemodified = :now
                            WHERE catalogid = :id AND status IN ('pending', 'rejected')",
-                ['name' => $name, 'hours' => round($hours, 2), 'now' => $now, 'id' => $id]);
+                ['name' => $name, 'hours' => round($hours, 2), 'now' => $now, 'id' => $id]
+            );
             return $id;
         }
         return (int)$DB->insert_record(self::TABLE, (object)[
@@ -106,9 +131,11 @@ class typeb_catalog {
      */
     public static function user_has_request(int $userid, int $catalogid, int $exceptrequestid = 0): bool {
         global $DB;
-        return $DB->record_exists_select('local_ga_typeb_certs',
+        return $DB->record_exists_select(
+            'local_ga_typeb_certs',
             "userid = :userid AND catalogid = :catalogid AND status <> 'rejected' AND id <> :except",
-            ['userid' => $userid, 'catalogid' => $catalogid, 'except' => $exceptrequestid]);
+            ['userid' => $userid, 'catalogid' => $catalogid, 'except' => $exceptrequestid]
+        );
     }
 
     /**

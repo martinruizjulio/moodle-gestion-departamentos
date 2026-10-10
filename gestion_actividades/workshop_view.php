@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * workshop_view.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -36,24 +59,26 @@ if ($requestededitionid > 0) {
     $now = time();
     foreach ($activeeditions as $candidate) {
         $series = workshop_series::series_for_edition((int)$candidate->id);
-        if ($series && (string)($series->status ?? '') === 'active'
-                && (int)$series->datefrom <= $now && (int)$series->dateto >= $now) {
+        if (
+            $series && (string)($series->status ?? '') === 'active'
+                && (int)$series->datefrom <= $now && (int)$series->dateto >= $now
+        ) {
             $edition = $candidate;
             break;
         }
     }
     if (!$edition && $activeeditions) {
-        $future = array_values(array_filter($activeeditions, static function($candidate) use ($now): bool {
+        $future = array_values(array_filter($activeeditions, static function ($candidate) use ($now): bool {
             return (int)($candidate->sessiondate ?? 0) >= $now;
         }));
-        usort($future, static function($a, $b): int {
+        usort($future, static function ($a, $b): int {
             return ((int)$a->sessiondate <=> (int)$b->sessiondate) ?: ((int)$a->id <=> (int)$b->id);
         });
         if ($future) {
             $edition = reset($future);
         } else {
             $ordered = array_values($activeeditions);
-            usort($ordered, static function($a, $b): int {
+            usort($ordered, static function ($a, $b): int {
                 return ((int)$b->sessiondate <=> (int)$a->sessiondate) ?: ((int)$b->id <=> (int)$a->id);
             });
             $edition = reset($ordered);
@@ -117,13 +142,17 @@ if ($canmanage) {
 }
 echo html_writer::div($topbuttons, 'mb-2');
 echo $OUTPUT->heading(format_string($workshop->code . ' - ' . $workshop->name));
-if ($message) { echo $OUTPUT->notification($message, $messagetype); }
+if ($message) {
+    echo $OUTPUT->notification($message, $messagetype);
+}
 
 echo html_writer::start_div('card mb-3');
 echo html_writer::start_div('card-body');
 echo html_writer::tag('h4', get_string('workshopinfo', 'local_gestion_actividades'));
 $description = trim((string)($workshop->description ?? ''));
-if ($description !== '') { echo html_writer::tag('p', s($description)); }
+if ($description !== '') {
+    echo html_writer::tag('p', s($description));
+}
 $hours = isset($workshop->hours) && $workshop->hours !== null ? round((float)$workshop->hours, 2) . ' h' : '-';
 $date = $edition ? manager::format_workshop_date((int)$edition->sessiondate) : '-';
 $enrolend = $edition ? manager::format_workshop_date((int)$edition->enrolenddate) : '-';
@@ -243,13 +272,23 @@ try {
             }
         } else if ($edition && in_array('assign', manager::get_required_activity_types($edition), true)) {
             echo html_writer::tag('h4', 'Tarea del taller', ['class' => 'mt-3']);
-            if (!empty($edition->taskdescription)) { echo html_writer::tag('p', s($edition->taskdescription)); }
+            if (!empty($edition->taskdescription)) {
+                echo html_writer::tag('p', s($edition->taskdescription));
+            }
             $taskfile = manager::get_filearea_url($context, 'taskfile', (int)($edition->taskfileitemid ?? 0));
-            if ($taskfile !== '') { echo html_writer::tag('p', html_writer::link($taskfile, 'Descargar archivo de la tarea', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank'])); }
-            if (!empty($edition->taskurl)) { echo html_writer::tag('p', html_writer::link($edition->taskurl, 'Abrir enlace de la tarea', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank'])); }
-            if (!empty($edition->taskduedate)) { echo html_writer::tag('p', 'Fecha límite: ' . userdate((int)$edition->taskduedate), ['class' => 'text-muted']); }
+            if ($taskfile !== '') {
+                echo html_writer::tag('p', html_writer::link($taskfile, 'Descargar archivo de la tarea', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank']));
+            }
+            if (!empty($edition->taskurl)) {
+                echo html_writer::tag('p', html_writer::link($edition->taskurl, 'Abrir enlace de la tarea', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank']));
+            }
+            if (!empty($edition->taskduedate)) {
+                echo html_writer::tag('p', 'Fecha límite: ' . userdate((int)$edition->taskduedate), ['class' => 'text-muted']);
+            }
             $submission = manager::get_internal_task_submission((int)$edition->id, (int)$USER->id);
-            if ($submission && !empty($submission->fileitemid)) { echo html_writer::div('Tarea entregada', 'alert alert-success'); }
+            if ($submission && !empty($submission->fileitemid)) {
+                echo html_writer::div('Tarea entregada', 'alert alert-success');
+            }
             echo html_writer::tag('p', html_writer::link(new moodle_url('/local/gestion_actividades/task_submit.php', ['id' => $edition->id]), 'Entregar tarea', ['class' => 'btn btn-primary']));
         }
 
@@ -259,7 +298,9 @@ try {
     }
 } catch (Throwable $e) {
     echo html_writer::tag('p', get_string('studentresourcespending', 'local_gestion_actividades'), ['class' => 'text-muted']);
-    if ($canmanage) { echo $OUTPUT->notification('Detalle materiales: ' . s($e->getMessage()), 'warning'); }
+    if ($canmanage) {
+        echo $OUTPUT->notification('Detalle materiales: ' . s($e->getMessage()), 'warning');
+    }
 }
 echo html_writer::end_div();
 echo html_writer::end_div();
@@ -314,5 +355,7 @@ if (!empty($edition)) {
     }
 }
 
-if (function_exists('local_gestion_actividades_enable_interactive_tables')) { local_gestion_actividades_enable_interactive_tables(); }
+if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
+    local_gestion_actividades_enable_interactive_tables();
+}
 echo $OUTPUT->footer();

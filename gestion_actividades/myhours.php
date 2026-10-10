@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * myhours.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -10,8 +33,8 @@ require_capability('local/gestion_actividades:view', $context);
 $userid = (int)optional_param('userid', (int)$USER->id, PARAM_INT);
 if ($userid !== (int)$USER->id) {
     if (!\local_gestion_actividades\local\manager::can_manage_globally((int)$USER->id)) {
-    throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
-}
+        throw new required_capability_exception(context_system::instance(), 'local/gestion_actividades:manage', 'nopermissions', '');
+    }
 }
 
 $user = $DB->get_record('user', ['id' => $userid], '*', MUST_EXIST);
@@ -26,7 +49,8 @@ echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('mytypeahours', 'local_gestion_actividades') . ': ' . fullname($user));
 
 $total = manager::get_student_total_hours($userid);
-echo html_writer::tag('div',
+echo html_writer::tag(
+    'div',
     html_writer::tag('strong', get_string('totaltypeahours', 'local_gestion_actividades') . ': ') . round($total, 2) . ' h',
     ['class' => 'alert alert-success']
 );

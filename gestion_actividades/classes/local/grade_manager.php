@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class grade_manager for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\local;
 
 defined('MOODLE_INTERNAL') || die();
@@ -124,8 +147,12 @@ class grade_manager {
                 $out[(int)$id] = (int)$id;
             }
         }
-        $ids = $DB->get_fieldset_select('course_modules', 'id', 'course = :courseid AND ' . $DB->sql_like('idnumber', ':p'),
-            ['courseid' => $courseid, 'p' => 'HEE\_EDITION\_%']);
+        $ids = $DB->get_fieldset_select(
+            'course_modules',
+            'id',
+            'course = :courseid AND ' . $DB->sql_like('idnumber', ':p'),
+            ['courseid' => $courseid, 'p' => 'HEE\_EDITION\_%']
+        );
         foreach ($ids as $id) {
             $out[(int)$id] = (int)$id;
         }
@@ -818,8 +845,10 @@ class grade_manager {
             return true;
         }
         $dbman = $DB->get_manager();
-        if (!$dbman->table_exists(new \xmldb_table('local_ga_workshop_editions'))
-            || !$dbman->table_exists(new \xmldb_table('local_ga_workshops'))) {
+        if (
+            !$dbman->table_exists(new \xmldb_table('local_ga_workshop_editions'))
+            || !$dbman->table_exists(new \xmldb_table('local_ga_workshops'))
+        ) {
             return false;
         }
 
@@ -865,8 +894,8 @@ class grade_manager {
         ];
         $userids = array_map('intval', array_keys($rows));
 
-        list($itemsql, $itemparams) = $DB->get_in_or_equal($itemids, SQL_PARAMS_NAMED, 'gi');
-        list($usersql, $userparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'gu');
+        [$itemsql, $itemparams] = $DB->get_in_or_equal($itemids, SQL_PARAMS_NAMED, 'gi');
+        [$usersql, $userparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'gu');
         $existing = $DB->get_records_sql(
             "SELECT gg.id, gg.itemid, gg.userid, gg.finalgrade
                FROM {grade_grades} gg
@@ -958,7 +987,8 @@ class grade_manager {
         }
 
         $changed = false;
-        foreach ([
+        foreach (
+            [
             'itemname' => $name,
             'gradetype' => GRADE_TYPE_VALUE,
             'grademin' => 0,
@@ -966,7 +996,8 @@ class grade_manager {
             'decimals' => 2,
             'hidden' => $hidden ? 1 : 0,
             'iteminfo' => $info,
-        ] as $field => $value) {
+            ] as $field => $value
+        ) {
             if ($item->$field != $value) {
                 $item->$field = $value;
                 $changed = true;
@@ -988,7 +1019,7 @@ class grade_manager {
         if (!$userids) {
             return [];
         }
-        list($usersql, $params) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'ta');
+        [$usersql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'ta');
         $params['courseid'] = $courseid;
         $transferexclusion = '';
         if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_typeb_transfers'))) {
@@ -1144,7 +1175,7 @@ class grade_manager {
         if (!$userids) {
             return $out;
         }
-        list($usersql, $params) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'rf');
+        [$usersql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'rf');
 
         if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
             $columns = $DB->get_columns('local_ga_edition_enrolments');
@@ -1219,7 +1250,7 @@ class grade_manager {
         if (!$info || empty($info->gradeitemid) || !$userids) {
             return [];
         }
-        list($usersql, $params) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'sa');
+        [$usersql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'sa');
         $params['itemid'] = (int)$info->gradeitemid;
         $sql = "SELECT id, userid, finalgrade
                   FROM {grade_grades}

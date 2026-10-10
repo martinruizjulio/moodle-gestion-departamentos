@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * typeb_upload.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\form\typeb_upload_form;
@@ -74,8 +97,14 @@ if ($data = $uploadform->get_data()) {
     $filename = clean_filename((string)$uploadform->get_new_filename('evidencefile'));
     try {
         if ($editing) {
-            portfolio_typeb::update_request((int)$editing->id, (int)$USER->id, (int)$data->catalogid, (int)$data->activitydate,
-                $tmpfilepath ? $filename : '', $tmpfilepath ?: '');
+            portfolio_typeb::update_request(
+                (int)$editing->id,
+                (int)$USER->id,
+                (int)$data->catalogid,
+                (int)$data->activitydate,
+                $tmpfilepath ? $filename : '',
+                $tmpfilepath ?: ''
+            );
             $message = 'Solicitud corregida y enviada de nuevo para su validación.';
         } else {
             if (!$tmpfilepath || !is_readable($tmpfilepath) || $filename === '') {
@@ -143,8 +172,11 @@ if (!$requests) {
         echo html_writer::end_div();
         echo html_writer::start_div();
         if (portfolio_typeb::is_editable($request)) {
-            echo html_writer::link(new moodle_url($baseurl, ['edit' => (int)$request->id]), 'Editar',
-                ['class' => 'btn btn-primary btn-sm me-1']);
+            echo html_writer::link(
+                new moodle_url($baseurl, ['edit' => (int)$request->id]),
+                'Editar',
+                ['class' => 'btn btn-primary btn-sm me-1']
+            );
         }
         echo html_writer::link(
             new moodle_url('/local/gestion_actividades/typeb_view.php', ['id' => (int)$request->id]),

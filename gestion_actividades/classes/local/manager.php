@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Class manager for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 namespace local_gestion_actividades\local;
 
 defined('MOODLE_INTERNAL') || die();
@@ -20,7 +43,7 @@ class manager {
      */
     public static function return_courseid(): int {
         global $DB, $SESSION, $USER;
-        $valid = static function(int $id) use ($DB): bool {
+        $valid = static function (int $id) use ($DB): bool {
             return $id > 0 && $id !== (int)SITEID && $DB->record_exists('course', ['id' => $id]);
         };
         $courseid = optional_param('courseid', 0, PARAM_INT);
@@ -139,9 +162,13 @@ class manager {
         }
 
         $firstnameindex = array_search('firstname', $headers, true);
-        if ($firstnameindex === false) { $firstnameindex = array_search('nombre', $headers, true); }
+        if ($firstnameindex === false) {
+            $firstnameindex = array_search('nombre', $headers, true);
+        }
         $lastnameindex = array_search('lastname', $headers, true);
-        if ($lastnameindex === false) { $lastnameindex = array_search('apellidos', $headers, true); }
+        if ($lastnameindex === false) {
+            $lastnameindex = array_search('apellidos', $headers, true);
+        }
         $emailindex = array_search('email', $headers, true);
         $usernameindex = array_search('username', $headers, true);
         $idnumberindex = array_search('idnumber', $headers, true);
@@ -281,7 +308,7 @@ class manager {
                 $valid[] = $candidate;
             }
         }
-        usort($valid, function($a, $b) {
+        usort($valid, function ($a, $b) {
             if ((float)$a->grade === (float)$b->grade) {
                 return strcmp((string)$a->lastname, (string)$b->lastname);
             }
@@ -377,8 +404,10 @@ class manager {
     public static function get_workshop_overview_rows(): array {
         global $DB;
 
-        if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshops'))
-            || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_editions'))) {
+        if (
+            !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshops'))
+            || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_editions'))
+        ) {
             return [];
         }
 
@@ -426,7 +455,7 @@ class manager {
         }
 
         if ($groupids) {
-            list($groupsql, $gparams) = $DB->get_in_or_equal(array_values($groupids), SQL_PARAMS_NAMED);
+            [$groupsql, $gparams] = $DB->get_in_or_equal(array_values($groupids), SQL_PARAMS_NAMED);
             $groups = $DB->get_records_select('groups', 'id ' . $groupsql, $gparams, '', 'id,name');
             $counts = $DB->get_records_sql("SELECT groupid, COUNT(id) AS cnt FROM {groups_members} WHERE groupid $groupsql GROUP BY groupid", $gparams);
             foreach ($rows as $row) {
@@ -439,7 +468,7 @@ class manager {
         }
 
         if ($editionids && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_teachers'))) {
-            list($insql, $params) = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED);
+            [$insql, $params] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED);
             $teachers = $DB->get_records_sql("SELECT et.id, et.editionid, et.userid, u.firstname, u.lastname, u.email
                                                 FROM {local_ga_edition_teachers} et
                                                 JOIN {user} u ON u.id = et.userid
@@ -584,8 +613,10 @@ class manager {
         $workshop = self::get_workshop((int)$edition->workshopid);
         $course = $DB->get_record('course', ['id' => (int)$workshop->courseid], '*', MUST_EXIST);
 
-        if (!empty($edition->attendancecmid)
-                && $DB->record_exists('course_modules', ['id' => (int)$edition->attendancecmid, 'course' => (int)$course->id])) {
+        if (
+            !empty($edition->attendancecmid)
+                && $DB->record_exists('course_modules', ['id' => (int)$edition->attendancecmid, 'course' => (int)$course->id])
+        ) {
             attendance_sync::ensure_session($editionid);
             $result->success = true;
             $result->cmid = (int)$edition->attendancecmid;
@@ -593,8 +624,10 @@ class manager {
             return $result;
         }
 
-        if (!$DB->record_exists('modules', ['name' => 'attendance'])
-                || !$DB->get_manager()->table_exists(new \xmldb_table('attendance'))) {
+        if (
+            !$DB->record_exists('modules', ['name' => 'attendance'])
+                || !$DB->get_manager()->table_exists(new \xmldb_table('attendance'))
+        ) {
             // Attendance is mandatory for every Type A/B workshop.
             $result->message = 'mod_attendance (Asistencia) no está instalado en este Moodle: es obligatorio para los talleres.';
             return $result;
@@ -1084,15 +1117,25 @@ class manager {
 
     public static function get_user_grade_for_cmid(int $userid, int $cmid): ?float {
         global $DB;
-        if ($cmid <= 0) { return null; }
+        if ($cmid <= 0) {
+            return null;
+        }
         $cm = $DB->get_record('course_modules', ['id' => $cmid], 'id,course,instance,module');
-        if (!$cm) { return null; }
+        if (!$cm) {
+            return null;
+        }
         $module = $DB->get_record('modules', ['id' => $cm->module], 'id,name');
-        if (!$module) { return null; }
+        if (!$module) {
+            return null;
+        }
         $item = self::get_module_grade_item($cmid);
-        if (!$item) { return null; }
+        if (!$item) {
+            return null;
+        }
         $grade = $DB->get_record('grade_grades', ['itemid' => $item->id, 'userid' => $userid], 'finalgrade');
-        if (!$grade || $grade->finalgrade === null) { return null; }
+        if (!$grade || $grade->finalgrade === null) {
+            return null;
+        }
         return (float)$grade->finalgrade;
     }
 
@@ -1471,8 +1514,10 @@ class manager {
         // TALLERES TIPO A/B surface when a new Excel is imported (see the
         // filter below). Legacy-only courses keep their cards unchanged.
         $modernseries = false;
-        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_series'))
-                && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_series_items'))) {
+        if (
+            $DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_series'))
+                && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_series_items'))
+        ) {
             $sql = "SELECT 1
                       FROM {local_ga_workshop_series} s
                       JOIN {local_ga_series_items} i ON i.seriesid = s.id
@@ -1505,8 +1550,10 @@ class manager {
                 // still open, workshop not attached to any Edición). Old
                 // workshops nobody finished explicitly no longer reappear,
                 // but a still-open legacy seminar keeps its enrolment card.
-                if (self::is_edition_enrolment_closed($edition)
-                        || workshop_series::item_for_workshop((int)$workshop->id)) {
+                if (
+                    self::is_edition_enrolment_closed($edition)
+                        || workshop_series::item_for_workshop((int)$workshop->id)
+                ) {
                     continue;
                 }
             }
@@ -1543,9 +1590,11 @@ class manager {
             ], '*', MUST_EXIST);
         }
 
-        if ((string)($section->summary ?? '') !== $cards
+        if (
+            (string)($section->summary ?? '') !== $cards
                 || (int)($section->summaryformat ?? FORMAT_HTML) !== FORMAT_HTML
-                || empty($section->visible)) {
+                || empty($section->visible)
+        ) {
             course_update_section($courseid, $section, [
                 'summary' => $cards,
                 'summaryformat' => FORMAT_HTML,
@@ -1638,7 +1687,7 @@ class manager {
         return $out;
     }
 
-    
+
     public static function get_primary_workshop_edition(int $workshopid): ?\stdClass {
         global $DB;
         if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_editions'))) {
@@ -1659,7 +1708,7 @@ class manager {
         return reset($records);
     }
 
-    
+
     public static function get_edition_remaining_places(\stdClass $edition): ?int {
         $places = (int)($edition->places ?? 0);
         if ($places <= 0) {
@@ -1746,8 +1795,10 @@ class manager {
         // Edición de talleres is finished (enrol.php can be reached directly).
         if ($source !== 'manual') {
             $series = workshop_series::series_for_edition($editionid);
-            if (!empty($edition->archived) || self::is_edition_finished($edition)
-                    || ($series && (string)($series->status ?? '') === 'finished')) {
+            if (
+                !empty($edition->archived) || self::is_edition_finished($edition)
+                    || ($series && (string)($series->status ?? '') === 'finished')
+            ) {
                 $result->message = get_string('enrolclosed', 'local_gestion_actividades');
                 return $result;
             }
@@ -1789,10 +1840,12 @@ class manager {
                 $newgroupid = self::get_or_create_edition_group((int)$editionid);
                 $edition->groupid = $newgroupid;
             }
-            if (empty($edition->groupid)
+            if (
+                empty($edition->groupid)
                     || !$DB->record_exists('groups', ['id' => (int)$edition->groupid])
                     || (!groups_is_member((int)$edition->groupid, $userid)
-                        && !groups_add_member((int)$edition->groupid, $userid))) {
+                        && !groups_add_member((int)$edition->groupid, $userid))
+            ) {
                 $result->message = 'Moodle no ha podido añadir al alumno al grupo del taller. La inscripción no se ha guardado.';
                 return $result;
             }
@@ -2076,7 +2129,6 @@ class manager {
             $result->success = true;
             $result->message = $entryname . ': creado para alumnos.';
             return $result;
-
         } catch (\Throwable $e) {
             $result->message = 'Error generando taller ID ' . $workshopid . ': ' . $e->getMessage();
             return $result;
@@ -2133,9 +2185,15 @@ class manager {
 
     public static function search_course_users(int $courseid, string $query, int $limit = 30): array {
         $context = \context_course::instance($courseid);
-        $users = get_enrolled_users($context, '', 0,
+        $users = get_enrolled_users(
+            $context,
+            '',
+            0,
             'u.id, u.firstname, u.lastname, u.email, u.username, u.idnumber',
-            'u.lastname ASC, u.firstname ASC', 0, $limit);
+            'u.lastname ASC, u.firstname ASC',
+            0,
+            $limit
+        );
 
         $query = \core_text::strtolower(trim($query));
         if ($query === '') {
@@ -2317,7 +2375,7 @@ class manager {
 
         $summary = [];
 
-        $ensure = function(int $userid) use (&$summary): \stdClass {
+        $ensure = function (int $userid) use (&$summary): \stdClass {
             if (!isset($summary[$userid])) {
                 $summary[$userid] = (object)[
                     'id' => $userid,
@@ -2348,8 +2406,10 @@ class manager {
             }
         }
 
-        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_certificates'))
-            && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshops'))) {
+        if (
+            $DB->get_manager()->table_exists(new \xmldb_table('local_ga_certificates'))
+            && $DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshops'))
+        ) {
             $notexists = '';
             if ($hascoursehistory) {
                 $notexists = " AND NOT EXISTS (SELECT 1 FROM {local_ga_hour_history} h WHERE h.userid = cert.userid AND h.editionid = cert.editionid)";
@@ -2430,7 +2490,7 @@ class manager {
             return [];
         }
 
-        list($usersql, $params) = $DB->get_in_or_equal(array_keys($summary), SQL_PARAMS_NAMED);
+        [$usersql, $params] = $DB->get_in_or_equal(array_keys($summary), SQL_PARAMS_NAMED);
         $users = $DB->get_records_select('user', 'id ' . $usersql . ' AND deleted = 0', $params, 'lastname ASC, firstname ASC', 'id, firstname, lastname, email');
         // Hours always come from the canonical calculator (same figures as the
         // portfolio, the gradebook and the block); the queries above only count.
@@ -2662,11 +2722,15 @@ class manager {
             $summary->editions = count($editions);
             if ($editions) {
                 [$einsql, $eparams] = $DB->get_in_or_equal(array_keys($editions), SQL_PARAMS_NAMED, 'te');
-                foreach (['local_ga_edition_enrolments' => 'enrolments', 'local_ga_certificates' => 'certificates',
+                foreach (
+                    ['local_ga_edition_enrolments' => 'enrolments', 'local_ga_certificates' => 'certificates',
                         'local_ga_hour_history' => 'hours', 'local_ga_typeb_reflections' => 'reflections',
-                        'local_ga_task_submissions' => 'submissions', 'local_ga_typeb_transfers' => 'transfers'] as $table => $field) {
-                    if ($DB->get_manager()->table_exists(new \xmldb_table($table))
-                            && array_key_exists('editionid', $DB->get_columns($table))) {
+                        'local_ga_task_submissions' => 'submissions', 'local_ga_typeb_transfers' => 'transfers'] as $table => $field
+                ) {
+                    if (
+                        $DB->get_manager()->table_exists(new \xmldb_table($table))
+                            && array_key_exists('editionid', $DB->get_columns($table))
+                    ) {
                         $summary->$field = $DB->count_records_select($table, "editionid $einsql", $eparams);
                     }
                 }
@@ -2712,14 +2776,20 @@ class manager {
             'local_ga_typeb_transfers' => 'transfers',
         ];
         foreach ($checks as $table => $field) {
-            if ($DB->get_manager()->table_exists(new \xmldb_table($table))
-                    && array_key_exists('editionid', $DB->get_columns($table))) {
+            if (
+                $DB->get_manager()->table_exists(new \xmldb_table($table))
+                    && array_key_exists('editionid', $DB->get_columns($table))
+            ) {
                 $summary->$field = $DB->count_records_select($table, "editionid $einsql", $eparams);
             }
         }
 
-        $groupids = $DB->get_fieldset_select('local_ga_workshop_editions', 'groupid',
-            "id $einsql AND groupid > 0", $eparams);
+        $groupids = $DB->get_fieldset_select(
+            'local_ga_workshop_editions',
+            'groupid',
+            "id $einsql AND groupid > 0",
+            $eparams
+        );
         $summary->groups = count(array_unique(array_map('intval', $groupids)));
 
         return $summary;
@@ -2739,8 +2809,10 @@ class manager {
                 continue;
             }
             $name = trim((string)($section->name ?? ''));
-            if (in_array($name, ['TALLERES TIPO A', 'TALLERES TIPO B'], true)
-                    || strpos($name, 'Eliminada · ') === 0) {
+            if (
+                in_array($name, ['TALLERES TIPO A', 'TALLERES TIPO B'], true)
+                    || strpos($name, 'Eliminada · ') === 0
+            ) {
                 $count++;
                 continue;
             }
@@ -2801,8 +2873,10 @@ class manager {
         }
 
         $name = '';
-        if (in_array((string)$row->modname, ['attendance', 'quiz', 'assign', 'label'], true)
-                && $DB->get_manager()->table_exists(new \xmldb_table((string)$row->modname))) {
+        if (
+            in_array((string)$row->modname, ['attendance', 'quiz', 'assign', 'label'], true)
+                && $DB->get_manager()->table_exists(new \xmldb_table((string)$row->modname))
+        ) {
             $name = (string)$DB->get_field((string)$row->modname, 'name', ['id' => (int)$row->instance]);
         }
 
@@ -2886,8 +2960,10 @@ class manager {
             }
         }
         $selfassessmentcmid = 0;
-        if (class_exists(grade_manager::class)
-                && $dbman->table_exists(new \xmldb_table(grade_manager::SETTINGS_TABLE))) {
+        if (
+            class_exists(grade_manager::class)
+                && $dbman->table_exists(new \xmldb_table(grade_manager::SETTINGS_TABLE))
+        ) {
             $selfassessmentcmid = (int)$DB->get_field(grade_manager::SETTINGS_TABLE, 'selfassessmentcmid', ['courseid' => $courseid]);
         }
         $deletable = [];
@@ -2906,8 +2982,10 @@ class manager {
             // There is no persistent ownership flag that can prove an assign/quiz
             // was created by HEE rather than linked from existing course content.
             $generatedbyhee = self::is_generated_hee_module((int)$cmid, $courseid);
-            if (!$generatedbyhee && ($count > 1 || $cmid === $selfassessmentcmid
-                    || in_array((string)$modname, ['assign', 'quiz', 'attendance', 'customcert', 'certificate', 'subsection'], true))) {
+            if (
+                !$generatedbyhee && ($count > 1 || $cmid === $selfassessmentcmid
+                    || in_array((string)$modname, ['assign', 'quiz', 'attendance', 'customcert', 'certificate', 'subsection'], true))
+            ) {
                 $summary->modulespreserved++;
                 continue;
             }
@@ -2995,7 +3073,10 @@ class manager {
         if ($editionids && $dbman->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
             [$uinsql, $uparams] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'pu');
             $affecteduserids = array_map('intval', $DB->get_fieldset_select(
-                'local_ga_edition_enrolments', 'userid', "editionid $uinsql", $uparams
+                'local_ga_edition_enrolments',
+                'userid',
+                "editionid $uinsql",
+                $uparams
             ));
             $affecteduserids = array_values(array_unique(array_filter($affecteduserids)));
         }
@@ -3009,8 +3090,10 @@ class manager {
             if ($dbman->table_exists(new \xmldb_table('local_ga_certificates'))) {
                 $certfileitems = array_map('intval', $DB->get_fieldset_select('local_ga_certificates', 'id', "editionid $finsql", $fparams));
             }
-            if ($dbman->table_exists(new \xmldb_table('local_ga_materials'))
-                    && array_key_exists('fileitemid', $DB->get_columns('local_ga_materials'))) {
+            if (
+                $dbman->table_exists(new \xmldb_table('local_ga_materials'))
+                    && array_key_exists('fileitemid', $DB->get_columns('local_ga_materials'))
+            ) {
                 $materialfileitems = array_map('intval', $DB->get_fieldset_select('local_ga_materials', 'fileitemid', "editionid $finsql", $fparams));
             }
         }
@@ -3020,7 +3103,8 @@ class manager {
         // Delete plugin records tied to the concrete workshop editions.
         if ($editionids) {
             [$einsql, $eparams] = $DB->get_in_or_equal($editionids, SQL_PARAMS_NAMED, 'pe');
-            foreach ([
+            foreach (
+                [
                 'local_ga_edition_teachers',
                 'local_ga_edition_enrolments',
                 'local_ga_hour_history',
@@ -3029,9 +3113,12 @@ class manager {
                 'local_ga_task_submissions',
                 'local_ga_typeb_transfers',
                 'local_ga_materials',
-            ] as $table) {
-                if ($dbman->table_exists(new \xmldb_table($table))
-                        && array_key_exists('editionid', $DB->get_columns($table))) {
+                ] as $table
+            ) {
+                if (
+                    $dbman->table_exists(new \xmldb_table($table))
+                        && array_key_exists('editionid', $DB->get_columns($table))
+                ) {
                     $DB->delete_records_select($table, "editionid $einsql", $eparams);
                 }
             }
@@ -3041,8 +3128,10 @@ class manager {
         if ($workshopids) {
             [$winsql, $wparams] = $DB->get_in_or_equal($workshopids, SQL_PARAMS_NAMED, 'pdw');
             foreach (['local_ga_hour_history', 'local_ga_certificates', 'local_ga_typeb_transfers', 'local_ga_materials'] as $table) {
-                if ($dbman->table_exists(new \xmldb_table($table))
-                        && array_key_exists('workshopid', $DB->get_columns($table))) {
+                if (
+                    $dbman->table_exists(new \xmldb_table($table))
+                        && array_key_exists('workshopid', $DB->get_columns($table))
+                ) {
                     $DB->delete_records_select($table, "workshopid $winsql", $wparams);
                 }
             }
@@ -3603,7 +3692,7 @@ class manager {
         return $DB->get_record('local_ga_workshops', ['id' => $id], '*', MUST_EXIST);
     }
 
-    
+
     public static function filter_record_to_existing_fields(string $tablename, \stdClass $record): \stdClass {
         global $DB;
 
@@ -3670,7 +3759,7 @@ class manager {
         $clean = preg_replace('/[^A-ZÁÉÍÓÚÜÑ0-9 ]/u', ' ', $clean);
         $words = preg_split('/\s+/', $clean, -1, PREG_SPLIT_NO_EMPTY);
 
-        $stop = ['DE','DEL','LA','LAS','EL','LOS','Y','E','EN','A','PARA','POR','CON','UN','UNA','TIPO'];
+        $stop = ['DE', 'DEL', 'LA', 'LAS', 'EL', 'LOS', 'Y', 'E', 'EN', 'A', 'PARA', 'POR', 'CON', 'UN', 'UNA', 'TIPO'];
         $letters = '';
         foreach ($words as $word) {
             if (in_array($word, $stop, true)) {
@@ -3687,7 +3776,7 @@ class manager {
         }
 
         $letters = strtr($letters, [
-            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ñ' => 'N'
+            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ü' => 'U', 'Ñ' => 'N',
         ]);
         $base = preg_replace('/[^A-Z0-9]/', '', $letters);
         if ($base === '') {
@@ -3866,8 +3955,10 @@ class manager {
             if (!empty($old)) {
                 $keepassign = !empty($old->requiredassigncmid) ? (int)$old->requiredassigncmid
                     : ((string)($old->requiredmodname ?? '') === 'assign' ? (int)($old->requiredcmid ?? 0) : 0);
-                if ($keepassign <= 0 && !empty($old->requiredcmid)
-                        && self::get_module_name_from_cmid((int)$old->requiredcmid) === 'assign') {
+                if (
+                    $keepassign <= 0 && !empty($old->requiredcmid)
+                        && self::get_module_name_from_cmid((int)$old->requiredcmid) === 'assign'
+                ) {
                     $keepassign = (int)$old->requiredcmid;
                 }
             }
@@ -4167,10 +4258,12 @@ class manager {
                 continue;
             }
 
-            if ($DB->record_exists('local_ga_completions', [
+            if (
+                $DB->record_exists('local_ga_completions', [
                 'activitykey' => $activity->activitykey,
                 'userid' => $participant->userid,
-            ])) {
+                ])
+            ) {
                 $summary->alreadycompleted++;
             } else {
                 $DB->insert_record('local_ga_completions', (object)[
@@ -4223,9 +4316,13 @@ class manager {
         $emailindex = array_search('email', $headers, true);
         $usernameindex = array_search('username', $headers, true);
         $firstnameindex = array_search('firstname', $headers, true);
-        if ($firstnameindex === false) { $firstnameindex = array_search('nombre', $headers, true); }
+        if ($firstnameindex === false) {
+            $firstnameindex = array_search('nombre', $headers, true);
+        }
         $lastnameindex = array_search('lastname', $headers, true);
-        if ($lastnameindex === false) { $lastnameindex = array_search('apellidos', $headers, true); }
+        if ($lastnameindex === false) {
+            $lastnameindex = array_search('apellidos', $headers, true);
+        }
         $idnumberindex = array_search('idnumber', $headers, true);
         $cityindex = array_search('city', $headers, true);
         $countryindex = array_search('country', $headers, true);
@@ -4319,8 +4416,12 @@ class manager {
                         'idnumber' => $idnumber,
                         'timemodified' => time(),
                     ];
-                    if ($city !== '') { $update->city = $city; }
-                    if ($country !== '') { $update->country = $country; }
+                    if ($city !== '') {
+                        $update->city = $city;
+                    }
+                    if ($country !== '') {
+                        $update->country = $country;
+                    }
                     user_update_user($update, false, false);
                     $result->status = 'updated';
                     $result->message = 'Usuario existente actualizado.';
@@ -4539,7 +4640,7 @@ class manager {
         return $summary;
     }
 
-    
+
 
     public static function list_activities(): array {
         global $DB;
@@ -4560,8 +4661,10 @@ class manager {
         if ($workshopid <= 0 || $userid <= 0) {
             return false;
         }
-        if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_editions'))
-            || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_teachers'))) {
+        if (
+            !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshop_editions'))
+            || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_teachers'))
+        ) {
             return false;
         }
         $sql = "SELECT 1
@@ -4594,8 +4697,10 @@ class manager {
 
     public static function is_teacher_assigned_to_edition(int $editionid, int $userid): bool {
         global $DB;
-        if ($editionid <= 0 || $userid <= 0
-                || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_teachers'))) {
+        if (
+            $editionid <= 0 || $userid <= 0
+                || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_teachers'))
+        ) {
             return false;
         }
         return $DB->record_exists('local_ga_edition_teachers', [
@@ -4634,8 +4739,10 @@ class manager {
         if (is_siteadmin($userid)) {
             return true;
         }
-        if ($DB->get_manager()->table_exists(new \xmldb_table('local_ga_authorized'))
-            && $DB->record_exists('local_ga_authorized', ['userid' => $userid])) {
+        if (
+            $DB->get_manager()->table_exists(new \xmldb_table('local_ga_authorized'))
+            && $DB->record_exists('local_ga_authorized', ['userid' => $userid])
+        ) {
             return true;
         }
         return false;
@@ -4694,7 +4801,7 @@ class manager {
                      WHERE ra.contextid = :contextid AND u.deleted = 0 AND u.confirmed = 1
                        AND (r.shortname IN ('editingteacher','teacher','manager') OR r.archetype IN ('editingteacher','teacher','manager'))
                   ORDER BY u.lastname ASC, u.firstname ASC";
-            return $DB->get_records_sql($sql, ['contextid'=>$context->id], 0, 200);
+            return $DB->get_records_sql($sql, ['contextid' => $context->id], 0, 200);
         }
 
         // The datalist shows values like "Nombre Apellido <email@ucv.es>". Moodle must
@@ -4765,7 +4872,8 @@ class manager {
                 ')';
         }
         if ($userconditions) {
-            $users = $DB->get_records_select('user',
+            $users = $DB->get_records_select(
+                'user',
                 'deleted = 0 AND confirmed = 1 AND (' . implode(' OR ', $userconditions) . ')',
                 $userparams,
                 'lastname ASC, firstname ASC',
@@ -4777,10 +4885,12 @@ class manager {
                 if (isset($records[$user->id])) {
                     continue;
                 }
-                if (has_capability('moodle/course:update', $context, $user->id, false)
+                if (
+                    has_capability('moodle/course:update', $context, $user->id, false)
                         || has_capability('moodle/course:manageactivities', $context, $user->id, false)
                         || has_capability('mod/assign:grade', $context, $user->id, false)
-                        || has_capability('moodle/grade:edit', $context, $user->id, false)) {
+                        || has_capability('moodle/grade:edit', $context, $user->id, false)
+                ) {
                     $records[$user->id] = $user;
                 }
             }
@@ -4798,16 +4908,16 @@ class manager {
                      WHERE ra.contextid = :contextid AND u.deleted = 0 AND u.confirmed = 1
                        AND (r.shortname = 'student' OR r.archetype = 'student')
                   ORDER BY u.lastname ASC, u.firstname ASC";
-            return $DB->get_records_sql($sql, ['contextid'=>$context->id], 0, 300);
+            return $DB->get_records_sql($sql, ['contextid' => $context->id], 0, 300);
         }
         $like = '%' . $DB->sql_like_escape($query) . '%';
         $sql = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
                   FROM {role_assignments} ra JOIN {role} r ON r.id = ra.roleid JOIN {user} u ON u.id = ra.userid
                  WHERE ra.contextid = :contextid AND u.deleted = 0 AND u.confirmed = 1
                    AND (r.shortname = 'student' OR r.archetype = 'student')
-                   AND (".$DB->sql_like('u.firstname', ':q1', false)." OR ".$DB->sql_like('u.lastname', ':q2', false)." OR ".$DB->sql_like('u.email', ':q3', false).")
+                   AND (" . $DB->sql_like('u.firstname', ':q1', false) . " OR " . $DB->sql_like('u.lastname', ':q2', false) . " OR " . $DB->sql_like('u.email', ':q3', false) . ")
               ORDER BY u.lastname ASC, u.firstname ASC";
-        return $DB->get_records_sql($sql, ['contextid'=>$context->id,'q1'=>$like,'q2'=>$like,'q3'=>$like], 0, 20);
+        return $DB->get_records_sql($sql, ['contextid' => $context->id, 'q1' => $like, 'q2' => $like, 'q3' => $like], 0, 20);
     }
 
     public static function list_edition_enrolled_users_safe(int $editionid): array {
@@ -4835,18 +4945,24 @@ class manager {
 
     public static function list_edition_enrolled_users(int $editionid): array {
         global $DB;
-        if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) { return []; }
+        if (!$DB->get_manager()->table_exists(new \xmldb_table('local_ga_edition_enrolments'))) {
+            return [];
+        }
         $sql = "SELECT u.id, u.firstname, u.lastname, u.email, e.status, e.source, e.timecreated
                   FROM {local_ga_edition_enrolments} e JOIN {user} u ON u.id = e.userid
                  WHERE e.editionid = :editionid AND e.status = 'enrolled' AND u.deleted = 0
               ORDER BY u.lastname ASC, u.firstname ASC";
-        return $DB->get_records_sql($sql, ['editionid'=>$editionid]);
+        return $DB->get_records_sql($sql, ['editionid' => $editionid]);
     }
     public static function get_material_file_url(\stdClass $material, \context $context): string {
-        if (empty($material->fileitemid)) { return ''; }
+        if (empty($material->fileitemid)) {
+            return '';
+        }
         $fs = get_file_storage();
         $files = $fs->get_area_files($context->id, 'local_gestion_actividades', 'material', (int)$material->fileitemid, 'filename', false);
-        if (!$files) { return ''; }
+        if (!$files) {
+            return '';
+        }
         $file = reset($files);
         return \moodle_url::make_pluginfile_url($context->id, 'local_gestion_actividades', 'material', (int)$material->fileitemid, $file->get_filepath(), $file->get_filename())->out(false);
     }
@@ -4863,9 +4979,9 @@ class manager {
                   FROM {user}
                  WHERE deleted = 0
                    AND confirmed = 1
-                   AND (".$DB->sql_like('firstname', ':q1', false)."
-                    OR ".$DB->sql_like('lastname', ':q2', false)."
-                    OR ".$DB->sql_like('email', ':q3', false).")
+                   AND (" . $DB->sql_like('firstname', ':q1', false) . "
+                    OR " . $DB->sql_like('lastname', ':q2', false) . "
+                    OR " . $DB->sql_like('email', ':q3', false) . ")
               ORDER BY lastname ASC, firstname ASC";
         return $DB->get_records_sql($sql, ['q1' => $like, 'q2' => $like, 'q3' => $like], 0, 20);
     }
@@ -4937,7 +5053,7 @@ class manager {
 
 
 
-    
+
     public static function cleanup_all_generated_course_entries(int $courseid = 0): \stdClass {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/course/lib.php');
@@ -4971,7 +5087,7 @@ class manager {
                 continue;
             }
 
-            $workshopsincourse = array_filter($workshops, function($w) use ($cid) {
+            $workshopsincourse = array_filter($workshops, function ($w) use ($cid) {
                 return (int)$w->courseid === (int)$cid;
             });
 
@@ -5022,8 +5138,14 @@ class manager {
                 }
             }
 
-            try { $summary->activitieshidden += self::hide_finished_workshop_cards_in_course((int)$cid); } catch (\Throwable $e) { }
-            try { $summary->activitieshidden += self::hard_archive_required_activities_in_course((int)$cid); } catch (\Throwable $e) { }
+            try {
+                $summary->activitieshidden += self::hide_finished_workshop_cards_in_course((int)$cid);
+            } catch (\Throwable $e) {
+            }
+            try {
+                $summary->activitieshidden += self::hard_archive_required_activities_in_course((int)$cid);
+            } catch (\Throwable $e) {
+            }
             rebuild_course_cache($cid, true);
         }
 
@@ -5069,7 +5191,7 @@ class manager {
             $out[] = $row;
         }
 
-        usort($out, function($a, $b) {
+        usort($out, function ($a, $b) {
             return strcasecmp($a->lastname . ' ' . $a->firstname, $b->lastname . ' ' . $b->firstname);
         });
 
@@ -5492,7 +5614,8 @@ class manager {
 
     public static function detect_required_activity_type(\stdClass $edition): string {
         // Try all known/possible field names used by previous alpha versions.
-        foreach ([
+        foreach (
+            [
             'requiredactivitytype',
             'required_activity_type',
             'activitytype',
@@ -5508,8 +5631,9 @@ class manager {
             'requiredmodname',
             'activitycreationtype',
             'requiredmod',
-            'requiredmodule'
-        ] as $field) {
+            'requiredmodule',
+            ] as $field
+        ) {
             if (!empty($edition->$field)) {
                 $value = strtolower(trim((string)$edition->$field));
                 if (strpos($value, 'quiz') !== false || strpos($value, 'cuestion') !== false || strpos($value, 'test') !== false) {
@@ -5723,11 +5847,13 @@ class manager {
 
             $matches = false;
 
-            if ($activityname !== '' && (
+            if (
+                $activityname !== '' && (
                 strpos($activityname, $wname) !== false ||
                 strpos($activityname, $wcode) !== false ||
                 strpos($activityname, 'taller') !== false
-            )) {
+                )
+            ) {
                 $matches = true;
             }
 
@@ -6165,20 +6291,20 @@ class manager {
         }
 
         $html = \html_writer::start_div('local-ga-course-card', [
-            'style' => 'border-left:4px solid #0f6cbf;background:#f7f9fb;padding:18px 20px;margin:14px 0;border-radius:10px;'
+            'style' => 'border-left:4px solid #0f6cbf;background:#f7f9fb;padding:18px 20px;margin:14px 0;border-radius:10px;',
         ]);
         $html .= \html_writer::tag('h4', s($workshop->code . ' - ' . $workshop->name), [
-            'style' => 'margin:0 0 6px 0;font-weight:700;'
+            'style' => 'margin:0 0 6px 0;font-weight:700;',
         ]);
         if ($desc !== '') {
             $html .= \html_writer::tag('p', s($desc), ['style' => 'margin:0 0 10px 0;']);
         }
         $html .= \html_writer::div(implode(' · ', $meta), 'local-ga-course-meta', [
-            'style' => 'margin:0 0 12px 0;color:#1f2d3d;'
+            'style' => 'margin:0 0 12px 0;color:#1f2d3d;',
         ]);
         $html .= \html_writer::link($url, get_string('viewworkshop', 'local_gestion_actividades'), [
             'class' => 'btn btn-secondary btn-sm',
-            'style' => 'margin-right:8px;'
+            'style' => 'margin-right:8px;',
         ]);
         if ($edition && method_exists(__CLASS__, 'get_user_edition_enrolment')) {
             global $USER;
@@ -6242,7 +6368,7 @@ class manager {
             return false;
         }
 
-        $parts = array_values(array_filter(array_map('trim', explode(',', $sequence)), function($value) use ($cmid) {
+        $parts = array_values(array_filter(array_map('trim', explode(',', $sequence)), function ($value) use ($cmid) {
             return $value !== '' && (int)$value !== (int)$cmid;
         }));
 
@@ -6316,10 +6442,12 @@ class manager {
         }
         $section = $DB->get_record('course_sections', ['id' => (int)$cm->section], 'id, sequence', IGNORE_MISSING);
         if ($section) {
-            $parts = array_values(array_filter(array_map('trim', explode(',', (string)$section->sequence)),
-                static function($value) use ($cmid) {
+            $parts = array_values(array_filter(
+                array_map('trim', explode(',', (string)$section->sequence)),
+                static function ($value) use ($cmid) {
                     return $value !== '' && (int)$value !== (int)$cmid;
-                }));
+                }
+            ));
             $parts[] = (string)$cmid;
             $newsequence = implode(',', $parts);
             if ($newsequence !== (string)$section->sequence) {
@@ -6518,7 +6646,7 @@ class manager {
         set_config('certificatetemplatehtml', $html, 'local_gestion_actividades');
     }
 
-    
+
 
     public static function user_submitted_required_activity(int $userid, int $cmid): bool {
         global $DB;
@@ -6970,7 +7098,8 @@ class manager {
             . "Ver certificados:\n" . $url . "\n\n"
             . "Un saludo.";
         $html = \html_writer::tag('p', 'Los certificados del taller ' . s($workshopname) . ' ya están disponibles.')
-            . \html_writer::tag('ul',
+            . \html_writer::tag(
+                'ul',
                 \html_writer::tag('li', 'Generados nuevos: ' . (int)$summary->generated)
                 . \html_writer::tag('li', 'Ya existentes: ' . (int)$summary->existing)
                 . \html_writer::tag('li', 'No elegibles: ' . (int)$summary->skipped)
@@ -7100,9 +7229,11 @@ class manager {
 
     public static function list_user_transferable_typea_certificates(int $userid): array {
         global $DB;
-        if ($userid <= 0 || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_certificates'))
+        if (
+            $userid <= 0 || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_certificates'))
             || !$DB->get_manager()->table_exists(new \xmldb_table('local_ga_workshops'))
-            || !self::ensure_typeb_transfers_table()) {
+            || !self::ensure_typeb_transfers_table()
+        ) {
             return [];
         }
         $columns = $DB->get_columns('local_ga_certificates');
@@ -7315,5 +7446,4 @@ class manager {
             self::invalidate_block_cache_for_user((int)$userid);
         }
     }
-
 }

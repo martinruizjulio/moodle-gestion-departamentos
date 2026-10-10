@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * teacher_view.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\manager;
@@ -25,7 +48,7 @@ if (!manager::can_manage_workshop_instance((int)$workshop->id, (int)$USER->id)) 
 $globalmanager = manager::can_manage_globally((int)$USER->id);
 $editions = manager::list_workshop_editions($id);
 if (!$globalmanager) {
-    $editions = array_filter($editions, static function($candidate) use ($USER): bool {
+    $editions = array_filter($editions, static function ($candidate) use ($USER): bool {
         return manager::is_teacher_assigned_to_edition((int)$candidate->id, (int)$USER->id);
     });
 }
@@ -81,7 +104,9 @@ function local_ga_btn_icon(string $pix, string $label): string {
 
 function local_ga_valid_activity_cm(int $cmid, int $courseid, array $allowedmods = ['assign', 'quiz']): ?stdClass {
     global $DB;
-    if ($cmid <= 0) { return null; }
+    if ($cmid <= 0) {
+        return null;
+    }
     $sql = "SELECT cm.id, cm.course, cm.instance, cm.module, cm.deletioninprogress, m.name AS modname
               FROM {course_modules} cm
               JOIN {modules} m ON m.id = cm.module
@@ -95,7 +120,9 @@ function local_ga_valid_activity_cm(int $cmid, int $courseid, array $allowedmods
 
 function local_ga_parse_task_grade_input($value): ?float {
     $value = trim(str_replace(',', '.', (string)$value));
-    if ($value === '' || !is_numeric($value)) { return null; }
+    if ($value === '' || !is_numeric($value)) {
+        return null;
+    }
     return min(10.0, max(0.0, (float)$value));
 }
 
@@ -144,8 +171,11 @@ if (!$istypeb && $edition && optional_param('action', '', PARAM_ALPHANUMEXT) ===
 }
 
 echo $OUTPUT->header();
-$toplinks = html_writer::link(new moodle_url('/course/view.php', ['id' => $course->id]),
-    local_ga_btn_icon('t/left', 'Volver al curso'), ['class' => 'btn local-ga-back-course me-2 mb-3']);
+$toplinks = html_writer::link(
+    new moodle_url('/course/view.php', ['id' => $course->id]),
+    local_ga_btn_icon('t/left', 'Volver al curso'),
+    ['class' => 'btn local-ga-back-course me-2 mb-3']
+);
 if ($focususerid > 0) {
     $focususer = $DB->get_record('user', ['id' => $focususerid, 'deleted' => 0], 'id,firstname,lastname', IGNORE_MISSING);
     if ($focususer) {
@@ -173,9 +203,15 @@ if ($editions) {
     echo html_writer::start_tag('select', ['name' => 'editionid', 'id' => 'editionid', 'class' => 'form-select me-2 mb-2']);
     foreach ($editions as $availableedition) {
         $label = trim((string)($availableedition->editioncode ?? ''));
-        if (!empty($availableedition->name)) { $label .= ($label !== '' ? ' · ' : '') . format_string($availableedition->name); }
-        if (!empty($availableedition->sessiondate)) { $label .= ' · ' . manager::format_date_compact((int)$availableedition->sessiondate); }
-        if (!empty($availableedition->archived) || (string)($availableedition->status ?? '') === 'archived') { $label .= ' · ARCHIVADA'; }
+        if (!empty($availableedition->name)) {
+            $label .= ($label !== '' ? ' · ' : '') . format_string($availableedition->name);
+        }
+        if (!empty($availableedition->sessiondate)) {
+            $label .= ' · ' . manager::format_date_compact((int)$availableedition->sessiondate);
+        }
+        if (!empty($availableedition->archived) || (string)($availableedition->status ?? '') === 'archived') {
+            $label .= ' · ARCHIVADA';
+        }
         echo html_writer::tag('option', $label !== '' ? $label : ('Edición ' . (int)$availableedition->id), ['value' => (int)$availableedition->id, 'selected' => (int)$availableedition->id === $editionid ? 'selected' : null]);
     }
     echo html_writer::end_tag('select');
@@ -292,8 +328,11 @@ if ($edition) {
                             . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()])
                             . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'userid', 'value' => $userid])
                             . html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => $active ? 'revoke_reflection' : 'allow_reflection'])
-                            . html_writer::tag('button', $active ? 'Retirar permiso' : 'Permitir entregar (' . typeb_certificate_policy::LATE_REFLECTION_DAYS . ' días)',
-                                ['type' => 'submit', 'class' => 'btn btn-sm ' . ($active ? 'btn-outline-secondary' : 'btn-primary')])
+                            . html_writer::tag(
+                                'button',
+                                $active ? 'Retirar permiso' : 'Permitir entregar (' . typeb_certificate_policy::LATE_REFLECTION_DAYS . ' días)',
+                                ['type' => 'submit', 'class' => 'btn btn-sm ' . ($active ? 'btn-outline-secondary' : 'btn-primary')]
+                            )
                             . html_writer::end_tag('form');
                     }
                 }
@@ -366,26 +405,26 @@ if ($edition) {
                 echo html_writer::tag('p', 'Criterio: asistencia + cuestionario finalizado con nota mínima de 5 sobre 10 (la nota del cuestionario se reescala a 10).', ['class' => 'text-muted']);
             } else {
                 $hasinternaltask = in_array('assign', $requiredtypes, true);
-            if ($hasinternaltask) {
-                echo html_writer::start_tag('form', ['method' => 'post', 'action' => new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid])]);
-                echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
-                echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'save_task_grades']);
-            }
-            $atable->head = [get_string('lastname'), get_string('firstname'), get_string('email'), 'Asistencia', 'Tarea entregada', 'Archivo tarea', 'Nota tarea', 'Resultado tarea'];
-            foreach ($enrolledusers as $eu) {
-                $submission = manager::get_internal_task_submission((int)$edition->id, (int)$eu->userid);
-                $submissionurl = ($submission && !empty($submission->fileitemid)) ? manager::get_filearea_url($coursecontext, 'tasksubmission', (int)$submission->fileitemid) : '';
-                $grade = ($submission && property_exists($submission, 'grade') && $submission->grade !== null && $submission->grade !== '') ? (float)$submission->grade : null;
-                $gradeinput = ($hasinternaltask && $submissionurl !== '') ? html_writer::empty_tag('input', ['type' => 'number', 'step' => '0.01', 'min' => '0', 'max' => '10', 'name' => 'taskgrade[' . (int)$eu->userid . ']', 'value' => $grade !== null ? rtrim(rtrim(number_format($grade, 2, '.', ''), '0'), '.') : '', 'class' => 'form-control form-control-sm', 'style' => 'max-width:95px;']) : '-';
-                $resultbadge = !$hasinternaltask ? html_writer::span('No procede', 'badge bg-secondary') : ($submissionurl === '' ? html_writer::span('Pendiente entrega', 'badge bg-warning text-dark') : ($grade === null ? html_writer::span('Pendiente nota', 'badge bg-warning text-dark') : ($grade >= 5.0 ? html_writer::span('Apto', 'badge bg-success') : html_writer::span('No apto', 'badge bg-danger'))));
-                $atable->data[] = [s($eu->lastname), s($eu->firstname), s($eu->email), !empty($eu->attended) ? html_writer::span('Asiste', 'badge bg-success') : html_writer::span('No asiste', 'badge bg-warning text-dark'), $submissionurl !== '' ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('No entregada', 'badge bg-warning text-dark'), $submissionurl !== '' ? html_writer::link($submissionurl, 'Ver/descargar', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank']) : '-', $gradeinput, $resultbadge];
-            }
-            echo html_writer::table($atable);
-            if ($hasinternaltask) {
-                echo html_writer::tag('p', 'La nota mínima para poder generar certificado es 5 sobre 10.', ['class' => 'text-muted']);
-                echo html_writer::tag('button', local_ga_btn_icon('t/save', 'Guardar notas de tarea'), ['type' => 'submit', 'class' => 'btn btn-primary']);
-                echo html_writer::end_tag('form');
-            }
+                if ($hasinternaltask) {
+                    echo html_writer::start_tag('form', ['method' => 'post', 'action' => new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $id, 'editionid' => $editionid])]);
+                    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+                    echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'save_task_grades']);
+                }
+                $atable->head = [get_string('lastname'), get_string('firstname'), get_string('email'), 'Asistencia', 'Tarea entregada', 'Archivo tarea', 'Nota tarea', 'Resultado tarea'];
+                foreach ($enrolledusers as $eu) {
+                    $submission = manager::get_internal_task_submission((int)$edition->id, (int)$eu->userid);
+                    $submissionurl = ($submission && !empty($submission->fileitemid)) ? manager::get_filearea_url($coursecontext, 'tasksubmission', (int)$submission->fileitemid) : '';
+                    $grade = ($submission && property_exists($submission, 'grade') && $submission->grade !== null && $submission->grade !== '') ? (float)$submission->grade : null;
+                    $gradeinput = ($hasinternaltask && $submissionurl !== '') ? html_writer::empty_tag('input', ['type' => 'number', 'step' => '0.01', 'min' => '0', 'max' => '10', 'name' => 'taskgrade[' . (int)$eu->userid . ']', 'value' => $grade !== null ? rtrim(rtrim(number_format($grade, 2, '.', ''), '0'), '.') : '', 'class' => 'form-control form-control-sm', 'style' => 'max-width:95px;']) : '-';
+                    $resultbadge = !$hasinternaltask ? html_writer::span('No procede', 'badge bg-secondary') : ($submissionurl === '' ? html_writer::span('Pendiente entrega', 'badge bg-warning text-dark') : ($grade === null ? html_writer::span('Pendiente nota', 'badge bg-warning text-dark') : ($grade >= 5.0 ? html_writer::span('Apto', 'badge bg-success') : html_writer::span('No apto', 'badge bg-danger'))));
+                    $atable->data[] = [s($eu->lastname), s($eu->firstname), s($eu->email), !empty($eu->attended) ? html_writer::span('Asiste', 'badge bg-success') : html_writer::span('No asiste', 'badge bg-warning text-dark'), $submissionurl !== '' ? html_writer::span('Entregada', 'badge bg-success') : html_writer::span('No entregada', 'badge bg-warning text-dark'), $submissionurl !== '' ? html_writer::link($submissionurl, 'Ver/descargar', ['class' => 'btn btn-secondary btn-sm', 'target' => '_blank']) : '-', $gradeinput, $resultbadge];
+                }
+                echo html_writer::table($atable);
+                if ($hasinternaltask) {
+                    echo html_writer::tag('p', 'La nota mínima para poder generar certificado es 5 sobre 10.', ['class' => 'text-muted']);
+                    echo html_writer::tag('button', local_ga_btn_icon('t/save', 'Guardar notas de tarea'), ['type' => 'submit', 'class' => 'btn btn-primary']);
+                    echo html_writer::end_tag('form');
+                }
             }
         }
     } else {
@@ -429,5 +468,7 @@ echo html_writer::tag('p', get_string('finishworkshop_help', 'local_gestion_acti
 echo html_writer::end_div();
 echo html_writer::end_div();
 
-if (function_exists('local_gestion_actividades_enable_interactive_tables')) { local_gestion_actividades_enable_interactive_tables(); }
+if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
+    local_gestion_actividades_enable_interactive_tables();
+}
 echo $OUTPUT->footer();

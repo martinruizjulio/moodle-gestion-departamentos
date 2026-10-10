@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * workshop_series.php page/script for local_gestion_actividades.
+ *
+ * @package    local_gestion_actividades
+ * @copyright  2026 Julio Martín Ruiz
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 require_once(__DIR__ . '/../../config.php');
 
 use local_gestion_actividades\local\course_layout;
@@ -19,8 +42,10 @@ $id = optional_param('id', 0, PARAM_INT);
 $courseid = optional_param('courseid', 0, PARAM_INT);
 if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
     $SESSION->local_ga_return_courseid = $courseid;
-} else if ($courseid <= 0 && !empty($SESSION->local_ga_return_courseid)
-        && $DB->record_exists('course', ['id' => (int)$SESSION->local_ga_return_courseid])) {
+} else if (
+    $courseid <= 0 && !empty($SESSION->local_ga_return_courseid)
+        && $DB->record_exists('course', ['id' => (int)$SESSION->local_ga_return_courseid])
+) {
     $courseid = (int)$SESSION->local_ga_return_courseid;
 }
 $message = '';
@@ -93,8 +118,12 @@ echo html_writer::div(
 echo $OUTPUT->heading('Ediciones de talleres');
 echo html_writer::tag('p', 'Cada edición agrupa talleres de un único tipo (A o B) en una sección del curso. Primero aparece el calendario HTML y después las subsecciones Taller 01, 02… Las ediciones finalizadas se ocultan y se conservan debajo de la autoevaluación.', ['class' => 'lead']);
 
-if ($message !== '') echo $OUTPUT->notification($message, 'success');
-if ($error !== '') echo $OUTPUT->notification(s($error), 'error');
+if ($message !== '') {
+    echo $OUTPUT->notification($message, 'success');
+}
+if ($error !== '') {
+    echo $OUTPUT->notification(s($error), 'error');
+}
 
 $courseoptions = manager::get_course_options();
 
@@ -206,5 +235,7 @@ if ($series) {
     }
     echo html_writer::table($table);
 }
-if (function_exists('local_gestion_actividades_enable_interactive_tables')) { local_gestion_actividades_enable_interactive_tables(); }
+if (function_exists('local_gestion_actividades_enable_interactive_tables')) {
+    local_gestion_actividades_enable_interactive_tables();
+}
 echo $OUTPUT->footer();
