@@ -146,7 +146,7 @@ echo html_writer::tag(
     ['class' => 'text-muted mb-4']
 );
 
-$ay = academic_year::selected(true);
+$ay = academic_year::selected();
 echo academic_year::selector(new moodle_url('/local/gestion_actividades/workshops.php', ['type' => $type]), $ay);
 $serieslist = workshop_series::list_for_course(0);
 $linkedworkshops = [];
