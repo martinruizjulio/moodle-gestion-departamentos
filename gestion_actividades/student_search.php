@@ -1,7 +1,7 @@
 <?php
 // Buscar alumno: ficha completa con todo su historial HEE (talleres,
 // asistencia, calificaciones, certificados, Tipo B externo, traspasos y
-// reconocimiento institucional) para comprobar si falta algo. Solo lectura.
+// reconocimiento institucional) para comprobar si falta algo. Consulta por defecto; los botones Editar abren los controles canónicos.
 require_once(__DIR__ . '/../../config.php');
 require_once(__DIR__ . '/lib.php');
 
@@ -95,7 +95,7 @@ echo html_writer::div(
 echo $OUTPUT->heading('Buscar alumno');
 echo html_writer::tag('p', 'Busca un alumno por nombre, apellidos, correo o DNI/ID para ver todo su historial HEE en una sola página: '
     . 'talleres en los que se inscribió (asistencia, calificación y resultado), certificados, Tipo B externo, traspasos, reconocimiento institucional y total de horas. '
-    . 'Es solo de consulta: sirve para comprobar si falta algo.', ['class' => 'alert alert-info']);
+    . 'La ficha es de consulta por defecto; usa «Editar» solo para casos especiales y se abrirán los controles canónicos de asistencia/calificación.', ['class' => 'alert alert-info']);
 
 echo html_writer::start_tag('form', ['method' => 'get', 'class' => 'mb-4']);
 echo html_writer::div(
@@ -196,7 +196,7 @@ if ($user) {
     if ($enrolments) {
         $table = new html_table();
         $table->attributes['class'] = 'generaltable table-sm';
-        $table->head = ['Curso académico', 'Edición de talleres', 'Tipo', 'Taller', 'Fecha', 'Horas', 'Inscripción', 'Asistencia', 'Calificación / actividad', 'Resultado', 'Certificado'];
+        $table->head = ['Curso académico', 'Edición de talleres', 'Tipo', 'Taller', 'Fecha', 'Horas', 'Inscripción', 'Asistencia', 'Calificación / actividad', 'Resultado', 'Certificado', 'Editar'];
         foreach ($enrolments as $r) {
             $series = (int)$r->seriesid > 0 ? $DB->get_record('local_ga_workshop_series', ['id' => (int)$r->seriesid], 'id, title', IGNORE_MISSING) : null;
             $active = in_array((string)($r->enrolstatus ?? ''), ['', 'enrolled', 'attended', 'manual'], true);
@@ -209,6 +209,19 @@ if ($user) {
                 ? html_writer::link(new moodle_url('/local/gestion_actividades/certificate_download.php', ['id' => $cert->id]), local_ga_ss_icon('t/download', 'Sí'), ['class' => 'btn btn-sm btn-outline-success'])
                 : local_ga_ss_badge('No', 'bg-light text-dark border');
             $istypeb = manager::normalize_workshop_type((string)$r->workshoptype) === 'typeb';
+            $editactions = html_writer::link(
+                new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$r->editionid]),
+                local_ga_ss_icon('t/edit', 'Asistencia'),
+                ['class' => 'btn btn-sm btn-outline-secondary me-1 mb-1']
+            );
+            $editactions .= html_writer::link(
+                new moodle_url('/local/gestion_actividades/teacher_view.php', [
+                    'id' => (int)$r->workshopid,
+                    'editionid' => (int)$r->editionid,
+                ]),
+                local_ga_ss_icon('t/edit', $istypeb ? 'Actividad' : 'Calificación'),
+                ['class' => 'btn btn-sm btn-outline-primary mb-1']
+            );
             $table->data[] = [
                 academic_year::for_row((int)$r->seriesid, (int)$r->sessiondate),
                 s($series->title ?? ($r->editionname ?: '-')),
@@ -221,6 +234,7 @@ if ($user) {
                 s($status),
                 local_ga_ss_result_badge($result),
                 $certcell,
+                $editactions,
             ];
         }
         echo html_writer::table($table);
