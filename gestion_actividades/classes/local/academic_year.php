@@ -156,6 +156,7 @@ class academic_year {
             'local_ga_institutional_hours' => 'timemodified',
             'local_ga_certificates' => 'timeissued',
             'local_ga_workshop_editions' => 'sessiondate',
+            'local_ga_typeb_pat' => 'timemodified',
         ];
         $dbman = $DB->get_manager();
         foreach ($sources as $table => $field) {
@@ -249,7 +250,7 @@ class academic_year {
             $rs->close();
         }
         foreach (['local_ga_typeb_certs' => 'timecreated', 'local_ga_typeb_transfers' => 'timecreated',
-                'local_ga_institutional_hours' => 'timemodified'] as $table => $field) {
+                'local_ga_institutional_hours' => 'timemodified', 'local_ga_typeb_pat' => 'timemodified'] as $table => $field) {
             if (!$exists($table)) {
                 continue;
             }
