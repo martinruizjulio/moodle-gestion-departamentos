@@ -748,3 +748,14 @@ Informe de Julio: con dos Ediciones en el curso, «Limpieza de pruebas» las bor
 - Los registros PAT aparecen en **Buscar alumno**, en el portafolio del alumno y en el PDF del portafolio; sus horas se integran en `hours_calculator` y por tanto en bloque, totales, notas y desbloqueo de las 54 h.
 
 - Validación final: `php -l` correcto en todos los PHP de `gestion_actividades` y `gestion_hee`; `install.xml` parseado correctamente. ZIPs generados desde el mismo HEAD. El bloque no requiere cambios funcionales y se mantiene en **1.0.33-alpha (2026100517)**.
+
+## 2026-10-11 — local 1.5.178-alpha (2026100593) + block 1.0.34-alpha (2026100518): manuales, paneles laterales y contexto de alumno
+- **Panel «Alumnos y horas»**: «Importar talleres Tipo B PAT» pasa al último lugar del bloque.
+- **Buscar alumno → editar**: los botones de Asistencia y Actividad/Calificación conservan el alumno seleccionado. Las pantallas de destino se filtran a ese alumno y muestran «Volver al historial de …», evitando perderlo entre todos los inscritos.
+- **Profesor HEE**: «Talleres vigentes» / «Mis talleres finalizados» conservan el curso Moodle de origen; desde el listado se vuelve al curso correcto.
+- **Manual de alumnos (ES/EN)**: actualizado con una sección específica de **Tipo B PAT de 1.º**: vinculación histórica automática, asistencia completa + nota >=5, sin reflexión ni certificado a subir por el alumno.
+- **Manual de profesores (ES/EN)**: actualizado para aclarar que los talleres finalizados siguen siendo revisables por Profesor HEE/Gestor para correcciones académicas; asistencia se corrige en Attendance, la calificación Tipo A en cuestionario/tarea histórica, y Tipo B no tiene nota numérica pero admite prórroga individual de reflexión. PAT queda fuera de la gestión del Profesor HEE.
+- **Panel lateral de alumno**: no añade un botón PAT (es una importación de gestor), pero sus horas PAT ya entran en el cálculo canónico Tipo B y la caché del bloque se invalida al importar registros vinculados, por lo que el resumen se actualiza.
+- **Panel lateral de profesor**: conserva el acceso a vigentes/finalizados y ahora mantiene el contexto del curso; las instrucciones reflejan el modelo actual.
+- **Correcciones en talleres activos/finalizados**: la finalización oculta el taller al alumnado pero no convierte la ficha docente en solo lectura. Se mantienen las correcciones académicas según el tipo; tras cambios que afecten elegibilidad debe revisarse/regenerarse el certificado cuando corresponda.
+- Validación final: `php -l` correcto en todos los PHP de ambos plugins y `gestion_actividades/db/install.xml` parseado correctamente. ZIPs generados desde el mismo HEAD funcional.
