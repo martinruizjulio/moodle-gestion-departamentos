@@ -243,11 +243,11 @@ echo $block('🎓 Alumnos y horas', 'Validar y reconocer horas del alumnado.', [
     $btn(new moodle_url('/local/gestion_actividades/student_search.php'), 'a/search', 'Buscar alumno (historial completo)'),
     $btn(new moodle_url('/local/gestion_actividades/index.php'), 'i/users', 'Alumnos y ranking'),
     $btn(new moodle_url('/local/gestion_actividades/institutional_import.php'), 'i/import', 'Importar reconocimiento institucional'),
-    $btn(new moodle_url('/local/gestion_actividades/pat_typeb_import.php'), 'i/import', 'Importar talleres Tipo B PAT'),
     $btn(new moodle_url('/local/gestion_actividades/typeb_catalog.php'), 't/edit', 'Catálogo de talleres B'),
     $btn(new moodle_url('/local/gestion_actividades/portfolio_admin.php', ['status' => 'pending'] + $cparams), 'i/checked',
         'Validar Tipo B externo' . ($pendingtypeb > 0 ? ' (' . $pendingtypeb . ')' : ''), $pendingtypeb > 0 ? 'btn btn-warning' : 'btn btn-outline-primary'),
     $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php', ['action' => 'view_transfers']), 'i/switch', 'Ver traspasos A→B'),
+    $btn(new moodle_url('/local/gestion_actividades/pat_typeb_import.php'), 'i/import', 'Importar talleres Tipo B PAT'),
 ]);
 echo $block('📊 Notas e informes', 'Consultar notas y descargar listados.', [
     $btn(new moodle_url('/local/gestion_actividades/manager_downloads.php'), 't/download', 'Listados y descargas'),
