@@ -65,6 +65,7 @@ class pat_typeb {
 
         $now = time();
         $created = 0; $updated = 0; $linked = 0; $pending = 0; $passed = 0;
+        $linkeduserids = [];
         $transaction = $DB->start_delegated_transaction();
         foreach ($parsed['rows'] as $row) {
             $identity = self::identity_from_row($row, $parsed['headers']);
@@ -72,7 +73,12 @@ class pat_typeb {
                 continue;
             }
             $userid = self::resolve_user($identity);
-            if ($userid > 0) { $linked++; } else { $pending++; }
+            if ($userid > 0) {
+                $linked++;
+                $linkeduserids[$userid] = $userid;
+            } else {
+                $pending++;
+            }
 
             $attendance = self::numeric_value($row[$parsed['attendancecol']] ?? null);
             foreach ($parsed['quizcols'] as $col => $workshopname) {
@@ -118,6 +124,11 @@ class pat_typeb {
         }
         $transaction->allow_commit();
         @unlink(self::path_from_token($token));
+        if ($linkeduserids && function_exists('block_gestion_hee_invalidate_users_cache')) {
+            block_gestion_hee_invalidate_users_cache(array_values($linkeduserids));
+        } else if ($linkeduserids && class_exists('\\block_gestion_hee\\local\\student_hours_cache')) {
+            \block_gestion_hee\local\student_hours_cache::invalidate_users(array_values($linkeduserids));
+        }
         return (object)[
             'created' => $created, 'updated' => $updated, 'linked' => $linked,
             'pending' => $pending, 'passed' => $passed,
