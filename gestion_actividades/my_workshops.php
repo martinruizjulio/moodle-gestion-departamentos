@@ -5,11 +5,18 @@ use local_gestion_actividades\local\manager;
 
 require_login();
 $view = optional_param('view', 'active', PARAM_ALPHA);
+$courseid = optional_param('courseid', 0, PARAM_INT);
+if ($courseid > 0 && $DB->record_exists('course', ['id' => $courseid])) {
+    $SESSION->local_ga_return_courseid = $courseid;
+} else if ($courseid <= 0 && !empty($SESSION->local_ga_return_courseid)
+        && $DB->record_exists('course', ['id' => (int)$SESSION->local_ga_return_courseid])) {
+    $courseid = (int)$SESSION->local_ga_return_courseid;
+}
 $view = $view === 'finished' ? 'finished' : 'active';
 $context = context_system::instance();
 
 $PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => $view]));
+$PAGE->set_url(new moodle_url('/local/gestion_actividades/my_workshops.php', array_filter(['view' => $view, 'courseid' => $courseid])));
 $PAGE->set_title($view === 'finished' ? 'Profesor HEE · Mis talleres finalizados' : 'Profesor HEE · Mis talleres vigentes');
 $PAGE->set_heading('Gestión HEE');
 
@@ -47,9 +54,13 @@ if (!$totalassigned && !manager::can_manage_globally((int)$USER->id)) {
 }
 
 echo $OUTPUT->header();
+$backurl = $courseid > 0
+    ? new moodle_url('/course/view.php', ['id' => $courseid])
+    : new moodle_url('/my/');
+$backlabel = $courseid > 0 ? 'Volver al curso' : 'Volver a mis cursos';
 echo html_writer::div(
-    html_writer::link(new moodle_url('/my/'),
-        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver a mis cursos',
+    html_writer::link($backurl,
+        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' ' . $backlabel,
         ['class' => 'btn btn-outline-secondary mb-3']),
     'mb-2'
 );
@@ -61,9 +72,9 @@ echo html_writer::tag(
 );
 
 echo html_writer::start_div('mb-3');
-echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'active']),
+echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php', array_filter(['view' => 'active', 'courseid' => $courseid])),
     'Talleres vigentes', ['class' => 'btn ' . ($view === 'active' ? 'btn-primary' : 'btn-outline-secondary') . ' me-2']);
-echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php', ['view' => 'finished']),
+echo html_writer::link(new moodle_url('/local/gestion_actividades/my_workshops.php', array_filter(['view' => 'finished', 'courseid' => $courseid])),
     'Mis talleres finalizados', ['class' => 'btn ' . ($view === 'finished' ? 'btn-primary' : 'btn-outline-secondary')]);
 echo html_writer::end_div();
 
