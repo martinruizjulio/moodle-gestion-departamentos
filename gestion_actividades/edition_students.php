@@ -12,6 +12,8 @@ $syscontext = context_system::instance();
 $id = required_param('id', PARAM_INT);
 $mode = optional_param('mode', '', PARAM_ALPHA);
 $studentq = optional_param('studentq', '', PARAM_TEXT);
+$focususerid = optional_param('focususerid', 0, PARAM_INT);
+$returnq = optional_param('returnq', '', PARAM_TEXT);
 $manualadd = optional_param('manualadd', 0, PARAM_INT);
 $markattendance = optional_param('markattendance', 0, PARAM_INT);
 $attended = optional_param('attended', 0, PARAM_BOOL);
@@ -112,7 +114,27 @@ try {
     $PAGE->set_heading(format_string($course->fullname));
 
     echo $OUTPUT->header();
-    echo html_writer::div(html_writer::link(new moodle_url('/local/gestion_actividades/teacher_view.php', ['id' => $workshop->id, 'editionid' => $edition->id]), $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al taller', ['class' => 'btn btn-outline-secondary mb-3']), 'mb-2');
+    $toplinks = html_writer::link(
+        new moodle_url('/local/gestion_actividades/teacher_view.php', [
+            'id' => $workshop->id,
+            'editionid' => $edition->id,
+            'focususerid' => $focususerid,
+            'returnq' => $returnq,
+        ]),
+        $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al taller',
+        ['class' => 'btn btn-outline-secondary me-2 mb-3']
+    );
+    if ($focususerid > 0) {
+        $focususer = $DB->get_record('user', ['id' => $focususerid, 'deleted' => 0], 'id,firstname,lastname', IGNORE_MISSING);
+        if ($focususer) {
+            $toplinks .= html_writer::link(
+                new moodle_url('/local/gestion_actividades/student_search.php', ['userid' => $focususerid, 'q' => $returnq]),
+                $OUTPUT->pix_icon('t/left', '', 'moodle', ['class' => 'iconsmall me-1']) . ' Volver al historial de ' . fullname($focususer),
+                ['class' => 'btn btn-primary mb-3']
+            );
+        }
+    }
+    echo html_writer::div($toplinks, 'mb-2');
 
     echo $OUTPUT->heading(get_string('enrolledstudentsattendance', 'local_gestion_actividades') . ': ' . format_string($workshop->code . ' - ' . $workshop->name));
 
@@ -134,7 +156,17 @@ try {
         echo $OUTPUT->notification(get_string('attendance_read_error', 'local_gestion_actividades') . ': ' . s($e->getMessage()), 'warning');
     }
 
+    if ($students && $focususerid > 0) {
+        $students = array_values(array_filter($students, static fn($s) => (int)($s->userid ?? 0) === $focususerid));
+        if (!$students) {
+            echo $OUTPUT->notification('El alumno seleccionado no consta actualmente en esta edición.', 'warning');
+        }
+    }
+
     if ($students) {
+        if ($focususerid > 0) {
+            echo html_writer::tag('p', 'Vista filtrada al alumno seleccionado desde «Buscar alumno».', ['class' => 'alert alert-info py-2']);
+        }
         $table = new html_table();
         $table->head = [get_string('lastname'), get_string('firstname'), get_string('email'), get_string('attendance', 'local_gestion_actividades'), get_string('actions')];
         foreach ($students as $s) {
