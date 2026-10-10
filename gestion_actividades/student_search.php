@@ -210,7 +210,11 @@ if ($user) {
                 : local_ga_ss_badge('No', 'bg-light text-dark border');
             $istypeb = manager::normalize_workshop_type((string)$r->workshoptype) === 'typeb';
             $editactions = html_writer::link(
-                new moodle_url('/local/gestion_actividades/edition_students.php', ['id' => (int)$r->editionid]),
+                new moodle_url('/local/gestion_actividades/edition_students.php', [
+                    'id' => (int)$r->editionid,
+                    'focususerid' => (int)$user->id,
+                    'returnq' => $q,
+                ]),
                 local_ga_ss_icon('t/edit', 'Asistencia'),
                 ['class' => 'btn btn-sm btn-outline-secondary me-1 mb-1']
             );
@@ -218,6 +222,8 @@ if ($user) {
                 new moodle_url('/local/gestion_actividades/teacher_view.php', [
                     'id' => (int)$r->workshopid,
                     'editionid' => (int)$r->editionid,
+                    'focususerid' => (int)$user->id,
+                    'returnq' => $q,
                 ]),
                 local_ga_ss_icon('t/edit', $istypeb ? 'Actividad' : 'Calificación'),
                 ['class' => 'btn btn-sm btn-outline-primary mb-1']
