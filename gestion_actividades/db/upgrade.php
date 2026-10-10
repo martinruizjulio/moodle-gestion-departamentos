@@ -929,6 +929,39 @@ function xmldb_local_gestion_actividades_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026100590, 'local', 'gestion_actividades');
     }
 
+    if ($oldversion < 2026100592) {
+        // Historical Tipo B PAT results. Non-destructive: new table only.
+        $table = new xmldb_table('local_ga_typeb_pat');
+        if (!$dbman->table_exists($table)) {
+            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+            $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('studentkey', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('studentid', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('dni', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('firstname', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('lastname', XMLDB_TYPE_CHAR, '150', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('email', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('workshopkey', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('workshopname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('academicyear', XMLDB_TYPE_CHAR, '9', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('attendance', XMLDB_TYPE_NUMBER, '10,2', null, null, null, null);
+            $table->add_field('grade', XMLDB_TYPE_NUMBER, '10,2', null, null, null, null);
+            $table->add_field('hours', XMLDB_TYPE_NUMBER, '10,2', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('passed', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('sourcefile', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
+            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+            $table->add_index('userid', XMLDB_INDEX_NOTUNIQUE, ['userid']);
+            $table->add_index('studentkey', XMLDB_INDEX_NOTUNIQUE, ['studentkey']);
+            $table->add_index('workshopkey', XMLDB_INDEX_NOTUNIQUE, ['workshopkey']);
+            $table->add_index('academicyear', XMLDB_INDEX_NOTUNIQUE, ['academicyear']);
+            $table->add_index('studentworkshopyear', XMLDB_INDEX_UNIQUE, ['studentkey', 'workshopkey', 'academicyear']);
+            $dbman->create_table($table);
+        }
+        upgrade_plugin_savepoint(true, 2026100592, 'local', 'gestion_actividades');
+    }
+
     return true;
 }
 
