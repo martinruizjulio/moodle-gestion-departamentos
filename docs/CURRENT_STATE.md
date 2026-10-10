@@ -831,3 +831,8 @@ Informe recibido del revisor externo (reviewer.learningsystemsstudio.com) sobre 
 - **Bloque**: 0 errores y 0 avisos con `moodle-extra`. Además: docblocks de todas las funciones, clases y constantes; líneas de más de 132 caracteres partidas; `MOODLE_INTERNAL` innecesarios quitados; catch vacío con `debugging()`.
 - **Plugin local**: correcciones automáticas de estilo con phpcbf (espacios, llaves, comas; sin cambios de lógica). Quedan 842 errores y 684 avisos no bloqueantes: docblocks de funciones, líneas de más de 180 caracteres, catch vacíos y textos en español sin cadenas de idioma.
 - Validación local: lint de todos los PHP; hee_e2e, cert, typeb_cat y pat_test ALL OK (dos_dias: el fallo conocido de horas acumuladas del usuario de prueba); recorrido Playwright de 1.160 páginas y 24 descargas sin errores; bloque correcto para gestor, profesor y alumno; auditoría PAT/Buscar alumno OK.
+
+## 2026-10-11 — Retirado del repositorio el plugin de demostración `hee_demo`
+- A petición de Julio se elimina la carpeta `hee_demo/` (local_hee_demo, demo temporal que nunca fue para la universidad), para que el repositorio que vea la empresa de soporte quede limpio. Sigue en el historial de git si hiciera falta recuperarlo.
+- Ninguno de los plugins `gestion_actividades` ni `gestion_hee` depende de él.
+- Si está instalado en algún Moodle: primero purgar los datos demo desde su página, después desinstalarlo en Administración → Plugins y, por último, borrar su carpeta del servidor.
